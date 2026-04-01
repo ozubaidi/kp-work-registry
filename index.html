@@ -368,7 +368,20 @@ function clearAlerts(){['li-err','li-info','re-err','appr-err'].forEach(id=>{con
 function showAlert(id,msg){const e=document.getElementById(id);if(e){e.textContent=msg;e.classList.add('show')}}
 window.showRoleInfo=function(){const r=document.getElementById('re-role').value,b=document.getElementById('role-info-box');if(r==='contractor'){b.textContent=lang==='bm'?'Kontraktor/Vendor yang menjalankan kerja projek. Perlu submit PTW dan dokumen sokongan.':'Contractor performing project work. Required to submit PTW and supporting documents.';b.classList.add('show')}else if(r==='stevedore'){b.textContent=lang==='bm'?'Wakil operasi stevedoring. Perlu mendaftar aktiviti operasi kapal.':'Stevedoring operations rep. Required to register vessel activities.';b.classList.add('show')}else b.classList.remove('show')};
 
-window.doRegister=async function(){clearAlerts();const name=document.getElementById('re-name').value.trim(),phone=document.getElementById('re-phone').value.trim(),email=document.getElementById('re-email').value.trim(),pass=document.getElementById('re-pass').value,role=document.getElementById('re-role').value,company=document.getElementById('re-company').value.trim();if(!name)return showAlert('re-err','Sila masukkan nama penuh.');if(!email||!email.includes('@'))return showAlert('re-err','Sila masukkan emel yang sah.');if(pass.length<6)return showAlert('re-err','Kata laluan minimum 6 aksara.');if(!role)return showAlert('re-err','Sila pilih jenis pengguna.');if(!company)return showAlert('re-err','Sila masukkan nama syarikat.');const btn=document.getElementById('btn-re');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{const cred=await createUserWithEmailAndPassword(auth,email,pass);await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name,phone,email,role,company,status:'pending',dept:'',createdAt:new Date().toISOString()});await signOut(auth);document.getElementById('reg-form').style.display='none';document.getElementById('pend-notice').classList.add('show')}catch(e){let msg='Ralat. Cuba lagi.';if(e.code==='auth/email-already-in-use')msg='Emel ini sudah didaftarkan.';showAlert('re-err',msg);btn.disabled=false;btn.innerHTML='<span id="btn-re-txt">Hantar Permohonan</span>'}};
+window.doRegister=async function(){clearAlerts();const name=document.getElementById('re-name').value.trim(),phone=document.getElementById('re-phone').value.trim(),email=document.getElementById('re-email').value.trim(),pass=document.getElementById('re-pass').value,role=document.getElementById('re-role').value,company=document.getElementById('re-company').value.trim();if(!name)return showAlert('re-err','Sila masukkan nama penuh.');if(!email||!email.includes('@'))return showAlert('re-err','Sila masukkan emel yang sah.');if(pass.length<6)return showAlert('re-err','Kata laluan minimum 6 aksara.');const btn=document.getElementById('btn-re');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{
+// Check if email is in invited list
+let inviteSnap=null;try{const iq=query(collection(db,'invites'),where('email','==',email),where('status','==','pending'));const ir=await getDocs(iq);if(!ir.empty)inviteSnap=ir.docs[0]}catch(ie){console.log('invite check:',ie)}
+if(inviteSnap){
+// INVITED USER — use admin-defined role/dept, skip pending
+const inv=inviteSnap.data();const cred=await createUserWithEmailAndPassword(auth,email,pass);
+await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name,phone,email,role:inv.role,company:'Kuantan Port Sdn Bhd',dept:inv.dept||'',status:'active',createdAt:new Date().toISOString()});
+await updateDoc(doc(db,'invites',inviteSnap.id),{status:'registered',registeredAt:new Date().toISOString()});
+await signOut(auth);document.getElementById('reg-form').style.display='none';
+document.getElementById('pend-notice').innerHTML='<strong>✓ Akaun Berjaya Dibuat</strong><br>Akaun anda telah aktif. Sila log masuk sekarang.';document.getElementById('pend-notice').style.color='#6ee7b7';document.getElementById('pend-notice').classList.add('show')
+}else{
+// EXTERNAL USER — contractor/stevedore flow
+if(!role)return(btn.disabled=false,btn.innerHTML='<span id="btn-re-txt">Hantar Permohonan</span>',showAlert('re-err','Sila pilih jenis pengguna.'));if(!company)return(btn.disabled=false,btn.innerHTML='<span id="btn-re-txt">Hantar Permohonan</span>',showAlert('re-err','Sila masukkan nama syarikat.'));
+const cred=await createUserWithEmailAndPassword(auth,email,pass);await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name,phone,email,role,company,status:'pending',dept:'',createdAt:new Date().toISOString()});await signOut(auth);document.getElementById('reg-form').style.display='none';document.getElementById('pend-notice').classList.add('show')}}catch(e){let msg='Ralat. Cuba lagi.';if(e.code==='auth/email-already-in-use')msg='Emel ini sudah didaftarkan.';showAlert('re-err',msg);btn.disabled=false;btn.innerHTML='<span id="btn-re-txt">Hantar Permohonan</span>'}};
 
 window.doLogin=async function(){clearAlerts();const email=document.getElementById('li-email').value.trim(),pass=document.getElementById('li-pass').value;if(!email)return showAlert('li-err','Sila masukkan emel.');if(!pass)return showAlert('li-err','Sila masukkan kata laluan.');const btn=document.getElementById('btn-li');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{const cred=await signInWithEmailAndPassword(auth,email,pass),snap=await getDoc(doc(db,'users',cred.user.uid));if(!snap.exists()){await signOut(auth);showAlert('li-err','Akaun tidak dijumpai dalam sistem.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>';return}const data=snap.data();if(data.status==='pending'){await signOut(auth);showAlert('li-info','Akaun anda belum diluluskan oleh Admin KP.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>';return}if(data.status==='suspended'||data.status==='rejected'){await signOut(auth);showAlert('li-err','Akaun anda tidak aktif. Hubungi Admin KP.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>';return}currentUser=cred.user;currentData=data;renderApp(data)}catch(e){showAlert('li-err','Emel atau kata laluan tidak sah.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>'}};
 
@@ -433,7 +446,24 @@ window.submitPermitForm=async function(){if(formStep===1){const name=document.ge
 
 function genPermitNo(t){const n=new Date(),y=n.getFullYear().toString().slice(-2),m=String(n.getMonth()+1).padStart(2,'0'),d=String(n.getDate()).padStart(2,'0'),r=String(Math.floor(Math.random()*9000)+1000);return `KP/${t}/${y}${m}${d}/${r}`}
 
-async function renderUsersPage(){const snap=await getDocs(collection(db,'users'));allUsers=snap.docs.map(d=>d.data());updateBadges();const pending=allUsers.filter(u=>u.status==='pending'),active=allUsers.filter(u=>u.status==='active');document.getElementById('users-body').innerHTML=`<div class="sec-title">${lang==='bm'?'Permohonan Pending':'Pending Applications'} (${pending.length})</div><div class="data-table" style="margin-bottom:16px">${pending.length?`<div class="table-head" style="grid-template-columns:1fr 130px 140px 120px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>Tindakan</div></div>${pending.map(u=>`<div class="table-row" style="grid-template-columns:1fr 130px 140px 120px" id="ur-${u.uid}"><div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div style="display:flex;gap:6px"><button class="btn-sm btn-approve" onclick="approveUser('${u.uid}','${u.name}')">${lang==='bm'?'Lulus':'Approve'}</button><button class="btn-sm btn-reject" onclick="rejectUser('${u.uid}','${u.name}')">${lang==='bm'?'Tolak':'Reject'}</button></div></div>`).join('')}`:`<div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permohonan':'No pending applications'}</div>`}</div><div class="sec-title">${lang==='bm'?'Pengguna Aktif':'Active Users'} (${active.length})</div><div class="data-table"><div class="table-head" style="grid-template-columns:1fr 130px 1fr 90px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>Status</div></div>${active.map(u=>`<div class="table-row" style="grid-template-columns:1fr 130px 1fr 90px"><div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div><span class="status s-approved">Aktif</span></div></div>`).join('')}</div>`}
+async function renderUsersPage(){const snap=await getDocs(collection(db,'users'));allUsers=snap.docs.map(d=>d.data());updateBadges();const pending=allUsers.filter(u=>u.status==='pending'),active=allUsers.filter(u=>u.status==='active');
+// Load invites
+let invites=[];try{const isnap=await getDocs(collection(db,'invites'));invites=isnap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
+const pendingInvites=invites.filter(i=>i.status==='pending');
+document.getElementById('users-body').innerHTML=`
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+  <div class="sec-title" style="margin:0">${lang==='bm'?'Jemputan Pending':'Pending Invites'} (${pendingInvites.length})</div>
+  <button class="btn-sm btn-info" onclick="openInvite()" style="height:32px;padding:0 14px">+ ${lang==='bm'?'Jemput Pengguna Dalaman':'Invite Internal User'}</button>
+</div>
+<div class="data-table" style="margin-bottom:16px">${pendingInvites.length?`<div class="table-head" style="grid-template-columns:1fr 120px 120px 90px 80px"><div>Nama</div><div>Role</div><div>Jabatan</div><div>Emel</div><div>Tindakan</div></div>${pendingInvites.map(i=>`<div class="table-row" style="grid-template-columns:1fr 120px 120px 90px 80px"><div><div style="font-weight:500">${i.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${i.email}</div></div><div><span class="rbadge ${i.role}">${rl(i.role)}</span></div><div style="font-size:12px;color:var(--text2)">${i.dept||'—'}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${i.email.split('@')[0]}</div><div><button class="btn-sm btn-reject" onclick="cancelInvite('${i.id}','${i.name}')">✕</button></div></div>`).join('')}`:`<div class="table-empty"><span class="em-icon">📨</span>${lang==='bm'?'Tiada jemputan pending':'No pending invites'}</div>`}</div>
+<div class="sec-title">${lang==='bm'?'Permohonan Pending':'Pending Applications'} (${pending.length})</div><div class="data-table" style="margin-bottom:16px">${pending.length?`<div class="table-head" style="grid-template-columns:1fr 130px 140px 120px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>Tindakan</div></div>${pending.map(u=>`<div class="table-row" style="grid-template-columns:1fr 130px 140px 120px" id="ur-${u.uid}"><div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div style="display:flex;gap:6px"><button class="btn-sm btn-approve" onclick="approveUser('${u.uid}','${u.name}')">${lang==='bm'?'Lulus':'Approve'}</button><button class="btn-sm btn-reject" onclick="rejectUser('${u.uid}','${u.name}')">${lang==='bm'?'Tolak':'Reject'}</button></div></div>`).join('')}`:`<div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permohonan':'No pending applications'}</div>`}</div><div class="sec-title">${lang==='bm'?'Pengguna Aktif':'Active Users'} (${active.length})</div><div class="data-table"><div class="table-head" style="grid-template-columns:1fr 130px 1fr 90px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>Status</div></div>${active.map(u=>`<div class="table-row" style="grid-template-columns:1fr 130px 1fr 90px"><div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div><span class="status s-approved">Aktif</span></div></div>`).join('')}</div>`}
+
+window.cancelInvite=async function(id,name){
+  if(!confirm(lang==='bm'?`Batalkan jemputan untuk ${name}?`:`Cancel invite for ${name}?`))return;
+  await updateDoc(doc(db,'invites',id),{status:'cancelled'});
+  showToast(lang==='bm'?`Jemputan ${name} dibatalkan.`:`Invite for ${name} cancelled.`,'info');
+  renderUsersPage();
+};
 
 window.approveUser=async function(uid,name){await updateDoc(doc(db,'users',uid),{status:'active'});await sendNotif(uid,lang==='bm'?'✓ Akaun Diluluskan':'✓ Account Approved',lang==='bm'?'Akaun anda telah diluluskan. Sila log masuk ke KP Work Registry.':'Your account has been approved. Please log in to KP Work Registry.');document.getElementById(`ur-${uid}`)?.remove();showToast(`${name} ${lang==='bm'?'telah diluluskan':'approved'}`,'success');renderUsersPage()};
 window.rejectUser=async function(uid,name){await updateDoc(doc(db,'users',uid),{status:'rejected'});document.getElementById(`ur-${uid}`)?.remove();showToast(`${name} ${lang==='bm'?'telah ditolak':'rejected'}`,'error');renderUsersPage()};
@@ -445,6 +475,43 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 function showToast(msg,type='info'){const el=document.getElementById('toast');const ic={success:'✓',error:'✕',info:'ℹ'};el.innerHTML=`<span>${ic[type]||'ℹ'}</span><span>${msg}</span>`;el.className=`toast ${type} show`;setTimeout(()=>el.classList.remove('show'),3500)}
 
 window.createAdmin=async function(email,password,name){try{const cred=await createUserWithEmailAndPassword(auth,email,password);await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name:name||'Admin KP',email,role:'admin',status:'active',company:'Kuantan Port Sdn Bhd',phone:'',dept:'',createdAt:new Date().toISOString()});console.log('Admin created:',cred.user.uid);showToast('Admin account created!','success')}catch(e){console.error(e)}};
+
+window.openInvite=function(){
+  document.getElementById('inv-name').value='';
+  document.getElementById('inv-phone').value='';
+  document.getElementById('inv-email').value='';
+  document.getElementById('inv-role').value='';
+  document.getElementById('inv-dept').value='';
+  const err=document.getElementById('inv-err');if(err){err.classList.remove('show');err.textContent=''}
+  const ok=document.getElementById('inv-ok');if(ok){ok.classList.remove('show');ok.textContent=''}
+  document.getElementById('inv-title').textContent=lang==='bm'?'Jemput Pengguna Dalaman':'Invite Internal User';
+  openModal('modal-invite')
+};
+
+window.submitInvite=async function(){
+  const name=document.getElementById('inv-name').value.trim(),phone=document.getElementById('inv-phone').value.trim(),email=document.getElementById('inv-email').value.trim(),role=document.getElementById('inv-role').value,dept=document.getElementById('inv-dept').value;
+  const err=document.getElementById('inv-err'),ok=document.getElementById('inv-ok');
+  err.classList.remove('show');ok.classList.remove('show');
+  if(!name){err.textContent='Sila masukkan nama.';err.classList.add('show');return}
+  if(!email||!email.includes('@')){err.textContent='Sila masukkan emel yang sah.';err.classList.add('show');return}
+  if(!role){err.textContent='Sila pilih role.';err.classList.add('show');return}
+  const btn=document.getElementById('btn-inv-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  try{
+    // Check if invite already exists for this email
+    const eq=query(collection(db,'invites'),where('email','==',email));
+    const er=await getDocs(eq);
+    if(!er.empty){err.textContent=lang==='bm'?'Emel ini sudah dijemput.':'This email has already been invited.';err.classList.add('show');btn.disabled=false;btn.innerHTML='<span id="btn-inv-txt">Hantar Jemputan</span>';return}
+    // Check if user already registered
+    const uq=query(collection(db,'users'),where('email','==',email));
+    const ur=await getDocs(uq);
+    if(!ur.empty){err.textContent=lang==='bm'?'Emel ini sudah berdaftar dalam sistem.':'This email is already registered.';err.classList.add('show');btn.disabled=false;btn.innerHTML='<span id="btn-inv-txt">Hantar Jemputan</span>';return}
+    await addDoc(collection(db,'invites'),{name,phone,email,role,dept,status:'pending',invitedBy:currentData.uid,invitedByName:currentData.name,createdAt:new Date().toISOString()});
+    ok.textContent=lang==='bm'?`✓ Jemputan dihantar untuk ${name} (${email}). Mereka boleh daftar sekarang.`:`✓ Invite sent for ${name} (${email}). They can now register.`;ok.classList.add('show');
+    document.getElementById('inv-name').value='';document.getElementById('inv-email').value='';document.getElementById('inv-role').value='';document.getElementById('inv-dept').value='';
+    renderUsersPage();
+  }catch(e){console.error(e);err.textContent='Ralat. Cuba lagi.';err.classList.add('show')}
+  finally{btn.disabled=false;btn.innerHTML='<span id="btn-inv-txt">Hantar Jemputan</span>'}
+};
 
 onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;try{const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data())}catch(e){allUsers=[];console.log('allUsers load limited:',e.code)}renderApp(data)}}}});
 </script>
