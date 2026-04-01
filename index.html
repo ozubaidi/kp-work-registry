@@ -270,7 +270,7 @@ select.form-input option{background:var(--bg2)}
       <button class="ctrl-btn" onclick="toggleTheme()"><span id="dtheme-ic">☀</span></button>
       <button class="ctrl-btn notif-btn" onclick="toggleNotif()" id="notif-btn">🔔<span class="notif-dot" id="notif-dot"></span></button>
       <div class="user-chip"><div class="user-av" id="user-av">?</div><div class="user-nm" id="user-nm">—</div></div>
-      <button class="btn-logout" onclick="doLogout()" id="btn-lo-txt">Log Keluar</button>
+      <button class="ctrl-btn" onclick="openChangePass()" title="Tukar Kata Laluan">🔒</button><button class="btn-logout" onclick="doLogout()" id="btn-lo-txt">Log Keluar</button>
     </div>
   </header>
   <div class="notif-panel" id="notif-panel">
@@ -342,11 +342,13 @@ select.form-input option{background:var(--bg2)}
 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged,updatePassword,sendPasswordResetEmail,EmailAuthProvider,reauthenticateWithCredential}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import{getFirestore,doc,setDoc,getDoc,collection,getDocs,updateDoc,addDoc,query,where,orderBy,onSnapshot}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig={apiKey:"AIzaSyBiICSlNeA0rSdORQ_sTS0jnlAjoQRDwcw",authDomain:"kp-work-registry-2026.firebaseapp.com",projectId:"kp-work-registry-2026",storageBucket:"kp-work-registry-2026.firebasestorage.app",messagingSenderId:"69801102843",appId:"1:69801102843:web:f121328b4f47ab17664f5e"};
 const app=initializeApp(firebaseConfig);
+const app2=initializeApp(firebaseConfig,'secondary');
+const auth2=getAuth(app2);
 const auth=getAuth(app);
 const db=getFirestore(app);
 
@@ -387,7 +389,13 @@ window.doLogin=async function(){clearAlerts();const email=document.getElementByI
 
 window.doLogout=async function(){if(permitUnsub){permitUnsub();permitUnsub=null}if(notifUnsub){notifUnsub();notifUnsub=null}await signOut(auth);currentUser=null;currentData=null;allPermits=[];document.getElementById('app').style.display='none';document.getElementById('login-page').style.display='flex';document.getElementById('li-email').value='';document.getElementById('li-pass').value='';document.getElementById('btn-li').disabled=false;document.getElementById('btn-li').innerHTML='<span id="btn-li-txt">Log Masuk</span>'};
 
-function renderApp(data){document.getElementById('login-page').style.display='none';document.getElementById('app').style.display='block';const ini=data.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();document.getElementById('user-av').textContent=ini;document.getElementById('user-nm').textContent=data.name.split(' ')[0];buildSidebar(data);loadPermits(data);loadNotifs(data);showPage('dashboard');renderDash(data)}
+function renderApp(data){document.getElementById('login-page').style.display='none';document.getElementById('app').style.display='block';const ini=data.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();document.getElementById('user-av').textContent=ini;document.getElementById('user-nm').textContent=data.name.split(' ')[0];
+  if(data.mustChangePass){
+    setTimeout(()=>{
+      showToast(lang==='bm'?'⚠ Sila tukar kata laluan sementara anda sekarang.':'⚠ Please change your temporary password now.','warn');
+      setTimeout(()=>openChangePass(),1500);
+    },1000);
+  }buildSidebar(data);loadPermits(data);loadNotifs(data);showPage('dashboard');renderDash(data)}
 
 function buildSidebar(data){const r=data.role;let h=`<div class="nav-label">${lang==='bm'?'Menu':''}</div><div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')"><span class="nav-icon">📊</span>${lang==='bm'?'Dashboard':'Dashboard'}</div>`;if(['admin','hse','hod','contractor','stevedore','supervisor','management'].includes(r)){h+=`<div class="nav-item" id="nav-permits" onclick="showPage('permits')"><span class="nav-icon">📋</span>${lang==='bm'?'Permit & Aktiviti':'Permits'}<span class="nav-badge" id="nb-permits"></span></div>`}if(['hse','hod','admin'].includes(r)){h+=`<div class="nav-item" id="nav-approvals" onclick="showPage('approvals')"><span class="nav-icon">✅</span>${lang==='bm'?'Kelulusan':'Approvals'}<span class="nav-badge" id="nb-approvals"></span></div>`}if(r==='admin'){h+=`<div class="nav-label" style="margin-top:8px">Admin</div><div class="nav-item" id="nav-users" onclick="showPage('users')"><span class="nav-icon">👥</span>${lang==='bm'?'Pengguna':'Users'}<span class="nav-badge" id="nb-users"></span></div>`}document.getElementById('nav-items').innerHTML=h}
 
@@ -451,98 +459,163 @@ async function renderUsersPage(){const snap=await getDocs(collection(db,'users')
 let invites=[];try{const isnap=await getDocs(collection(db,'invites'));invites=isnap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
 const pendingInvites=invites.filter(i=>i.status==='pending');
 document.getElementById('users-body').innerHTML=`
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-  <div class="sec-title" style="margin:0">${lang==='bm'?'Jemputan Pending':'Pending Invites'} (${pendingInvites.length})</div>
-  <button class="btn-sm btn-info" onclick="openInvite()" style="height:32px;padding:0 14px">+ ${lang==='bm'?'Jemput Pengguna Dalaman':'Invite Internal User'}</button>
+<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px">
+  <button class="btn-sm btn-info" onclick="openCreateUser()" style="height:32px;padding:0 14px;font-size:12px">+ ${lang==='bm'?'Tambah Pengguna Baru':'Add New User'}</button>
 </div>
-<div class="data-table" style="margin-bottom:16px">${pendingInvites.length?`<div class="table-head" style="grid-template-columns:1fr 120px 120px 90px 80px"><div>Nama</div><div>Role</div><div>Jabatan</div><div>Emel</div><div>Tindakan</div></div>${pendingInvites.map(i=>`<div class="table-row" style="grid-template-columns:1fr 120px 120px 90px 80px"><div><div style="font-weight:500">${i.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${i.email}</div></div><div><span class="rbadge ${i.role}">${rl(i.role)}</span></div><div style="font-size:12px;color:var(--text2)">${i.dept||'—'}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${i.email.split('@')[0]}</div><div><button class="btn-sm btn-reject" onclick="cancelInvite('${i.id}','${i.name}')">✕</button></div></div>`).join('')}`:`<div class="table-empty"><span class="em-icon">📨</span>${lang==='bm'?'Tiada jemputan pending':'No pending invites'}</div>`}</div>
-<div class="sec-title">${lang==='bm'?'Permohonan Pending':'Pending Applications'} (${pending.length})</div><div class="data-table" style="margin-bottom:16px">${pending.length?`<div class="table-head" style="grid-template-columns:1fr 130px 140px 120px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>Tindakan</div></div>${pending.map(u=>`<div class="table-row" style="grid-template-columns:1fr 130px 140px 120px" id="ur-${u.uid}"><div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div style="display:flex;gap:6px"><button class="btn-sm btn-approve" onclick="approveUser('${u.uid}','${u.name}')">${lang==='bm'?'Lulus':'Approve'}</button><button class="btn-sm btn-reject" onclick="rejectUser('${u.uid}','${u.name}')">${lang==='bm'?'Tolak':'Reject'}</button></div></div>`).join('')}`:`<div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permohonan':'No pending applications'}</div>`}</div><div class="sec-title">${lang==='bm'?'Pengguna Aktif':'Active Users'} (${active.length})</div><div class="data-table"><div class="table-head" style="grid-template-columns:1fr 130px 1fr 90px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>Status</div></div>${active.map(u=>`<div class="table-row" style="grid-template-columns:1fr 130px 1fr 90px"><div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div><span class="status s-approved">Aktif</span></div></div>`).join('')}</div>`}
+<div class="sec-title">${lang==='bm'?'Permohonan Pending':'Pending Applications'} (${pending.length})</div><div class="data-table" style="margin-bottom:16px">${pending.length?`<div class="table-head" style="grid-template-columns:1fr 130px 140px 120px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>Tindakan</div></div>${pending.map(u=>`<div class="table-row" style="grid-template-columns:1fr 130px 140px 120px" id="ur-${u.uid}"><div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div style="display:flex;gap:6px"><button class="btn-sm btn-approve" onclick="approveUser('${u.uid}','${u.name}')">${lang==='bm'?'Lulus':'Approve'}</button><button class="btn-sm btn-reject" onclick="rejectUser('${u.uid}','${u.name}')">${lang==='bm'?'Tolak':'Reject'}</button></div></div>`).join('')}`:`<div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permohonan':'No pending applications'}</div>`}</div><div class="sec-title">${lang==='bm'?'Pengguna Aktif':'Active Users'} (${active.length})</div><div class="data-table"><div class="table-head" style="grid-template-columns:1fr 120px 1fr 160px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>${lang==='bm'?'Tindakan':'Actions'}</div></div>${active.map(u=>`<div class="table-row" style="grid-template-columns:1fr 120px 1fr 160px"><div><div style="font-weight:500">${u.name}${u.mustChangePass?'<span style="font-size:9px;color:var(--warning);margin-left:6px;font-family:var(--mono)">⚠ TUKAR PASS</span>':''}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div style="display:flex;gap:5px;flex-wrap:wrap">${u.uid!==currentData?.uid?`<button class="btn-sm btn-warn" onclick="resetUserPassword('${u.email}','${u.name}')" title="Reset Password">🔑</button><button class="btn-sm btn-reject" onclick="suspendUser('${u.uid}','${u.name}')" title="Gantung Akaun">⊘</button>`:'<span style="font-size:11px;color:var(--text3)">(anda)</span>'}</div></div>`).join('')}</div>`}
 
-window.cancelInvite=async function(id,name){
-  if(!confirm(lang==='bm'?`Batalkan jemputan untuk ${name}?`:`Cancel invite for ${name}?`))return;
-  await updateDoc(doc(db,'invites',id),{status:'cancelled'});
-  showToast(lang==='bm'?`Jemputan ${name} dibatalkan.`:`Invite for ${name} cancelled.`,'info');
+window.openCreateUser=function(){
+  ['cu-name','cu-phone','cu-email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  document.getElementById('cu-pass').value='KP@2026';
+  document.getElementById('cu-company').value='Kuantan Port Sdn Bhd';
+  document.getElementById('cu-role').value='';
+  document.getElementById('cu-dept').value='';
+  const err=document.getElementById('cu-err'),ok=document.getElementById('cu-ok');
+  if(err){err.classList.remove('show');err.textContent=''}
+  if(ok){ok.classList.remove('show');ok.textContent=''}
+  document.getElementById('cu-title').textContent=lang==='bm'?'Tambah Pengguna Baru':'Add New User';
+  openModal('modal-create-user');
+};
+
+window.submitCreateUser=async function(){
+  const name=document.getElementById('cu-name').value.trim(),
+        phone=document.getElementById('cu-phone').value.trim(),
+        email=document.getElementById('cu-email').value.trim(),
+        pass=document.getElementById('cu-pass').value,
+        company=document.getElementById('cu-company').value.trim(),
+        role=document.getElementById('cu-role').value,
+        dept=document.getElementById('cu-dept').value;
+  const err=document.getElementById('cu-err'),ok=document.getElementById('cu-ok');
+  err.classList.remove('show');ok.classList.remove('show');
+  if(!name){err.textContent=lang==='bm'?'Sila masukkan nama.':'Please enter name.';err.classList.add('show');return}
+  if(!email||!email.includes('@')){err.textContent=lang==='bm'?'Sila masukkan emel yang sah.':'Please enter valid email.';err.classList.add('show');return}
+  if(pass.length<6){err.textContent=lang==='bm'?'Password minimum 6 aksara.':'Password min 6 characters.';err.classList.add('show');return}
+  if(!role){err.textContent=lang==='bm'?'Sila pilih role.':'Please select role.';err.classList.add('show');return}
+  const btn=document.getElementById('btn-cu-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  try{
+    // Use secondary Firebase app to create user without logging out Admin
+    const cred=await createUserWithEmailAndPassword(auth2,email,pass);
+    await setDoc(doc(db,'users',cred.user.uid),{
+      uid:cred.user.uid,name,phone,email,role,company:company||'Kuantan Port Sdn Bhd',
+      dept:dept||'',status:'active',createdAt:new Date().toISOString(),
+      createdBy:currentData.uid,createdByName:currentData.name,mustChangePass:true
+    });
+    // Sign out from secondary app
+    await signOut(auth2);
+    ok.textContent=lang==='bm'
+      ?`✓ Akaun ${name} berjaya dicipta. Berikan credentials: Emel: ${email} | Password: ${pass}`
+      :`✓ Account for ${name} created. Share credentials: Email: ${email} | Password: ${pass}`;
+    ok.classList.add('show');
+    // Clear form for next entry
+    ['cu-name','cu-phone','cu-email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+    document.getElementById('cu-pass').value='KP@2026';
+    document.getElementById('cu-role').value='';
+    document.getElementById('cu-dept').value='';
+    allUsers=[...allUsers,{uid:cred.user.uid,name,phone,email,role,company,dept,status:'active'}];
+    renderUsersPage();
+  }catch(e){
+    console.error(e);
+    let msg=lang==='bm'?'Ralat. Cuba lagi.':'Error. Please try again.';
+    if(e.code==='auth/email-already-in-use')msg=lang==='bm'?'Emel ini sudah berdaftar.':'Email already registered.';
+    if(e.code==='auth/invalid-email')msg=lang==='bm'?'Format emel tidak sah.':'Invalid email format.';
+    err.textContent=msg;err.classList.add('show');
+  }
+  finally{btn.disabled=false;btn.innerHTML=`<span id="btn-cu-txt">${lang==='bm'?'Cipta Akaun':'Create Account'}</span>`}
+};
+
+window.openChangePass=function(){
+  ['cp-old','cp-new','cp-confirm'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  const err=document.getElementById('cp-err'),ok=document.getElementById('cp-ok');
+  if(err){err.classList.remove('show');err.textContent=''}
+  if(ok){ok.classList.remove('show');ok.textContent=''}
+  openModal('modal-change-pass');
+};
+
+window.submitChangePass=async function(){
+  const oldP=document.getElementById('cp-old').value,
+        newP=document.getElementById('cp-new').value,
+        conf=document.getElementById('cp-confirm').value;
+  const err=document.getElementById('cp-err'),ok=document.getElementById('cp-ok');
+  err.classList.remove('show');ok.classList.remove('show');
+  if(!oldP){err.textContent=lang==='bm'?'Masukkan kata laluan semasa.':'Enter current password.';err.classList.add('show');return}
+  if(newP.length<6){err.textContent=lang==='bm'?'Kata laluan baru minimum 6 aksara.':'New password min 6 characters.';err.classList.add('show');return}
+  if(newP!==conf){err.textContent=lang==='bm'?'Kata laluan baru tidak sepadan.':'New passwords do not match.';err.classList.add('show');return}
+  const btn=document.getElementById('btn-cp-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  try{
+    // Re-authenticate first
+    const credential=EmailAuthProvider.credential(currentUser.email,oldP);
+    await reauthenticateWithCredential(currentUser,credential);
+    await updatePassword(currentUser,newP);
+    // Update mustChangePass flag
+    await updateDoc(doc(db,'users',currentUser.uid),{mustChangePass:false});
+    ok.textContent=lang==='bm'?'✓ Kata laluan berjaya ditukar.':'✓ Password changed successfully.';
+    ok.classList.add('show');
+    setTimeout(()=>closeModal('modal-change-pass'),2000);
+  }catch(e){
+    console.error(e);
+    let msg=lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.';
+    if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')msg=lang==='bm'?'Kata laluan semasa tidak betul.':'Current password is incorrect.';
+    err.textContent=msg;err.classList.add('show');
+  }
+  finally{btn.disabled=false;btn.innerHTML=`<span id="btn-cp-txt">${lang==='bm'?'Tukar Password':'Change Password'}</span>`}
+};
+
+window.resetUserPassword=async function(email,name){
+  if(!confirm(lang==='bm'?`Hantar email reset password kepada ${name} (${email})?`:`Send password reset email to ${name} (${email})?`))return;
+  try{
+    await sendPasswordResetEmail(auth,email);
+    showToast(lang==='bm'?`✓ Email reset dihantar ke ${email}`:`✓ Reset email sent to ${email}`,'success');
+  }catch(e){
+    console.error(e);
+    showToast(lang==='bm'?'Gagal hantar email reset. Semak emel.':'Failed to send reset email.','error');
+  }
+};
+
+window.suspendUser=async function(uid,name){
+  if(!confirm(lang==='bm'?`Gantung akaun ${name}?`:`Suspend account for ${name}?`))return;
+  await updateDoc(doc(db,'users',uid),{status:'suspended'});
+  showToast(lang==='bm'?`Akaun ${name} digantung.`:`${name} suspended.`,'warn');
   renderUsersPage();
 };
 
-window.approveUser=async function(uid,name){await updateDoc(doc(db,'users',uid),{status:'active'});await sendNotif(uid,lang==='bm'?'✓ Akaun Diluluskan':'✓ Account Approved',lang==='bm'?'Akaun anda telah diluluskan. Sila log masuk ke KP Work Registry.':'Your account has been approved. Please log in to KP Work Registry.');document.getElementById(`ur-${uid}`)?.remove();showToast(`${name} ${lang==='bm'?'telah diluluskan':'approved'}`,'success');renderUsersPage()};
-window.rejectUser=async function(uid,name){await updateDoc(doc(db,'users',uid),{status:'rejected'});document.getElementById(`ur-${uid}`)?.remove();showToast(`${name} ${lang==='bm'?'telah ditolak':'rejected'}`,'error');renderUsersPage()};
-
-window.openModal=function(id){document.getElementById(id)?.classList.add('show')};
-window.closeModal=function(id){document.getElementById(id)?.classList.remove('show')};
-document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show')}));
-
-function showToast(msg,type='info'){const el=document.getElementById('toast');const ic={success:'✓',error:'✕',info:'ℹ'};el.innerHTML=`<span>${ic[type]||'ℹ'}</span><span>${msg}</span>`;el.className=`toast ${type} show`;setTimeout(()=>el.classList.remove('show'),3500)}
-
-window.createAdmin=async function(email,password,name){try{const cred=await createUserWithEmailAndPassword(auth,email,password);await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name:name||'Admin KP',email,role:'admin',status:'active',company:'Kuantan Port Sdn Bhd',phone:'',dept:'',createdAt:new Date().toISOString()});console.log('Admin created:',cred.user.uid);showToast('Admin account created!','success')}catch(e){console.error(e)}};
-
-window.openInvite=function(){
-  document.getElementById('inv-name').value='';
-  document.getElementById('inv-phone').value='';
-  document.getElementById('inv-email').value='';
-  document.getElementById('inv-role').value='';
-  document.getElementById('inv-dept').value='';
-  const err=document.getElementById('inv-err');if(err){err.classList.remove('show');err.textContent=''}
-  const ok=document.getElementById('inv-ok');if(ok){ok.classList.remove('show');ok.textContent=''}
-  document.getElementById('inv-title').textContent=lang==='bm'?'Jemput Pengguna Dalaman':'Invite Internal User';
-  openModal('modal-invite')
-};
-
-window.submitInvite=async function(){
-  const name=document.getElementById('inv-name').value.trim(),phone=document.getElementById('inv-phone').value.trim(),email=document.getElementById('inv-email').value.trim(),role=document.getElementById('inv-role').value,dept=document.getElementById('inv-dept').value;
-  const err=document.getElementById('inv-err'),ok=document.getElementById('inv-ok');
-  err.classList.remove('show');ok.classList.remove('show');
-  if(!name){err.textContent='Sila masukkan nama.';err.classList.add('show');return}
-  if(!email||!email.includes('@')){err.textContent='Sila masukkan emel yang sah.';err.classList.add('show');return}
-  if(!role){err.textContent='Sila pilih role.';err.classList.add('show');return}
-  const btn=document.getElementById('btn-inv-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
-  try{
-    // Check if invite already exists for this email
-    const eq=query(collection(db,'invites'),where('email','==',email));
-    const er=await getDocs(eq);
-    if(!er.empty){err.textContent=lang==='bm'?'Emel ini sudah dijemput.':'This email has already been invited.';err.classList.add('show');btn.disabled=false;btn.innerHTML='<span id="btn-inv-txt">Hantar Jemputan</span>';return}
-    // Check if user already registered
-    const uq=query(collection(db,'users'),where('email','==',email));
-    const ur=await getDocs(uq);
-    if(!ur.empty){err.textContent=lang==='bm'?'Emel ini sudah berdaftar dalam sistem.':'This email is already registered.';err.classList.add('show');btn.disabled=false;btn.innerHTML='<span id="btn-inv-txt">Hantar Jemputan</span>';return}
-    await addDoc(collection(db,'invites'),{name,phone,email,role,dept,status:'pending',invitedBy:currentData.uid,invitedByName:currentData.name,createdAt:new Date().toISOString()});
-    ok.textContent=lang==='bm'?`✓ Jemputan dihantar untuk ${name} (${email}). Mereka boleh daftar sekarang.`:`✓ Invite sent for ${name} (${email}). They can now register.`;ok.classList.add('show');
-    document.getElementById('inv-name').value='';document.getElementById('inv-email').value='';document.getElementById('inv-role').value='';document.getElementById('inv-dept').value='';
-    renderUsersPage();
-  }catch(e){console.error(e);err.textContent='Ralat. Cuba lagi.';err.classList.add('show')}
-  finally{btn.disabled=false;btn.innerHTML='<span id="btn-inv-txt">Hantar Jemputan</span>'}
-};
 
 onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;try{const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data())}catch(e){allUsers=[];console.log('allUsers load limited:',e.code)}renderApp(data)}}}});
 </script>
 
-<div class="modal-overlay" id="modal-invite">
-  <div class="modal" style="max-width:480px">
+<div class="modal-overlay" id="modal-create-user">
+  <div class="modal" style="max-width:500px">
     <div class="modal-head">
-      <span class="modal-title" id="inv-title">Jemput Pengguna Dalaman</span>
-      <button class="modal-close" onclick="closeModal('modal-invite')">✕</button>
+      <span class="modal-title" id="cu-title">Tambah Pengguna Baru</span>
+      <button class="modal-close" onclick="closeModal('modal-create-user')">✕</button>
     </div>
     <div class="modal-body">
-      <div class="alert alert-info show" style="margin-bottom:14px">Admin tetapkan role — pengguna daftar dengan emel yang sama, terus aktif tanpa kelulusan.</div>
-      <div class="alert alert-error" id="inv-err"></div>
-      <div class="alert alert-success" id="inv-ok"></div>
+      <div class="alert alert-info show" style="margin-bottom:14px">Admin cipta akaun terus — akaun terus aktif. Berikan emel dan password sementara kepada pengguna secara manual.</div>
+      <div class="alert alert-error" id="cu-err"></div>
+      <div class="alert alert-success" id="cu-ok"></div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Nama Penuh <span class="req">*</span></label><input class="form-input" id="inv-name" placeholder="Ahmad bin Ali"></div>
-        <div class="form-group"><label class="form-label">No. Telefon</label><input class="form-input" id="inv-phone" placeholder="01X-XXXXXXX"></div>
+        <div class="form-group"><label class="form-label">Nama Penuh <span class="req">*</span></label><input class="form-input" id="cu-name" placeholder="Ahmad bin Ali"></div>
+        <div class="form-group"><label class="form-label">No. Telefon</label><input class="form-input" id="cu-phone" placeholder="01X-XXXXXXX"></div>
       </div>
-      <div class="form-group"><label class="form-label">Emel <span class="req">*</span></label><input class="form-input" type="email" id="inv-email" placeholder="staff@kuantanport.com.my"></div>
+      <div class="form-group"><label class="form-label">Emel <span class="req">*</span></label><input class="form-input" type="email" id="cu-email" placeholder="staff@kuantanport.com.my"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Password Sementara <span class="req">*</span></label><input class="form-input" type="text" id="cu-pass" placeholder="KP@2026" value="KP@2026"></div>
+        <div class="form-group"><label class="form-label">Syarikat</label><input class="form-input" id="cu-company" placeholder="Kuantan Port Sdn Bhd" value="Kuantan Port Sdn Bhd"></div>
+      </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Role <span class="req">*</span></label>
-          <select class="form-input" id="inv-role">
+          <select class="form-input" id="cu-role">
             <option value="">-- Pilih Role --</option>
+            <option value="admin">Admin KP</option>
             <option value="hse">HSE Officer</option>
             <option value="hod">HOD / Executive</option>
             <option value="supervisor">Supervisor</option>
             <option value="management">Management</option>
+            <option value="contractor">Kontraktor</option>
+            <option value="stevedore">Stevedore Rep</option>
           </select>
         </div>
         <div class="form-group"><label class="form-label">Jabatan</label>
-          <select class="form-input" id="inv-dept">
+          <select class="form-input" id="cu-dept">
             <option value="">-- Pilih --</option>
             <option>HSE</option><option>Civil</option><option>Electrical</option>
             <option>Operation</option><option>Mechanical</option><option>IT</option>
@@ -552,8 +625,28 @@ onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'us
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-outline" style="width:auto;padding:0 16px;height:36px;margin:0" onclick="closeModal('modal-invite')">Batal</button>
-      <button class="btn btn-primary" style="width:auto;padding:0 20px;height:36px;margin:0" onclick="submitInvite()" id="btn-inv-submit"><span id="btn-inv-txt">Hantar Jemputan</span></button>
+      <button class="btn btn-outline" style="width:auto;padding:0 16px;height:36px;margin:0" onclick="closeModal('modal-create-user')">Batal</button>
+      <button class="btn btn-primary" style="width:auto;padding:0 20px;height:36px;margin:0" onclick="submitCreateUser()" id="btn-cu-submit"><span id="btn-cu-txt">Cipta Akaun</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-change-pass">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-head">
+      <span class="modal-title">Tukar Kata Laluan</span>
+      <button class="modal-close" onclick="closeModal('modal-change-pass')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-error" id="cp-err"></div>
+      <div class="alert alert-success" id="cp-ok"></div>
+      <div class="form-group"><label class="form-label">Kata Laluan Semasa <span class="req">*</span></label><input class="form-input" type="password" id="cp-old" placeholder="••••••••"></div>
+      <div class="form-group"><label class="form-label">Kata Laluan Baru <span class="req">*</span></label><input class="form-input" type="password" id="cp-new" placeholder="Min. 6 aksara"></div>
+      <div class="form-group"><label class="form-label">Sahkan Kata Laluan Baru <span class="req">*</span></label><input class="form-input" type="password" id="cp-confirm" placeholder="Taip semula"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" style="width:auto;padding:0 16px;height:36px;margin:0" onclick="closeModal('modal-change-pass')">Batal</button>
+      <button class="btn btn-primary" style="width:auto;padding:0 20px;height:36px;margin:0" onclick="submitChangePass()" id="btn-cp-submit"><span id="btn-cp-txt">Tukar Password</span></button>
     </div>
   </div>
 </div>
