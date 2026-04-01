@@ -270,7 +270,7 @@ select.form-input option{background:var(--bg2)}
       <button class="ctrl-btn" onclick="toggleTheme()"><span id="dtheme-ic">☀</span></button>
       <button class="ctrl-btn notif-btn" onclick="toggleNotif()" id="notif-btn">🔔<span class="notif-dot" id="notif-dot"></span></button>
       <div class="user-chip"><div class="user-av" id="user-av">?</div><div class="user-nm" id="user-nm">—</div></div>
-      <button class="ctrl-btn" onclick="openChangePass()" title="Tukar Kata Laluan">🔒</button><button class="btn-logout" onclick="doLogout()" id="btn-lo-txt">Log Keluar</button>
+      <button class="ctrl-btn" onclick="openChangePass()" title="Tukar Kata Laluan" style="font-size:14px">🔒</button><button class="btn-logout" onclick="doLogout()" id="btn-lo-txt">Log Keluar</button>
     </div>
   </header>
   <div class="notif-panel" id="notif-panel">
@@ -347,7 +347,7 @@ import{getFirestore,doc,setDoc,getDoc,collection,getDocs,updateDoc,addDoc,query,
 
 const firebaseConfig={apiKey:"AIzaSyBiICSlNeA0rSdORQ_sTS0jnlAjoQRDwcw",authDomain:"kp-work-registry-2026.firebaseapp.com",projectId:"kp-work-registry-2026",storageBucket:"kp-work-registry-2026.firebasestorage.app",messagingSenderId:"69801102843",appId:"1:69801102843:web:f121328b4f47ab17664f5e"};
 const app=initializeApp(firebaseConfig);
-const app2=initializeApp(firebaseConfig,'secondary');
+const app2=initializeApp(firebaseConfig,"secondary");
 const auth2=getAuth(app2);
 const auth=getAuth(app);
 const db=getFirestore(app);
@@ -370,32 +370,14 @@ function clearAlerts(){['li-err','li-info','re-err','appr-err'].forEach(id=>{con
 function showAlert(id,msg){const e=document.getElementById(id);if(e){e.textContent=msg;e.classList.add('show')}}
 window.showRoleInfo=function(){const r=document.getElementById('re-role').value,b=document.getElementById('role-info-box');if(r==='contractor'){b.textContent=lang==='bm'?'Kontraktor/Vendor yang menjalankan kerja projek. Perlu submit PTW dan dokumen sokongan.':'Contractor performing project work. Required to submit PTW and supporting documents.';b.classList.add('show')}else if(r==='stevedore'){b.textContent=lang==='bm'?'Wakil operasi stevedoring. Perlu mendaftar aktiviti operasi kapal.':'Stevedoring operations rep. Required to register vessel activities.';b.classList.add('show')}else b.classList.remove('show')};
 
-window.doRegister=async function(){clearAlerts();const name=document.getElementById('re-name').value.trim(),phone=document.getElementById('re-phone').value.trim(),email=document.getElementById('re-email').value.trim(),pass=document.getElementById('re-pass').value,role=document.getElementById('re-role').value,company=document.getElementById('re-company').value.trim();if(!name)return showAlert('re-err','Sila masukkan nama penuh.');if(!email||!email.includes('@'))return showAlert('re-err','Sila masukkan emel yang sah.');if(pass.length<6)return showAlert('re-err','Kata laluan minimum 6 aksara.');const btn=document.getElementById('btn-re');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{
-// Check if email is in invited list
-let inviteSnap=null;try{const iq=query(collection(db,'invites'),where('email','==',email),where('status','==','pending'));const ir=await getDocs(iq);if(!ir.empty)inviteSnap=ir.docs[0]}catch(ie){console.log('invite check:',ie)}
-if(inviteSnap){
-// INVITED USER — use admin-defined role/dept, skip pending
-const inv=inviteSnap.data();const cred=await createUserWithEmailAndPassword(auth,email,pass);
-await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name,phone,email,role:inv.role,company:'Kuantan Port Sdn Bhd',dept:inv.dept||'',status:'active',createdAt:new Date().toISOString()});
-await updateDoc(doc(db,'invites',inviteSnap.id),{status:'registered',registeredAt:new Date().toISOString()});
-await signOut(auth);document.getElementById('reg-form').style.display='none';
-document.getElementById('pend-notice').innerHTML='<strong>✓ Akaun Berjaya Dibuat</strong><br>Akaun anda telah aktif. Sila log masuk sekarang.';document.getElementById('pend-notice').style.color='#6ee7b7';document.getElementById('pend-notice').classList.add('show')
-}else{
-// EXTERNAL USER — contractor/stevedore flow
-if(!role)return(btn.disabled=false,btn.innerHTML='<span id="btn-re-txt">Hantar Permohonan</span>',showAlert('re-err','Sila pilih jenis pengguna.'));if(!company)return(btn.disabled=false,btn.innerHTML='<span id="btn-re-txt">Hantar Permohonan</span>',showAlert('re-err','Sila masukkan nama syarikat.'));
-const cred=await createUserWithEmailAndPassword(auth,email,pass);await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name,phone,email,role,company,status:'pending',dept:'',createdAt:new Date().toISOString()});await signOut(auth);document.getElementById('reg-form').style.display='none';document.getElementById('pend-notice').classList.add('show')}}catch(e){let msg='Ralat. Cuba lagi.';if(e.code==='auth/email-already-in-use')msg='Emel ini sudah didaftarkan.';showAlert('re-err',msg);btn.disabled=false;btn.innerHTML='<span id="btn-re-txt">Hantar Permohonan</span>'}};
+window.doRegister=async function(){clearAlerts();const name=document.getElementById('re-name').value.trim(),phone=document.getElementById('re-phone').value.trim(),email=document.getElementById('re-email').value.trim(),pass=document.getElementById('re-pass').value,role=document.getElementById('re-role').value,company=document.getElementById('re-company').value.trim();if(!name)return showAlert('re-err','Sila masukkan nama penuh.');if(!email||!email.includes('@'))return showAlert('re-err','Sila masukkan emel yang sah.');if(pass.length<6)return showAlert('re-err','Kata laluan minimum 6 aksara.');if(!role)return showAlert('re-err','Sila pilih jenis pengguna.');if(!company)return showAlert('re-err','Sila masukkan nama syarikat.');const btn=document.getElementById('btn-re');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{const cred=await createUserWithEmailAndPassword(auth,email,pass);await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name,phone,email,role,company,status:'pending',dept:'',createdAt:new Date().toISOString()});await signOut(auth);document.getElementById('reg-form').style.display='none';document.getElementById('pend-notice').classList.add('show')}catch(e){let msg='Ralat. Cuba lagi.';if(e.code==='auth/email-already-in-use')msg='Emel ini sudah didaftarkan.';showAlert('re-err',msg);btn.disabled=false;btn.innerHTML='<span id="btn-re-txt">Hantar Permohonan</span>'}};
 
 window.doLogin=async function(){clearAlerts();const email=document.getElementById('li-email').value.trim(),pass=document.getElementById('li-pass').value;if(!email)return showAlert('li-err','Sila masukkan emel.');if(!pass)return showAlert('li-err','Sila masukkan kata laluan.');const btn=document.getElementById('btn-li');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{const cred=await signInWithEmailAndPassword(auth,email,pass),snap=await getDoc(doc(db,'users',cred.user.uid));if(!snap.exists()){await signOut(auth);showAlert('li-err','Akaun tidak dijumpai dalam sistem.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>';return}const data=snap.data();if(data.status==='pending'){await signOut(auth);showAlert('li-info','Akaun anda belum diluluskan oleh Admin KP.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>';return}if(data.status==='suspended'||data.status==='rejected'){await signOut(auth);showAlert('li-err','Akaun anda tidak aktif. Hubungi Admin KP.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>';return}currentUser=cred.user;currentData=data;renderApp(data)}catch(e){showAlert('li-err','Emel atau kata laluan tidak sah.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>'}};
 
 window.doLogout=async function(){if(permitUnsub){permitUnsub();permitUnsub=null}if(notifUnsub){notifUnsub();notifUnsub=null}await signOut(auth);currentUser=null;currentData=null;allPermits=[];document.getElementById('app').style.display='none';document.getElementById('login-page').style.display='flex';document.getElementById('li-email').value='';document.getElementById('li-pass').value='';document.getElementById('btn-li').disabled=false;document.getElementById('btn-li').innerHTML='<span id="btn-li-txt">Log Masuk</span>'};
 
 function renderApp(data){document.getElementById('login-page').style.display='none';document.getElementById('app').style.display='block';const ini=data.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();document.getElementById('user-av').textContent=ini;document.getElementById('user-nm').textContent=data.name.split(' ')[0];
-  if(data.mustChangePass){
-    setTimeout(()=>{
-      showToast(lang==='bm'?'⚠ Sila tukar kata laluan sementara anda sekarang.':'⚠ Please change your temporary password now.','warn');
-      setTimeout(()=>openChangePass(),1500);
-    },1000);
-  }buildSidebar(data);loadPermits(data);loadNotifs(data);showPage('dashboard');renderDash(data)}
+  if(data.mustChangePass){setTimeout(()=>{showToast(lang==='bm'?'⚠ Sila tukar kata laluan sementara anda.':'⚠ Please change your temporary password.','warn');setTimeout(()=>openChangePass(),1800)},1000)}buildSidebar(data);loadPermits(data);loadNotifs(data);showPage('dashboard');renderDash(data)}
 
 function buildSidebar(data){const r=data.role;let h=`<div class="nav-label">${lang==='bm'?'Menu':''}</div><div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')"><span class="nav-icon">📊</span>${lang==='bm'?'Dashboard':'Dashboard'}</div>`;if(['admin','hse','hod','contractor','stevedore','supervisor','management'].includes(r)){h+=`<div class="nav-item" id="nav-permits" onclick="showPage('permits')"><span class="nav-icon">📋</span>${lang==='bm'?'Permit & Aktiviti':'Permits'}<span class="nav-badge" id="nb-permits"></span></div>`}if(['hse','hod','admin'].includes(r)){h+=`<div class="nav-item" id="nav-approvals" onclick="showPage('approvals')"><span class="nav-icon">✅</span>${lang==='bm'?'Kelulusan':'Approvals'}<span class="nav-badge" id="nb-approvals"></span></div>`}if(r==='admin'){h+=`<div class="nav-label" style="margin-top:8px">Admin</div><div class="nav-item" id="nav-users" onclick="showPage('users')"><span class="nav-icon">👥</span>${lang==='bm'?'Pengguna':'Users'}<span class="nav-badge" id="nb-users"></span></div>`}document.getElementById('nav-items').innerHTML=h}
 
@@ -441,8 +423,8 @@ window.doApproval=async function(action){const id=currentApprId,remark=document.
 
 window.closePermit=async function(id){const p=allPermits.find(x=>x.id===id);if(!p)return;const tl={type:'closed',label:lang==='bm'?'Permit ditutup':'Permit closed',by:currentData.name,at:new Date().toISOString(),remark:''};await updateDoc(doc(db,'permits',id),{status:'closed',closedAt:new Date().toISOString(),timeline:[...(p.timeline||[]),tl]});closeModal('modal-detail');showToast(lang==='bm'?'Permit telah ditutup.':'Permit has been closed.','info')};
 
-window.openPermitForm=function(){draft={track:'A',activityTypes:[]};formStep=1;document.getElementById('pf-title').textContent=lang==='bm'?'Submit Permit Baru':'Submit New Permit';renderFormStep(1);openModal('modal-permit-form')};
-window.openActivityForm=function(track){draft={track,activityTypes:[]};formStep=1;document.getElementById('pf-title').textContent=track==='B'?(lang==='bm'?'Daftar Aktiviti Rutin':'Register Routine Activity'):(lang==='bm'?'Daftar Aktiviti Non-Rutin':'Register Non-Routine Activity');renderFormStep(1);openModal('modal-permit-form')};
+window.openPermitForm=function(){draft={track:'A',activityTypes:[]};document.getElementById('pf-title').textContent=lang==='bm'?'Submit Permit Baru':'Submit New Permit';renderFormStep(1);openModal('modal-permit-form')};
+window.openActivityForm=function(track){draft={track,activityTypes:[]};document.getElementById('pf-title').textContent=track==='B'?(lang==='bm'?'Daftar Aktiviti Rutin':'Register Routine Activity'):(lang==='bm'?'Daftar Aktiviti Non-Rutin':'Register Non-Routine Activity');renderFormStep(1);openModal('modal-permit-form')};
 
 function renderFormStep(step){formStep=step;['stp1','stp2','stp3'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.className='step'+(i+1<step?' done':i+1===step?' active':'')});const tr=draft.track||'A',isS=tr==='B'||tr==='C';if(step===1){document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Maklumat Asas':'Basic Information'}</p><div class="form-group"><label class="form-label">${isS?(lang==='bm'?'Nama Kapal':'Vessel Name'):(lang==='bm'?'Nama Projek':'Project Name')} <span class="req">*</span></label><input class="form-input" id="pf-name" placeholder="${isS?'MV Ocean Star':'Nama projek...'}" value="${draft.projectName||draft.vesselName||''}"></div>${isS?`<div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Jenis Kargo':'Cargo Type'}</label><input class="form-input" id="pf-cargo" placeholder="Clinker, Coal..." value="${draft.cargo||''}"></div><div class="form-group"><label class="form-label">Berth</label><select class="form-input" id="pf-berth"><option value="">--</option>${LOCS.filter(l=>l.startsWith('Berth')).map(l=>`<option${draft.berth===l?' selected':''}>${l}</option>`).join('')}</select></div></div>`:''}<div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Lokasi':'Location'} <span class="req">*</span></label><select class="form-input" id="pf-loc"><option value="">--</option>${LOCS.map(l=>`<option${draft.location===l?' selected':''}>${l}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">${lang==='bm'?'Bil. Pekerja':'No. Workers'}</label><input class="form-input" type="number" id="pf-workers" min="1" placeholder="10" value="${draft.workers||''}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Mula':'Start Date'} <span class="req">*</span></label><input class="form-input" type="date" id="pf-start" value="${draft.startDate||''}"></div><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Tamat':'End Date'}</label><input class="form-input" type="date" id="pf-end" value="${draft.endDate||''}"></div></div><div class="form-group"><label class="form-label">PIC <span class="req">*</span></label><input class="form-input" id="pf-pic" placeholder="${lang==='bm'?'Nama pegawai':'Officer name'}" value="${draft.pic||''}"></div>`;document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →'}
 if(step===2){const tt=Object.entries(PTYPES).filter(([,v])=>v.track===tr);document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Jenis Aktiviti':'Activity Types'} — Track ${tr}</p><div class="check-grid">${tt.map(([k,v])=>`<div class="check-item${(draft.activityTypes||[]).includes(k)?' selected':''}" onclick="toggleAct('${k}',this)"><div class="check-icon">${(draft.activityTypes||[]).includes(k)?'✓':''}</div><span>${lang==='bm'?v.bm:v.en}</span>${v.hr?'<span style="font-size:9px;color:var(--danger);margin-left:auto">⚠</span>':''}</div>`).join('')}</div>`;document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →'}
@@ -450,77 +432,89 @@ if(step===3){document.getElementById('pf-content').innerHTML=`<p style="font-siz
 
 window.toggleAct=function(k,el){if(!draft.activityTypes)draft.activityTypes=[];const i=draft.activityTypes.indexOf(k);if(i>-1)draft.activityTypes.splice(i,1);else draft.activityTypes.push(k);el.classList.toggle('selected',draft.activityTypes.includes(k));el.querySelector('.check-icon').textContent=draft.activityTypes.includes(k)?'✓':''};
 
-window.submitPermitForm=async function(){if(formStep===1){const name=document.getElementById('pf-name')?.value.trim(),loc=document.getElementById('pf-loc')?.value,start=document.getElementById('pf-start')?.value,pic=document.getElementById('pf-pic')?.value.trim();if(!name)return showToast(lang==='bm'?'Sila masukkan nama.':'Please enter name.','error');if(!loc)return showToast(lang==='bm'?'Sila pilih lokasi.':'Please select location.','error');if(!start)return showToast(lang==='bm'?'Sila pilih tarikh mula.':'Please select start date.','error');if(!pic)return showToast(lang==='bm'?'Sila masukkan PIC.':'Please enter PIC.','error');const iS=draft.track==='B'||draft.track==='C';if(iS)draft.vesselName=name;else draft.projectName=name;draft.location=loc;draft.startDate=start;draft.endDate=document.getElementById('pf-end')?.value||'';draft.workers=document.getElementById('pf-workers')?.value||'';draft.pic=pic;if(iS){draft.cargo=document.getElementById('pf-cargo')?.value||'';draft.berth=document.getElementById('pf-berth')?.value||''}renderFormStep(2)}else if(formStep===2){if(!draft.activityTypes?.length)return showToast(lang==='bm'?'Pilih sekurang-kurangnya satu aktiviti.':'Select at least one activity.','error');renderFormStep(3)}else{draft.description=document.getElementById('pf-desc')?.value.trim()||'';draft.docLink=document.getElementById('pf-doc')?.value.trim()||'';if(draft.track==='C'&&!draft.docLink)return showToast(lang==='bm'?'Track C memerlukan link dokumen.':'Track C requires document link.','error');const btn=document.getElementById('btn-pf-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{const pn=genPermitNo(draft.track),is=draft.track==='A'?'pending_hod':draft.track==='B'?'approved':'pending_op',tl=[{type:'submitted',label:lang==='bm'?'Permit dihantar':'Permit submitted',by:currentData.name,at:new Date().toISOString(),remark:''}];let ea=null;if(draft.track==='A'){const tps=draft.activityTypes||[];let me=null;tps.forEach(at=>{const p=PTYPES[at];if(p?.expiry_hours){const ex=new Date(draft.startDate);ex.setHours(ex.getHours()+p.expiry_hours);if(!me||ex<me)me=ex}});if(me)ea=me.toISOString();else if(draft.endDate){const ed=new Date(draft.endDate);ed.setDate(ed.getDate()+30);ea=ed.toISOString()}}const pd={permitNo:pn,track:draft.track,status:is,...draft,submittedBy:currentData.uid,submittedByName:currentData.name,company:currentData.company||'',createdAt:new Date().toISOString(),timeline:tl,expiryAt:ea};await addDoc(collection(db,'permits'),pd);try{if(allUsers.length===0){const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data())}if(draft.track==='A'){const hods=allUsers.filter(u=>u.role==='hod'&&u.status==='active'),hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all([...hods.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru – Kelulusan HOD':'New Permit – HOD Approval'}`,`${pn} – ${pd.projectName||''}`)),...hses.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru Dihantar':'New Permit Submitted'}`,`${pn} – ${pd.projectName||''}`))])}else if(draft.track==='B'){const hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all(hses.map(u=>sendNotif(u.uid,`🚢 ${lang==='bm'?'Aktiviti Rutin Didaftarkan':'Routine Activity Registered'}`,`${pn} – ${pd.vesselName||''} @ ${pd.location||''}`)))}}catch(ne){console.log('notif non-critical:',ne.code)}closeModal('modal-permit-form');showToast(draft.track==='B'?(lang==='bm'?'Aktiviti berjaya didaftarkan.':'Activity registered successfully.'):(lang==='bm'?'Permit berjaya dihantar.':'Permit submitted successfully.'),'success')}catch(e){console.error(e);showToast('Ralat. Cuba lagi.','error')}finally{btn.disabled=false;btn.innerHTML=`<span id="btn-pf-txt">${lang==='bm'?'Hantar':'Submit'}</span>`}}};
+window.submitPermitForm=async function(){if(formStep===1){const name=document.getElementById('pf-name')?.value.trim(),loc=document.getElementById('pf-loc')?.value,start=document.getElementById('pf-start')?.value,pic=document.getElementById('pf-pic')?.value.trim();if(!name)return showToast(lang==='bm'?'Sila masukkan nama.':'Please enter name.','error');if(!loc)return showToast(lang==='bm'?'Sila pilih lokasi.':'Please select location.','error');if(!start)return showToast(lang==='bm'?'Sila pilih tarikh mula.':'Please select start date.','error');if(!pic)return showToast(lang==='bm'?'Sila masukkan PIC.':'Please enter PIC.','error');const iS=draft.track==='B'||draft.track==='C';if(iS)draft.vesselName=name;else draft.projectName=name;draft.location=loc;draft.startDate=start;draft.endDate=document.getElementById('pf-end')?.value||'';draft.workers=document.getElementById('pf-workers')?.value||'';draft.pic=pic;if(iS){draft.cargo=document.getElementById('pf-cargo')?.value||'';draft.berth=document.getElementById('pf-berth')?.value||''}renderFormStep(2)}else if(formStep===2){if(!draft.activityTypes?.length)return showToast(lang==='bm'?'Pilih sekurang-kurangnya satu aktiviti.':'Select at least one activity.','error');renderFormStep(3)}else{draft.description=document.getElementById('pf-desc')?.value.trim()||'';draft.docLink=document.getElementById('pf-doc')?.value.trim()||'';if(draft.track==='C'&&!draft.docLink)return showToast(lang==='bm'?'Track C memerlukan link dokumen.':'Track C requires document link.','error');const btn=document.getElementById('btn-pf-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{const pn=genPermitNo(draft.track),is=draft.track==='A'?'pending_hod':draft.track==='B'?'approved':'pending_op',tl=[{type:'submitted',label:lang==='bm'?'Permit dihantar':'Permit submitted',by:currentData.name,at:new Date().toISOString(),remark:''}];let ea=null;if(draft.track==='A'){const tps=draft.activityTypes||[];let me=null;tps.forEach(at=>{const p=PTYPES[at];if(p?.expiry_hours){const ex=new Date(draft.startDate);ex.setHours(ex.getHours()+p.expiry_hours);if(!me||ex<me)me=ex}});if(me)ea=me.toISOString();else if(draft.endDate){const ed=new Date(draft.endDate);ed.setDate(ed.getDate()+30);ea=ed.toISOString()}}const pd={permitNo:pn,track:draft.track,status:is,...draft,submittedBy:currentData.uid,submittedByName:currentData.name,company:currentData.company||'',createdAt:new Date().toISOString(),timeline:tl,expiryAt:ea};await addDoc(collection(db,'permits'),pd);if(draft.track==='A'){const hods=allUsers.filter(u=>u.role==='hod'&&u.status==='active'),hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all([...hods.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru – Kelulusan HOD':'New Permit – HOD Approval'}`,`${pn} – ${pd.projectName||''}`)),...hses.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru Dihantar':'New Permit Submitted'}`,`${pn} – ${pd.projectName||''}`))])}else if(draft.track==='B'){const hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all(hses.map(u=>sendNotif(u.uid,`🚢 ${lang==='bm'?'Aktiviti Rutin Didaftarkan':'Routine Activity Registered'}`,`${pn} – ${pd.vesselName||''} @ ${pd.location||''}`)))}closeModal('modal-permit-form');showToast(draft.track==='B'?(lang==='bm'?'Aktiviti berjaya didaftarkan.':'Activity registered successfully.'):(lang==='bm'?'Permit berjaya dihantar.':'Permit submitted successfully.'),'success')}catch(e){console.error(e);showToast('Ralat. Cuba lagi.','error')}finally{btn.disabled=false;btn.innerHTML=`<span id="btn-pf-txt">${lang==='bm'?'Hantar':'Submit'}</span>`}}};
 
 function genPermitNo(t){const n=new Date(),y=n.getFullYear().toString().slice(-2),m=String(n.getMonth()+1).padStart(2,'0'),d=String(n.getDate()).padStart(2,'0'),r=String(Math.floor(Math.random()*9000)+1000);return `KP/${t}/${y}${m}${d}/${r}`}
 
-async function renderUsersPage(){const snap=await getDocs(collection(db,'users'));allUsers=snap.docs.map(d=>d.data());updateBadges();const pending=allUsers.filter(u=>u.status==='pending'),active=allUsers.filter(u=>u.status==='active');
-// Load invites
-let invites=[];try{const isnap=await getDocs(collection(db,'invites'));invites=isnap.docs.map(d=>({id:d.id,...d.data()}))}catch(e){}
-const pendingInvites=invites.filter(i=>i.status==='pending');
-document.getElementById('users-body').innerHTML=`
-<div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:10px">
-  <button class="btn-sm btn-info" onclick="openCreateUser()" style="height:32px;padding:0 14px;font-size:12px">+ ${lang==='bm'?'Tambah Pengguna Baru':'Add New User'}</button>
-</div>
-<div class="sec-title">${lang==='bm'?'Permohonan Pending':'Pending Applications'} (${pending.length})</div><div class="data-table" style="margin-bottom:16px">${pending.length?`<div class="table-head" style="grid-template-columns:1fr 130px 140px 120px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>Tindakan</div></div>${pending.map(u=>`<div class="table-row" style="grid-template-columns:1fr 130px 140px 120px" id="ur-${u.uid}"><div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div style="display:flex;gap:6px"><button class="btn-sm btn-approve" onclick="approveUser('${u.uid}','${u.name}')">${lang==='bm'?'Lulus':'Approve'}</button><button class="btn-sm btn-reject" onclick="rejectUser('${u.uid}','${u.name}')">${lang==='bm'?'Tolak':'Reject'}</button></div></div>`).join('')}`:`<div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permohonan':'No pending applications'}</div>`}</div><div class="sec-title">${lang==='bm'?'Pengguna Aktif':'Active Users'} (${active.length})</div><div class="data-table"><div class="table-head" style="grid-template-columns:1fr 120px 1fr 160px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>${lang==='bm'?'Tindakan':'Actions'}</div></div>${active.map(u=>`<div class="table-row" style="grid-template-columns:1fr 120px 1fr 160px"><div><div style="font-weight:500">${u.name}${u.mustChangePass?'<span style="font-size:9px;color:var(--warning);margin-left:6px;font-family:var(--mono)">⚠ TUKAR PASS</span>':''}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div style="display:flex;gap:5px;flex-wrap:wrap">${u.uid!==currentData?.uid?`<button class="btn-sm btn-warn" onclick="resetUserPassword('${u.email}','${u.name}')" title="Reset Password">🔑</button><button class="btn-sm btn-reject" onclick="suspendUser('${u.uid}','${u.name}')" title="Gantung Akaun">⊘</button>`:'<span style="font-size:11px;color:var(--text3)">(anda)</span>'}</div></div>`).join('')}</div>`}
+async function renderUsersPage(){
+  try{const snap=await getDocs(collection(db,'users'));allUsers=snap.docs.map(d=>d.data())}catch(e){console.error(e)}
+  updateBadges();
+  const pending=allUsers.filter(u=>u.status==='pending');
+  const active=allUsers.filter(u=>u.status==='active');
+  let html='';
+  html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <button class="btn-sm btn-info" onclick="openCreateUser()" style="height:34px;padding:0 16px;font-size:12px;border-radius:8px">+ ${lang==='bm'?'Tambah Pengguna Baru':'Add New User'}</button>
+  </div>`;
+  html+=`<div class="sec-title">${lang==='bm'?'Permohonan Pending':'Pending Applications'} (${pending.length})</div>`;
+  html+='<div class="data-table" style="margin-bottom:16px">';
+  if(pending.length){
+    html+=`<div class="table-head" style="grid-template-columns:1fr 130px 140px 120px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>${lang==='bm'?'Tindakan':'Actions'}</div></div>`;
+    pending.forEach(u=>{html+=`<div class="table-row" style="grid-template-columns:1fr 130px 140px 120px" id="ur-${u.uid}"><div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div style="display:flex;gap:6px"><button class="btn-sm btn-approve" onclick="approveUser('${u.uid}','${u.name}')">${lang==='bm'?'Lulus':'Approve'}</button><button class="btn-sm btn-reject" onclick="rejectUser('${u.uid}','${u.name}')">${lang==='bm'?'Tolak':'Reject'}</button></div></div>`;});
+  }else{html+=`<div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permohonan':'No pending applications'}</div>`;}
+  html+='</div>';
+  html+=`<div class="sec-title">${lang==='bm'?'Pengguna Aktif':'Active Users'} (${active.length})</div>`;
+  html+='<div class="data-table">';
+  html+=`<div class="table-head" style="grid-template-columns:1fr 120px 130px 110px"><div>Nama</div><div>Role</div><div>${lang==='bm'?'Jabatan':'Dept'}</div><div>${lang==='bm'?'Tindakan':'Actions'}</div></div>`;
+  active.forEach(u=>{
+    const isSelf=u.uid===currentData?.uid;
+    html+=`<div class="table-row" style="grid-template-columns:1fr 120px 130px 110px">
+      <div><div style="font-weight:500">${u.name}${u.mustChangePass?'<span style="font-size:9px;color:var(--warning);margin-left:6px;background:rgba(245,158,11,.15);padding:1px 5px;border-radius:4px">TUKAR PASS</span>':''}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div>
+      <div><span class="rbadge ${u.role}">${rl(u.role)}</span></div>
+      <div style="font-size:12px;color:var(--text2)">${u.dept||u.company||'—'}</div>
+      <div style="display:flex;gap:5px">${isSelf?'<span style="font-size:11px;color:var(--text3)">(anda)</span>':`<button class="btn-sm btn-warn" onclick="resetUserPassword('${u.email}','${u.name}')">🔑</button><button class="btn-sm btn-reject" onclick="suspendUser('${u.uid}','${u.name}')">⊘</button>`}</div>
+    </div>`;
+  });
+  html+='</div>';
+  document.getElementById('users-body').innerHTML=html;
+}
+
+
+window.approveUser=async function(uid,name){await updateDoc(doc(db,'users',uid),{status:'active'});await sendNotif(uid,lang==='bm'?'✓ Akaun Diluluskan':'✓ Account Approved',lang==='bm'?'Akaun anda telah diluluskan. Sila log masuk ke KP Work Registry.':'Your account has been approved. Please log in to KP Work Registry.');document.getElementById(`ur-${uid}`)?.remove();showToast(`${name} ${lang==='bm'?'telah diluluskan':'approved'}`,'success');renderUsersPage()};
+window.rejectUser=async function(uid,name){await updateDoc(doc(db,'users',uid),{status:'rejected'});document.getElementById(`ur-${uid}`)?.remove();showToast(`${name} ${lang==='bm'?'telah ditolak':'rejected'}`,'error');renderUsersPage()};
+
+window.openModal=function(id){document.getElementById(id)?.classList.add('show')};
+window.closeModal=function(id){document.getElementById(id)?.classList.remove('show')};
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show')}));
+
+function showToast(msg,type='info'){const el=document.getElementById('toast');const ic={success:'✓',error:'✕',info:'ℹ'};el.innerHTML=`<span>${ic[type]||'ℹ'}</span><span>${msg}</span>`;el.className=`toast ${type} show`;setTimeout(()=>el.classList.remove('show'),3500)}
+
+window.createAdmin=async function(email,password,name){try{const cred=await createUserWithEmailAndPassword(auth,email,password);await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name:name||'Admin KP',email,role:'admin',status:'active',company:'Kuantan Port Sdn Bhd',phone:'',dept:'',createdAt:new Date().toISOString()});console.log('Admin created:',cred.user.uid);showToast('Admin account created!','success')}catch(e){console.error(e)}};
 
 window.openCreateUser=function(){
   ['cu-name','cu-phone','cu-email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
-  document.getElementById('cu-pass').value='KP@2026';
-  document.getElementById('cu-company').value='Kuantan Port Sdn Bhd';
-  document.getElementById('cu-role').value='';
-  document.getElementById('cu-dept').value='';
+  const cp=document.getElementById('cu-pass');if(cp)cp.value='KP@2026';
+  const cc=document.getElementById('cu-company');if(cc)cc.value='Kuantan Port Sdn Bhd';
+  const cr=document.getElementById('cu-role');if(cr)cr.value='';
+  const cd=document.getElementById('cu-dept');if(cd)cd.value='';
   const err=document.getElementById('cu-err'),ok=document.getElementById('cu-ok');
   if(err){err.classList.remove('show');err.textContent=''}
   if(ok){ok.classList.remove('show');ok.textContent=''}
-  document.getElementById('cu-title').textContent=lang==='bm'?'Tambah Pengguna Baru':'Add New User';
   openModal('modal-create-user');
 };
 
 window.submitCreateUser=async function(){
-  const name=document.getElementById('cu-name').value.trim(),
-        phone=document.getElementById('cu-phone').value.trim(),
-        email=document.getElementById('cu-email').value.trim(),
-        pass=document.getElementById('cu-pass').value,
-        company=document.getElementById('cu-company').value.trim(),
-        role=document.getElementById('cu-role').value,
-        dept=document.getElementById('cu-dept').value;
+  const name=document.getElementById('cu-name').value.trim(),phone=document.getElementById('cu-phone').value.trim(),email=document.getElementById('cu-email').value.trim(),pass=document.getElementById('cu-pass').value,company=document.getElementById('cu-company').value.trim(),role=document.getElementById('cu-role').value,dept=document.getElementById('cu-dept').value;
   const err=document.getElementById('cu-err'),ok=document.getElementById('cu-ok');
   err.classList.remove('show');ok.classList.remove('show');
   if(!name){err.textContent=lang==='bm'?'Sila masukkan nama.':'Please enter name.';err.classList.add('show');return}
   if(!email||!email.includes('@')){err.textContent=lang==='bm'?'Sila masukkan emel yang sah.':'Please enter valid email.';err.classList.add('show');return}
-  if(pass.length<6){err.textContent=lang==='bm'?'Password minimum 6 aksara.':'Password min 6 characters.';err.classList.add('show');return}
+  if(pass.length<6){err.textContent='Password minimum 6 aksara.';err.classList.add('show');return}
   if(!role){err.textContent=lang==='bm'?'Sila pilih role.':'Please select role.';err.classList.add('show');return}
   const btn=document.getElementById('btn-cu-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
   try{
-    // Use secondary Firebase app to create user without logging out Admin
     const cred=await createUserWithEmailAndPassword(auth2,email,pass);
-    await setDoc(doc(db,'users',cred.user.uid),{
-      uid:cred.user.uid,name,phone,email,role,company:company||'Kuantan Port Sdn Bhd',
-      dept:dept||'',status:'active',createdAt:new Date().toISOString(),
-      createdBy:currentData.uid,createdByName:currentData.name,mustChangePass:true
-    });
-    // Sign out from secondary app
+    await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name,phone,email,role,company:company||'Kuantan Port Sdn Bhd',dept:dept||'',status:'active',mustChangePass:true,createdAt:new Date().toISOString(),createdBy:currentData.uid,createdByName:currentData.name});
     await signOut(auth2);
-    ok.textContent=lang==='bm'
-      ?`✓ Akaun ${name} berjaya dicipta. Berikan credentials: Emel: ${email} | Password: ${pass}`
-      :`✓ Account for ${name} created. Share credentials: Email: ${email} | Password: ${pass}`;
+    ok.textContent=lang==='bm'?`✓ Akaun ${name} berjaya dicipta. Credentials: ${email} / ${pass}`:`✓ Account created for ${name}. Credentials: ${email} / ${pass}`;
     ok.classList.add('show');
-    // Clear form for next entry
     ['cu-name','cu-phone','cu-email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
-    document.getElementById('cu-pass').value='KP@2026';
-    document.getElementById('cu-role').value='';
-    document.getElementById('cu-dept').value='';
-    allUsers=[...allUsers,{uid:cred.user.uid,name,phone,email,role,company,dept,status:'active'}];
+    document.getElementById('cu-role').value='';document.getElementById('cu-dept').value='';
     renderUsersPage();
   }catch(e){
-    console.error(e);
-    let msg=lang==='bm'?'Ralat. Cuba lagi.':'Error. Please try again.';
+    let msg=lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.';
     if(e.code==='auth/email-already-in-use')msg=lang==='bm'?'Emel ini sudah berdaftar.':'Email already registered.';
-    if(e.code==='auth/invalid-email')msg=lang==='bm'?'Format emel tidak sah.':'Invalid email format.';
     err.textContent=msg;err.classList.add('show');
-  }
-  finally{btn.disabled=false;btn.innerHTML=`<span id="btn-cu-txt">${lang==='bm'?'Cipta Akaun':'Create Account'}</span>`}
+  }finally{btn.disabled=false;btn.innerHTML=`<span id="btn-cu-txt">${lang==='bm'?'Cipta Akaun':'Create Account'}</span>`}
 };
 
 window.openChangePass=function(){
@@ -532,64 +526,50 @@ window.openChangePass=function(){
 };
 
 window.submitChangePass=async function(){
-  const oldP=document.getElementById('cp-old').value,
-        newP=document.getElementById('cp-new').value,
-        conf=document.getElementById('cp-confirm').value;
+  const oldP=document.getElementById('cp-old').value,newP=document.getElementById('cp-new').value,conf=document.getElementById('cp-confirm').value;
   const err=document.getElementById('cp-err'),ok=document.getElementById('cp-ok');
   err.classList.remove('show');ok.classList.remove('show');
   if(!oldP){err.textContent=lang==='bm'?'Masukkan kata laluan semasa.':'Enter current password.';err.classList.add('show');return}
-  if(newP.length<6){err.textContent=lang==='bm'?'Kata laluan baru minimum 6 aksara.':'New password min 6 characters.';err.classList.add('show');return}
-  if(newP!==conf){err.textContent=lang==='bm'?'Kata laluan baru tidak sepadan.':'New passwords do not match.';err.classList.add('show');return}
+  if(newP.length<6){err.textContent=lang==='bm'?'Kata laluan baru minimum 6 aksara.':'Min 6 characters.';err.classList.add('show');return}
+  if(newP!==conf){err.textContent=lang==='bm'?'Kata laluan baru tidak sepadan.':'Passwords do not match.';err.classList.add('show');return}
   const btn=document.getElementById('btn-cp-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
   try{
-    // Re-authenticate first
-    const credential=EmailAuthProvider.credential(currentUser.email,oldP);
-    await reauthenticateWithCredential(currentUser,credential);
+    const cred=EmailAuthProvider.credential(currentUser.email,oldP);
+    await reauthenticateWithCredential(currentUser,cred);
     await updatePassword(currentUser,newP);
-    // Update mustChangePass flag
     await updateDoc(doc(db,'users',currentUser.uid),{mustChangePass:false});
     ok.textContent=lang==='bm'?'✓ Kata laluan berjaya ditukar.':'✓ Password changed successfully.';
     ok.classList.add('show');
     setTimeout(()=>closeModal('modal-change-pass'),2000);
   }catch(e){
-    console.error(e);
     let msg=lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.';
-    if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')msg=lang==='bm'?'Kata laluan semasa tidak betul.':'Current password is incorrect.';
+    if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')msg=lang==='bm'?'Kata laluan semasa tidak betul.':'Current password incorrect.';
     err.textContent=msg;err.classList.add('show');
-  }
-  finally{btn.disabled=false;btn.innerHTML=`<span id="btn-cp-txt">${lang==='bm'?'Tukar Password':'Change Password'}</span>`}
+  }finally{btn.disabled=false;btn.innerHTML=`<span id="btn-cp-txt">${lang==='bm'?'Tukar Password':'Change Password'}</span>`}
 };
 
 window.resetUserPassword=async function(email,name){
-  if(!confirm(lang==='bm'?`Hantar email reset password kepada ${name} (${email})?`:`Send password reset email to ${name} (${email})?`))return;
-  try{
-    await sendPasswordResetEmail(auth,email);
-    showToast(lang==='bm'?`✓ Email reset dihantar ke ${email}`:`✓ Reset email sent to ${email}`,'success');
-  }catch(e){
-    console.error(e);
-    showToast(lang==='bm'?'Gagal hantar email reset. Semak emel.':'Failed to send reset email.','error');
-  }
+  if(!confirm(lang==='bm'?`Hantar email reset password kepada ${name}?`:`Send password reset to ${name}?`))return;
+  try{await sendPasswordResetEmail(auth,email);showToast(lang==='bm'?`✓ Email reset dihantar ke ${email}`:`✓ Reset email sent to ${email}`,'success')}
+  catch(e){showToast(lang==='bm'?'Gagal hantar email reset.':'Failed to send reset email.','error')}
 };
 
 window.suspendUser=async function(uid,name){
-  if(!confirm(lang==='bm'?`Gantung akaun ${name}?`:`Suspend account for ${name}?`))return;
+  if(!confirm(lang==='bm'?`Gantung akaun ${name}?`:`Suspend ${name}?`))return;
   await updateDoc(doc(db,'users',uid),{status:'suspended'});
   showToast(lang==='bm'?`Akaun ${name} digantung.`:`${name} suspended.`,'warn');
   renderUsersPage();
 };
 
 
-onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;try{const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data())}catch(e){allUsers=[];console.log('allUsers load limited:',e.code)}renderApp(data)}}}});
+onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data());renderApp(data)}}}});
 </script>
 
 <div class="modal-overlay" id="modal-create-user">
   <div class="modal" style="max-width:500px">
-    <div class="modal-head">
-      <span class="modal-title" id="cu-title">Tambah Pengguna Baru</span>
-      <button class="modal-close" onclick="closeModal('modal-create-user')">✕</button>
-    </div>
+    <div class="modal-head"><span class="modal-title">Tambah Pengguna Baru</span><button class="modal-close" onclick="closeModal('modal-create-user')">✕</button></div>
     <div class="modal-body">
-      <div class="alert alert-info show" style="margin-bottom:14px">Admin cipta akaun terus — akaun terus aktif. Berikan emel dan password sementara kepada pengguna secara manual.</div>
+      <div class="alert alert-info show" style="margin-bottom:14px">Akaun terus aktif. Berikan emel & password sementara kepada pengguna secara manual (WhatsApp/emel).</div>
       <div class="alert alert-error" id="cu-err"></div>
       <div class="alert alert-success" id="cu-ok"></div>
       <div class="form-row">
@@ -598,8 +578,8 @@ onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'us
       </div>
       <div class="form-group"><label class="form-label">Emel <span class="req">*</span></label><input class="form-input" type="email" id="cu-email" placeholder="staff@kuantanport.com.my"></div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Password Sementara <span class="req">*</span></label><input class="form-input" type="text" id="cu-pass" placeholder="KP@2026" value="KP@2026"></div>
-        <div class="form-group"><label class="form-label">Syarikat</label><input class="form-input" id="cu-company" placeholder="Kuantan Port Sdn Bhd" value="Kuantan Port Sdn Bhd"></div>
+        <div class="form-group"><label class="form-label">Password Sementara <span class="req">*</span></label><input class="form-input" type="text" id="cu-pass" value="KP@2026"></div>
+        <div class="form-group"><label class="form-label">Syarikat</label><input class="form-input" id="cu-company" value="Kuantan Port Sdn Bhd"></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Role <span class="req">*</span></label>
@@ -633,10 +613,7 @@ onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'us
 
 <div class="modal-overlay" id="modal-change-pass">
   <div class="modal" style="max-width:420px">
-    <div class="modal-head">
-      <span class="modal-title">Tukar Kata Laluan</span>
-      <button class="modal-close" onclick="closeModal('modal-change-pass')">✕</button>
-    </div>
+    <div class="modal-head"><span class="modal-title">Tukar Kata Laluan</span><button class="modal-close" onclick="closeModal('modal-change-pass')">✕</button></div>
     <div class="modal-body">
       <div class="alert alert-error" id="cp-err"></div>
       <div class="alert alert-success" id="cp-ok"></div>
