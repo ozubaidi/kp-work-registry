@@ -546,14 +546,162 @@ function buildContractorQA(){
   return btn1+btn2;
 }
 
-function renderDash(data){const active=allPermits.filter(p=>p.status==='approved').length,pending=allPermits.filter(p=>['submitted','pending_hod','pending_hse','pending_op'].includes(p.status)).length,now=Date.now(),exp=allPermits.filter(p=>p.status==='approved'&&p.expiryAt&&(new Date(p.expiryAt)-now)<86400000&&new Date(p.expiryAt)>now).length;
-const qa={admin:`<div class="qa-card" onclick="showPage('users')"><div class="qa-icon" style="background:rgba(37,99,235,.15)">👥</div><div><div class="qa-title">${lang==='bm'?'Urus Pengguna':'Manage Users'}</div><div class="qa-sub">${lang==='bm'?'Lulus/tolak akaun':'Approve/reject accounts'}</div></div></div><div class="qa-card" onclick="showPage('approvals')"><div class="qa-icon" style="background:rgba(16,185,129,.15)">✅</div><div><div class="qa-title">${lang==='bm'?'Kelulusan':'Approvals'}</div><div class="qa-sub">${pending} ${lang==='bm'?'menunggu':'pending'}</div></div></div><div class="qa-card" onclick="showPage('permits')"><div class="qa-icon" style="background:rgba(245,158,11,.15)">📋</div><div><div class="qa-title">${lang==='bm'?'Semua Permit':'All Permits'}</div><div class="qa-sub">${active} ${lang==='bm'?'aktif':'active'}</div></div></div>`,
-hse:`<div class="qa-card" onclick="showPage('approvals')"><div class="qa-icon" style="background:rgba(37,99,235,.15)">✅</div><div><div class="qa-title">${lang==='bm'?'Kelulusan Pending':'Pending Approvals'}</div><div class="qa-sub">${pending} ${lang==='bm'?'menunggu':'pending'}</div></div></div><div class="qa-card" onclick="showPage('permits')"><div class="qa-icon" style="background:rgba(16,185,129,.15)">📋</div><div><div class="qa-title">${lang==='bm'?'Semua Permit':'All Permits'}</div><div class="qa-sub">${lang==='bm'?'Semak dan pantau':'View and monitor'}</div></div></div>`,
-hod:`<div class="qa-card" onclick="showPage('approvals')"><div class="qa-icon" style="background:rgba(139,92,246,.15)">✅</div><div><div class="qa-title">${lang==='bm'?'1st Approval':'1st Approval'}</div><div class="qa-sub">${lang==='bm'?'Kelulusan HOD':'HOD approval'}</div></div></div><div class="qa-card" onclick="showPage('permits')"><div class="qa-icon" style="background:rgba(37,99,235,.15)">📋</div><div><div class="qa-title">${lang==='bm'?'Permit Dept':'Dept Permits'}</div><div class="qa-sub">${lang==='bm'?'Semak permit':'View permits'}</div></div></div>`,
-contractor:buildContractorQA(),
-stevedore:`<div class="qa-card" onclick="openActivityForm('B')"><div class="qa-icon" style="background:rgba(16,185,129,.15)">🚢</div><div><div class="qa-title">${lang==='bm'?'Daftar Aktiviti Rutin':'Register Routine'}</div><div class="qa-sub">Track B</div></div></div><div class="qa-card" onclick="openActivityForm('C')"><div class="qa-icon" style="background:rgba(245,158,11,.15)">📋</div><div><div class="qa-title">${lang==='bm'?'Aktiviti Non-Rutin':'Non-Routine Activity'}</div><div class="qa-sub">Track C</div></div></div><div class="qa-card" onclick="showPage('permits')"><div class="qa-icon" style="background:rgba(37,99,235,.15)">📂</div><div><div class="qa-title">${lang==='bm'?'Aktiviti Saya':'My Activities'}</div><div class="qa-sub">${lang==='bm'?'Semak status':'Check status'}</div></div></div>`};
-const rec=allPermits.slice(0,5).map(p=>`<div class="table-row" style="grid-template-columns:130px 1fr 110px 90px" onclick="viewPermit('${p.id}')"><div><span class="track-${(p.track||'a').toLowerCase()}">${p.track}</span> <span style="font-size:11px;font-family:var(--mono);color:var(--text3)">${p.permitNo||'—'}</span></div><div style="font-size:12px;color:var(--text2)">${p.projectName||p.vesselName||'—'}</div><div style="font-size:12px;color:var(--text2)">${p.location||'—'}</div><div><span class="status s-${(p.status||'draft').replace(/_/g,'-')}">${sl(p.status)}</span></div></div>`).join('');
-document.getElementById('dash-body').innerHTML=`<div style="margin-bottom:20px"><h2 style="font-size:20px;font-weight:600;letter-spacing:-.02em;margin-bottom:4px">${lang==='bm'?'Selamat datang':'Welcome'}, ${data.name.split(' ')[0]}</h2><p style="font-size:13px;color:var(--text2)">${new Date().toLocaleDateString(lang==='bm'?'ms-MY':'en-MY',{weekday:'long',year:'numeric',month:'long',day:'numeric'})} &nbsp;·&nbsp; <span class="rbadge ${data.role}">${rl(data.role)}</span></p></div><div class="stats-grid"><div class="stat-card sc-blue"><div class="stat-label">${lang==='bm'?'Permit Aktif':'Active Permits'}</div><div class="stat-value">${active}</div><div class="stat-sub">${lang==='bm'?'Semua track':'All tracks'}</div></div><div class="stat-card sc-amber" onclick="showPage('permits')" style="cursor:pointer"><div class="stat-label">${lang==='bm'?'Menunggu Kelulusan':'Pending Approval'}</div><div class="stat-value">${pending}</div><div class="stat-sub">${lang==='bm'?'Klik untuk semak':'Click to view'}</div></div><div class="stat-card sc-red"><div class="stat-label">${lang==='bm'?'Hampir Tamat':'Expiring Soon'}</div><div class="stat-value">${exp}</div><div class="stat-sub">< 24 jam</div></div><div class="stat-card"><div class="stat-label">${lang==='bm'?'Inspection Pending':'Inspection Pending'}</div><div class="stat-value">0</div><div class="stat-sub">${lang==='bm'?'Checklist':'Checklists'}</div></div></div><div class="sec-title">${lang==='bm'?'Tindakan Pantas':'Quick Actions'}</div><div class="quick-grid" style="margin-bottom:20px">${qa[data.role]||''}</div><div class="sec-title">${lang==='bm'?'Terkini':'Recent'}</div><div class="data-table"><div class="table-head" style="grid-template-columns:130px 1fr 110px 90px"><div>No. Permit</div><div>${lang==='bm'?'Projek/Kapal':'Project/Vessel'}</div><div>${lang==='bm'?'Lokasi':'Location'}</div><div>Status</div></div>${rec||`<div class="table-empty"><span class="em-icon">📄</span>${lang==='bm'?'Tiada permit lagi':'No permits yet'}</div>`}</div>`}
+function renderDash(data){
+  const r=data.role;
+  const active=allPermits.filter(p=>p.status==='approved').length;
+  const pending=allPermits.filter(p=>['submitted','pending_hod','pending_hse','pending_op','onhold'].includes(p.status)).length;
+  const now=Date.now();
+  const exp=allPermits.filter(p=>p.status==='approved'&&p.expiryAt&&(new Date(p.expiryAt)-now)<86400000&&new Date(p.expiryAt)>now).length;
+
+  // Inspection stats
+  const inspActive=allPermits.filter(p=>['approved','extended'].includes(p.status));
+  let totalRounds=0,totalFlags=0,inspNeedPre=0;
+  inspActive.forEach(function(p){
+    const insp=p.inspections||{};
+    ['inspector1','inspector2'].forEach(function(ik){
+      const rd=insp[ik]&&Array.isArray(insp[ik].during)?insp[ik].during:[];
+      totalRounds+=rd.length;
+      rd.forEach(function(rr){if(rr.hasIssues)totalFlags++;});
+    });
+    const hasPre=!!(insp.inspector1&&insp.inspector1.pre&&insp.inspector1.pre.submittedAt)||!!(insp.inspector2&&insp.inspector2.pre&&insp.inspector2.pre.submittedAt);
+    if(!hasPre) inspNeedPre++;
+  });
+
+  // Recent permits
+  const recHtml=allPermits.slice(0,5).map(function(p){
+    const isPending=['submitted','pending_hod','pending_hse','pending_op'].includes(p.status);
+    const isRej=p.status==='rejected';
+    const isHold=p.status==='onhold';
+    const bdr=isPending?'border-left:3px solid var(--warning);':isRej?'border-left:3px solid var(--danger);':isHold?'border-left:3px solid var(--warning);':'';
+    return '<div class="table-row" style="grid-template-columns:130px 1fr 110px 90px;'+bdr+'" onclick="viewPermit(\''+p.id+'\')">'
+      +'<div><span class="track-'+(p.track||'a').toLowerCase()+'">'+p.track+'</span> <span style="font-family:var(--mono);font-size:11px;color:var(--accent2)">'+(p.permitNo||'—')+'</span></div>'
+      +'<div><div style="font-size:13px;font-weight:500">'+(p.projectName||p.vesselName||'—')+'</div><div style="font-size:11px;color:var(--text3)">'+(p.location||'—')+'</div></div>'
+      +'<div style="font-size:11px;color:var(--text3);font-family:var(--mono)">'+(p.createdAt||'').slice(0,10)+'</div>'
+      +'<div><span class="status s-'+(p.status||'draft').replace(/_/g,'-')+'">'+sl(p.status||'draft')+'</span></div>'
+      +'</div>';
+  }).join('');
+
+  // Build quick actions per role
+  function qaCard(icon,bg,title,sub,onclick){
+    return '<div class="qa-card" onclick="'+onclick+'">'
+      +'<div class="qa-icon" style="background:'+bg+'">'+icon+'</div>'
+      +'<div><div class="qa-title">'+title+'</div><div class="qa-sub">'+sub+'</div></div>'
+      +'</div>';
+  }
+
+  let qaHtml='';
+  if(r==='admin'){
+    qaHtml+=qaCard('👥','rgba(37,99,235,.15)',lang==='bm'?'Urus Pengguna':'Manage Users',lang==='bm'?'Lulus/tolak akaun':'Approve accounts',"showPage('users')");
+    qaHtml+=qaCard('✅','rgba(16,185,129,.15)',lang==='bm'?'Kelulusan':'Approvals',pending+' '+(lang==='bm'?'menunggu':'pending'),"showPage('approvals')");
+    qaHtml+=qaCard('📋','rgba(245,158,11,.15)',lang==='bm'?'Semua Permit':'All Permits',active+' '+(lang==='bm'?'aktif':'active'),"showPage('permits')");
+    qaHtml+=qaCard('📝','rgba(139,92,246,.15)','Inspection',totalRounds+' rounds · 🚩 '+totalFlags,(totalFlags>0?"showPage('inspection')":"showPage('inspection')"));
+  } else if(r==='hse'){
+    qaHtml+=qaCard('✅','rgba(37,99,235,.15)',lang==='bm'?'Kelulusan Pending':'Pending Approvals',pending+' '+(lang==='bm'?'menunggu':'pending'),"showPage('approvals')");
+    qaHtml+=qaCard('📝','rgba('+(totalFlags>0?'239,68,68':'16,185,129')+',.15)','Inspection',(totalFlags>0?'🚩 '+totalFlags+' red flags':totalRounds+' rounds'),"showPage('inspection')");
+    qaHtml+=qaCard('📋','rgba(245,158,11,.15)',lang==='bm'?'Semua Permit':'All Permits',lang==='bm'?'Semak dan pantau':'View and monitor',"showPage('permits')");
+  } else if(r==='hod'){
+    qaHtml+=qaCard('✅','rgba(139,92,246,.15)','1st Approval',lang==='bm'?'Kelulusan HOD':'HOD approval',"showPage('approvals')");
+    qaHtml+=qaCard('📝','rgba('+(totalFlags>0?'239,68,68':'37,99,235')+',.15)','Inspection',(totalFlags>0?'🚩 '+totalFlags+' red flags':totalRounds+' rounds'),"showPage('inspection')");
+    qaHtml+=qaCard('📋','rgba(37,99,235,.15)',lang==='bm'?'Permit Dept':'Dept Permits',lang==='bm'?'Semak permit':'View permits',"showPage('permits')");
+  } else if(r==='supervisor'){
+    qaHtml+=qaCard('📝','rgba(37,99,235,.15)','Inspection',totalRounds+' '+(lang==='bm'?'rondaan':'rounds'),"showPage('inspection')");
+    qaHtml+=qaCard('📋','rgba(16,185,129,.15)',lang==='bm'?'Permit Aktif':'Active Permits',active+' '+(lang==='bm'?'aktif':'active'),"showPage('permits')");
+  } else if(r==='contractor'){
+    qaHtml=buildContractorQA();
+  } else if(r==='stevedore'){
+    qaHtml+=qaCard('🚢','rgba(16,185,129,.15)',lang==='bm'?'Daftar Aktiviti Rutin':'Register Routine','Track B',"openActivityForm('B')");
+    qaHtml+=qaCard('📋','rgba(245,158,11,.15)',lang==='bm'?'Aktiviti Non-Rutin':'Non-Routine','Track C',"openActivityForm('C')");
+    qaHtml+=qaCard('📂','rgba(37,99,235,.15)',lang==='bm'?'Aktiviti Saya':'My Activities',lang==='bm'?'Semak status':'Check status',"showPage('permits')");
+  } else if(r==='management'){
+    qaHtml+=qaCard('📊','rgba(37,99,235,.15)',lang==='bm'?'Dashboard':'Dashboard',active+' active · '+totalFlags+' flags',"showPage('dashboard')");
+    qaHtml+=qaCard('📋','rgba(16,185,129,.15)',lang==='bm'?'Semua Permit':'All Permits',lang==='bm'?'Baca sahaja':'Read only',"showPage('permits')");
+    qaHtml+=qaCard('📝','rgba(245,158,11,.15)','Inspection',totalRounds+' rounds',"showPage('inspection')");
+  }
+
+  let html='';
+  html+='<div style="margin-bottom:20px">';
+  html+='<h2 style="font-size:20px;font-weight:600;letter-spacing:-.02em;margin-bottom:4px">'+(lang==='bm'?'Selamat datang':'Welcome')+', '+data.name.split(' ')[0]+'</h2>';
+  html+='<p style="font-size:13px;color:var(--text2)">'+new Date().toLocaleDateString(lang==='bm'?'ms-MY':'en-MY',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' &nbsp;·&nbsp; <span class="rbadge '+r+'">'+rl(r)+'</span></p>';
+  html+='</div>';
+
+  // Stat cards
+  html+='<div class="stats-grid">';
+  html+='<div class="stat-card sc-blue" onclick="showPage(\'permits\')" style="cursor:pointer">'
+    +'<div class="stat-label">'+(lang==='bm'?'Permit Aktif':'Active Permits')+'</div>'
+    +'<div class="stat-value">'+active+'</div>'
+    +'<div class="stat-sub">'+(lang==='bm'?'Semua track':'All tracks')+'</div></div>';
+
+  html+='<div class="stat-card sc-amber" onclick="showPage(\'permits\')" style="cursor:pointer">'
+    +'<div class="stat-label">'+(lang==='bm'?'Menunggu Kelulusan':'Pending Approval')+'</div>'
+    +'<div class="stat-value">'+pending+'</div>'
+    +'<div class="stat-sub">'+(lang==='bm'?'Klik untuk semak':'Click to view')+'</div></div>';
+
+  html+='<div class="stat-card sc-red">'
+    +'<div class="stat-label">'+(lang==='bm'?'Hampir Tamat':'Expiring Soon')+'</div>'
+    +'<div class="stat-value">'+exp+'</div>'
+    +'<div class="stat-sub">< 24 jam</div></div>';
+
+  if(['hse','supervisor','admin','hod','management'].includes(r)){
+    html+='<div class="stat-card '+(totalFlags>0?'sc-red':'sc-green')+'" onclick="showPage(\'inspection\')" style="cursor:pointer">'
+      +'<div class="stat-label">Red Flags</div>'
+      +'<div class="stat-value">'+(totalFlags>0?'🚩 ':'')+totalFlags+'</div>'
+      +'<div class="stat-sub">'+totalRounds+' '+(lang==='bm'?'rondaan':'rounds')+'</div></div>';
+  } else {
+    html+='<div class="stat-card">'
+      +'<div class="stat-label">'+(lang==='bm'?'Inspection Pending':'Inspection Pending')+'</div>'
+      +'<div class="stat-value">'+inspNeedPre+'</div>'
+      +'<div class="stat-sub">'+(lang==='bm'?'Belum Pre-Work':'Pre-Work pending')+'</div></div>';
+  }
+  html+='</div>';
+
+  // Quick actions
+  html+='<div class="sec-title">'+(lang==='bm'?'Tindakan Pantas':'Quick Actions')+'</div>';
+  html+='<div class="quick-grid" style="margin-bottom:20px">'+qaHtml+'</div>';
+
+  // Recent permits
+  html+='<div class="sec-title">'+(lang==='bm'?'Terkini':'Recent')+'</div>';
+  html+='<div class="data-table">';
+  html+='<div class="table-head" style="grid-template-columns:130px 1fr 110px 90px">'
+    +'<div>No. Permit</div><div>'+(lang==='bm'?'Projek/Kapal':'Project/Vessel')+'</div>'
+    +'<div>'+(lang==='bm'?'Tarikh':'Date')+'</div><div>Status</div></div>';
+  html+=recHtml||'<div class="table-empty"><span class="em-icon">📄</span>'+(lang==='bm'?'Tiada permit lagi':'No permits yet')+'</div>';
+  html+='</div>';
+
+  // Inspection red flag summary for HOD/HSE/Admin
+  if(['hse','admin','hod','management','supervisor'].includes(r)&&totalFlags>0){
+    html+='<div class="sec-title" style="color:var(--danger)">🚩 '+(lang==='bm'?'Red Flag — Permit Ada Isu Inspection':'Red Flags — Permits with Inspection Issues')+'</div>';
+    html+='<div class="data-table">';
+    html+='<div class="table-head" style="grid-template-columns:130px 1fr 80px 120px 120px">'
+      +'<div>No. Permit</div><div>'+(lang==='bm'?'Projek':'Project')+'</div>'
+      +'<div>Track</div><div>Rondaan Isu</div><div>'+(lang==='bm'?'Inspector':'Inspector')+'</div></div>';
+    inspActive.filter(function(p){
+      const insp=p.inspections||{};
+      return ['inspector1','inspector2'].some(function(ik){
+        const rd=Array.isArray((insp[ik]||{}).during)?(insp[ik]||{}).during:[];
+        return rd.some(function(r){return r.hasIssues;});
+      });
+    }).slice(0,5).forEach(function(p){
+      const insp=p.inspections||{};
+      ['inspector1','inspector2'].forEach(function(ik){
+        const rd=Array.isArray((insp[ik]||{}).during)?(insp[ik]||{}).during:[];
+        const issueRounds=rd.filter(function(r){return r.hasIssues;});
+        if(!issueRounds.length)return;
+        const lastIssue=issueRounds[issueRounds.length-1];
+        html+='<div class="table-row" style="grid-template-columns:130px 1fr 80px 120px 120px;border-left:3px solid var(--danger)" onclick="openInspection(\''+p.id+'\')">'
+          +'<div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">'+(p.permitNo||'—')+'</div>'
+          +'<div style="font-size:13px;font-weight:500">'+(p.projectName||p.vesselName||'—')+'</div>'
+          +'<div><span class="track-'+(p.track||'a').toLowerCase()+'">Track '+p.track+'</span></div>'
+          +'<div><span style="color:var(--danger);font-weight:600">🚩 '+issueRounds.length+' rondaan</span></div>'
+          +'<div style="font-size:12px;color:var(--text2)">'+(lastIssue.submittedBy||'—')+'</div>'
+          +'</div>';
+      });
+    });
+    html+='</div>';
+  }
+
+  document.getElementById('dash-body').innerHTML=html;
+}
+
 
 function renderPermitsPage(){const r=currentData?.role;document.getElementById('btn-new-permit').style.display=['contractor','stevedore','admin'].includes(r)?'flex':'none';const s=(document.getElementById('permit-search')?.value||'').toLowerCase();const f=allPermits.filter(p=>!s||`${p.permitNo||''} ${p.projectName||''} ${p.vesselName||''} ${p.location||''}`.toLowerCase().includes(s));document.getElementById('tbl-count').textContent=`${f.length} ${lang==='bm'?'rekod':'records'}`;document.getElementById('permit-thead').innerHTML=`<div>No. Permit</div><div>${lang==='bm'?'Projek/Kapal':'Project/Vessel'}</div><div>${lang==='bm'?'Lokasi':'Location'}</div><div>${lang==='bm'?'Tarikh':'Date'}</div><div>Status</div><div>Track</div>`;document.getElementById('permit-tbody').innerHTML=f.length?f.map(p=>`<div class="table-row" style="grid-template-columns:130px 1fr 120px 110px 90px 70px" onclick="viewPermit('${p.id}')"><div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">${p.permitNo||'—'}</div><div><div style="font-size:13px;font-weight:500">${p.projectName||p.vesselName||'—'}</div><div style="font-size:11px;color:var(--text3)">${p.submittedByName||''}</div></div><div style="font-size:12px;color:var(--text2)">${p.location||'—'}</div><div style="font-size:11px;color:var(--text3);font-family:var(--mono)">${fmtDate(p.createdAt)}</div><div><span class="status s-${(p.status||'draft').replace(/_/g,'-')}">${sl(p.status)}</span></div><div><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span></div></div>`).join(''):`<div class="table-empty"><span class="em-icon">📄</span>${lang==='bm'?'Tiada permit lagi':'No permits yet'}</div>`}
 
@@ -1237,7 +1385,7 @@ function renderInspectionPage(){
     html+='</div>';
 
     html+='<div class="data-table">';
-    html+='<div class="table-head" style="grid-template-columns:130px 1fr 90px 100px 110px 110px 80px">';
+    html+='<div class="table-head" style="grid-template-columns:130px 1fr 90px 100px 110px 110px 70px 90px">';
     html+='<div>No. Permit</div><div>'+(lang==='bm'?'Projek/Kapal':'Project/Vessel')+'</div><div>Track</div>';
     html+='<div>Pre-Work</div><div>During ('+(lang==='bm'?'Rondaan':'Rounds')+')</div><div>Post-Work</div><div>Red Flag</div>';
     html+='</div>';
@@ -1258,7 +1406,7 @@ function renderInspectionPage(){
       const issueRounds=[...i1rounds,...i2rounds].filter(rd=>rd.hasIssues).length;
       const hasRedFlag=issueRounds>0;
 
-      html+='<div class="table-row" style="grid-template-columns:130px 1fr 90px 100px 110px 110px 80px'+(canInspect?'':';cursor:default')+'" '+(canInspect?'onclick="openInspection(\''+p.id+'\')"':'')+' >';
+      html+='<div class="table-row" style="grid-template-columns:130px 1fr 90px 100px 110px 110px 70px 90px'+(canInspect?'':';cursor:default')+'" '+(canInspect?'onclick="openInspection(\''+p.id+'\')"':'')+' >';
       html+='<div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">'+(p.permitNo||'—')+'</div>';
       html+='<div><div style="font-size:13px;font-weight:500">'+(p.projectName||p.vesselName||'—')+'</div><div style="font-size:11px;color:var(--text3)">'+(p.submittedByName||'')+'</div></div>';
       html+='<div><span class="track-'+(p.track||'a').toLowerCase()+'">Track '+p.track+'</span></div>';
@@ -1266,6 +1414,7 @@ function renderInspectionPage(){
       html+='<div><span style="font-size:12px;color:'+(hasRedFlag?'var(--danger)':'var(--success)')+'">'+totalRounds+' rondaan'+(hasRedFlag?' ⚠':'')+'</span></div>';
       html+='<div>'+(postDone?'<span class="status s-approved">✓ Selesai</span>':'<span style="font-size:11px;color:var(--text3)">Belum</span>')+'</div>';
       html+='<div>'+(hasRedFlag?'<span style="color:var(--danger);font-weight:600">🚩 '+issueRounds+'</span>':'<span style="color:var(--success)">✓</span>')+'</div>';
+      html+='<div><button class="btn-sm btn-info" onclick="event.stopPropagation();openInspectionReport(this.dataset.pid)" data-pid="'+p.id+'" style="font-size:10px;height:24px;padding:0 8px">'+(lang==='bm'?'Laporan':'Report')+'</button></div>';
       html+='</div>';
     });
     html+='</div>';
@@ -1285,6 +1434,8 @@ window.openInspection=function(permitId){
   if(!p)return;
   const r=currentData?.role;
   const isHSE=r==='hse';
+  // HOD & Management — read only, show full report
+  if(r==='hod'||r==='management'){openInspectionReport(permitId);return;}
   const insp=p.inspections||{};
   const inspKey=isHSE?'inspector2':'inspector1';
   const myInsp=insp[inspKey]||{};
@@ -1599,6 +1750,109 @@ window.submitInspStage=async function(permitId,inspKey,stage){
   }
 };
 
+
+
+window.openInspectionReport=function(permitId){
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+  const insp=p.inspections||{};
+  const cl=getChecklistForPermit(p);
+
+  const buildStageReport=function(stageData,stageName,items){
+    if(!stageData||!stageData.submittedAt) return '<div style="font-size:12px;color:var(--text3);padding:8px 0">'+(lang==='bm'?'Belum dibuat':'Not completed yet')+'</div>';
+    let h='<div style="margin-bottom:8px;font-size:11px;color:var(--text3)">'
+      +stageData.submittedBy+' · '+new Date(stageData.submittedAt).toLocaleString(lang==='bm'?'ms-MY':'en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
+      +(stageData.hasIssues?' <span style="color:var(--danger)">🚩 '+(lang==='bm'?'Ada Isu':'Issues Found')+'</span>':'')+'</div>';
+    if(stageData.overallRemark) h+='<div style="background:rgba(37,99,235,.08);border-left:3px solid var(--accent);border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text2)">📝 '+stageData.overallRemark+'</div>';
+    h+='<div style="display:flex;flex-direction:column;gap:6px">';
+    items.forEach(function(item){
+      const res=(stageData.items&&stageData.items[item.id])||{};
+      const col=res.result==='ok'?'#34d399':res.result==='nc'?'#f87171':res.result==='attention'?'#fbbf24':'#64748b';
+      const bg=res.result==='nc'?'rgba(239,68,68,.06)':res.result==='attention'?'rgba(245,158,11,.06)':res.result==='ok'?'rgba(16,185,129,.04)':'var(--bg2)';
+      h+='<div style="background:'+bg+';border:1px solid var(--border);border-radius:6px;padding:8px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">';
+      h+='<div style="flex:1"><div style="font-size:12px;color:var(--text)">'+(lang==='bm'?item.itemBM:item.item)+'</div>';
+      if(res.remark) h+='<div style="font-size:11px;color:var(--warning);margin-top:3px;font-style:italic">⚠ '+res.remark+'</div>';
+      h+='</div>';
+      if(res.result) h+='<span style="color:'+col+';font-size:10px;font-weight:600;font-family:var(--mono);white-space:nowrap;flex-shrink:0">'+res.result.toUpperCase()+'</span>';
+      h+='</div>';
+    });
+    h+='</div>';
+    return h;
+  }
+
+  const buildInspectorReport=function(inspData,label){
+    if(!inspData)return'<div style="font-size:12px;color:var(--text3);padding:10px">'+(lang==='bm'?'Tiada data inspection':'No inspection data')+'</div>';
+    const rounds=Array.isArray(inspData.during)?inspData.during:[];
+    let h='';
+
+    // Pre-Work
+    h+='<div style="margin-bottom:14px">';
+    h+='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">';
+    h+=INSP_STAGE_LABELS[lang].pre+(inspData.pre?.submittedAt?'<span class="status s-approved" style="font-size:10px">✓</span>':'<span style="font-size:10px;color:var(--text3)">'+(lang==='bm'?'Belum':'Pending')+'</span>')+'</div>';
+    h+=buildStageReport(inspData.pre,'pre',cl.pre||[]);
+    h+='</div>';
+
+    // During — all rounds
+    h+='<div style="margin-bottom:14px">';
+    h+='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">'+INSP_STAGE_LABELS[lang].during+' ('+rounds.length+' '+(lang==='bm'?'rondaan':'rounds')+')</div>';
+    if(rounds.length){
+      rounds.forEach(function(rd,i){
+        const hasIssue=rd.hasIssues;
+        h+='<div style="border:1px solid '+(hasIssue?'rgba(239,68,68,.3)':'var(--border)')+';border-radius:8px;margin-bottom:10px;overflow:hidden">';
+        h+='<div style="padding:8px 12px;background:'+(hasIssue?'rgba(239,68,68,.06)':'var(--bg3)')+';display:flex;align-items:center;justify-content:space-between">';
+        h+='<div style="font-size:12px;font-weight:600">'+(lang==='bm'?'Rondaan':'Round')+' '+(i+1)+(hasIssue?' 🚩':'')+'</div>';
+        h+='<div style="font-size:11px;color:var(--text3)">'+(rd.submittedBy||'')+' · '+(rd.submittedAt?new Date(rd.submittedAt).toLocaleString(lang==='bm'?'ms-MY':'en-MY',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'')+'</div>';
+        h+='</div>';
+        h+='<div style="padding:10px 12px">'+buildStageReport(rd,'during',cl.during||[])+'</div>';
+        h+='</div>';
+      });
+    } else {
+      h+='<div style="font-size:12px;color:var(--text3);padding:8px 0">'+(lang==='bm'?'Belum ada rondaan':'No rounds yet')+'</div>';
+    }
+    h+='</div>';
+
+    // Post-Work
+    h+='<div style="margin-bottom:14px">';
+    h+='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">';
+    h+=INSP_STAGE_LABELS[lang].post+(inspData.post?.submittedAt?'<span class="status s-approved" style="font-size:10px">✓</span>':'<span style="font-size:10px;color:var(--text3)">'+(lang==='bm'?'Belum':'Pending')+'</span>')+'</div>';
+    h+=buildStageReport(inspData.post,'post',cl.post||[]);
+    h+='</div>';
+    return h;
+  }
+
+  // Build full report overlay
+  const overlay=document.createElement('div');
+  overlay.id='insp-report-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+
+  let body='';
+
+  // Inspector 1
+  const i1Label=p.track==='A'?(lang==='bm'?'Inspector 1 — Supervisor':'Inspector 1 — Supervisor'):(lang==='bm'?'Inspector 1 — Wakil Operasi':'Inspector 1 — Operations Rep');
+  body+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
+  body+='<div style="font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">'+i1Label+'</div>';
+  body+=buildInspectorReport(insp.inspector1||null,'inspector1');
+  body+='</div>';
+
+  // Inspector 2 — HSE
+  body+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">';
+  body+='<div style="font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">Inspector 2 — HSE Officer</div>';
+  body+=buildInspectorReport(insp.inspector2||null,'inspector2');
+  body+='</div>';
+
+  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:700px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
+    +'<div><div style="font-size:15px;font-weight:600">&#128203; Inspection Report &#8212; '+(p.permitNo||'&#8212;')+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.projectName||p.vesselName||'&#8212;')+' &#183; '+(p.location||'&#8212;')+'</div></div>'
+    +'<button id="btn-close-report" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">&#10005;</button>'
+    +'</div>'
+    +'<div style="padding:20px">'+body+'</div>'
+    +'</div>';
+
+  document.body.appendChild(overlay);
+  var closeBtn=document.getElementById('btn-close-report');
+  if(closeBtn) closeBtn.onclick=function(){var o=document.getElementById('insp-report-overlay');if(o)o.remove();};
+};
 
 
 onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data());renderApp(data)}}}});
