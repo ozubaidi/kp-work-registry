@@ -708,6 +708,24 @@ async function renderUsersPage(){
     </div>`;
   });
   html+='</div>';
+
+  // Suspended users section
+  const suspended=allUsers.filter(u=>u.status==='suspended');
+  if(suspended.length){
+    html+=`<div class="sec-title" style="color:var(--danger)">${lang==='bm'?'Akaun Digantung':'Suspended Accounts'} (${suspended.length})</div>`;
+    html+='<div class="data-table">';
+    html+=`<div class="table-head" style="grid-template-columns:1fr 120px 130px 110px"><div>Nama</div><div>Role</div><div>${lang==='bm'?'Jabatan':'Dept'}</div><div>${lang==='bm'?'Tindakan':'Actions'}</div></div>`;
+    suspended.forEach(u=>{
+      html+=`<div class="table-row" style="grid-template-columns:1fr 120px 130px 110px;opacity:.7">
+        <div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div>
+        <div><span class="rbadge ${u.role}">${rl(u.role)}</span></div>
+        <div style="font-size:12px;color:var(--text2)">${u.dept||u.company||'—'}</div>
+        <div><button class="btn-sm btn-approve" onclick="reactivateUser('${u.uid}','${u.name}')">${lang==='bm'?'Aktifkan Semula':'Reactivate'}</button></div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+
   document.getElementById('users-body').innerHTML=html;
 }
 
@@ -859,8 +877,17 @@ window.resetUserPassword=async function(uid,email,name){
   };
 };
 
+window.reactivateUser=async function(uid,name){
+  if(!confirm(lang==='bm'?`Aktifkan semula akaun ${name}?`:`Reactivate account for ${name}?`))return;
+  await updateDoc(doc(db,'users',uid),{status:'active'});
+  showToast(lang==='bm'?`✓ Akaun ${name} telah diaktifkan semula.`:`✓ ${name}'s account reactivated.`,'success');
+  renderUsersPage();
+};
+
 window.suspendUser=async function(uid,name){
-  if(!confirm(lang==='bm'?`Gantung akaun ${name}?`:`Suspend ${name}?`))return;
+  if(!confirm(lang==='bm'
+    ?`Gantung akaun ${name}?\n\nUser tidak akan dapat log masuk. Akaun boleh diaktifkan semula kemudian.\n(Ini BUKAN delete — rekod PTW kekal selamat.)`
+    :`Suspend ${name}'s account?\n\nUser will not be able to login. Account can be reactivated later.\n(This is NOT delete — PTW records remain safe.)`))return;
   await updateDoc(doc(db,'users',uid),{status:'suspended'});
   showToast(lang==='bm'?`Akaun ${name} digantung.`:`${name} suspended.`,'warn');
   renderUsersPage();
