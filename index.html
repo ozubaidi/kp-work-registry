@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KP Work Registry</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#0a0e1a;--bg2:#111827;--bg3:#1a2235;--card:#151d2e;--border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);--text:#f0f4ff;--text2:#8b9bb4;--text3:#5a6a80;--accent:#2563eb;--accent2:#3b82f6;--accent-glow:rgba(37,99,235,0.3);--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--radius:12px;--font:'Sora',sans-serif;--mono:'JetBrains Mono',monospace;--shadow:0 8px 32px rgba(0,0,0,0.4)}
@@ -108,6 +110,8 @@ select.form-input option{background:var(--bg2)}
 .s-closed{background:rgba(148,163,184,.1);color:#64748b}.s-closed::before{background:#64748b}
 .s-expired{background:rgba(239,68,68,.08);color:#ef4444}.s-expired::before{background:#ef4444}
 .s-onhold{background:rgba(245,158,11,.1);color:#d97706}.s-onhold::before{background:#d97706}
+.s-pending-closure-hod{background:rgba(139,92,246,.15);color:#a78bfa}.s-pending-closure-hod::before{background:#a78bfa}
+.s-pending-closure-hse{background:rgba(251,146,60,.15);color:#fb923c}.s-pending-closure-hse::before{background:#fb923c}
 .track-a{background:rgba(37,99,235,.15);color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:10px;font-family:var(--mono);font-weight:500}
 .track-b{background:rgba(16,185,129,.15);color:#34d399;padding:2px 8px;border-radius:4px;font-size:10px;font-family:var(--mono);font-weight:500}
 .track-c{background:rgba(245,158,11,.15);color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:10px;font-family:var(--mono);font-weight:500}
@@ -412,7 +416,7 @@ let lang='bm',currentUser=null,currentData=null,allPermits=[],allUsers=[],notifi
 
 const PTYPES={hot_work:{bm:'Hot Work (Kimpalan)',en:'Hot Work (Welding)',expiry_hours:12,track:'A',hr:true},confined_space:{bm:'Confined Space',en:'Confined Space',expiry_hours:8,track:'A',hr:true},working_height:{bm:'Working at Height',en:'Working at Height',track:'A',hr:true},electrical:{bm:'Electrical Isolation',en:'Electrical Isolation',track:'A',hr:true},civil:{bm:'General Maintenance/Civil',en:'General Maintenance/Civil',track:'A',hr:false},mechanical:{bm:'Mechanical Work',en:'Mechanical Work',track:'A',hr:false},lifting:{bm:'Lifting Operation',en:'Lifting Operation',track:'A',hr:true},diving:{bm:'Diving Operation',en:'Diving Operation',track:'A',hr:true},bunkering:{bm:'Bunkering',en:'Bunkering',track:'A',hr:true},chandelling:{bm:'Ship Chandelling',en:'Ship Chandelling',track:'A',hr:false},drybulk_r:{bm:'Drybulk (Rutin)',en:'Drybulk (Routine)',track:'B',hr:false},breakbulk_r:{bm:'Breakbulk (Rutin)',en:'Breakbulk (Routine)',track:'B',hr:false},drybulk_nr:{bm:'Drybulk (Non-Rutin)',en:'Drybulk (Non-Routine)',track:'C',hr:false},breakbulk_nr:{bm:'Breakbulk (Non-Rutin)',en:'Breakbulk (Non-Routine)',track:'C',hr:false}};
 const LOCS=['Berth 1','Berth 2','Berth 3','Berth 4','Workshop','Yard A','Yard B','Warehouse','Admin Building','Substation','RTG Area','Marine Area'];
-const SL={bm:{draft:'Draf',submitted:'Dihantar',approved:'Diluluskan',rejected:'Ditolak',pending_hod:'Pending HOD',pending_hse:'Pending HSE',pending_op:'Pending Operasi',onhold:'Ditangguhkan',closed:'Ditutup',expired:'Tamat Tempoh',extended:'Dilanjutkan'},en:{draft:'Draft',submitted:'Submitted',approved:'Approved',rejected:'Rejected',pending_hod:'Pending HOD',pending_hse:'Pending HSE',pending_op:'Pending Ops',onhold:'On Hold',closed:'Closed',expired:'Expired',extended:'Extended'}};
+const SL={bm:{draft:'Draf',submitted:'Dihantar',approved:'Diluluskan',rejected:'Ditolak',pending_hod:'Pending HOD',pending_hse:'Pending HSE',pending_op:'Pending Operasi',onhold:'Ditangguhkan',closed:'Ditutup',expired:'Tamat Tempoh',extended:'Dilanjutkan',pending_closure_hod:'Pending Closure — HOD',pending_closure_hse:'Pending Closure — HSE'},en:{draft:'Draft',submitted:'Submitted',approved:'Approved',rejected:'Rejected',pending_hod:'Pending HOD',pending_hse:'Pending HSE',pending_op:'Pending Ops',onhold:'On Hold',closed:'Closed',expired:'Expired',extended:'Extended',pending_closure_hod:'Pending Closure — HOD',pending_closure_hse:'Pending Closure — HSE'}};
 const RL={admin:'Admin KP',hse:'HSE Officer',hod:'HOD/Executive',contractor:'Kontraktor',stevedore:'Stevedore Rep',management:'Management',supervisor:'Supervisor'};
 function sl(s){return(SL[lang]||SL.bm)[s]||s}
 function rl(r){return RL[r]||r}
@@ -803,8 +807,25 @@ const footer=document.getElementById('detail-footer');
   }
 
   // Contractor/HSE: close permit button
-  if(p.status==='approved'&&(p.submittedBy===currentData?.uid||['admin','hse'].includes(r))){
-    footerBtns+=`<button class="btn btn-warn" style="width:auto;padding:0 16px;height:36px;margin:0;border-radius:8px" onclick="closePermit('${id}')">${lang==='bm'?'Tutup Permit':'Close Permit'}</button>`;
+  // Closure flow buttons based on role & status
+  if(p.status==='approved'&&(p.submittedBy===currentData?.uid||r==='contractor'||r==='stevedore')){
+    footerBtns+='<button class="btn btn-primary" style="width:auto;padding:0 16px;height:36px;margin:0;background:var(--success)" onclick="openClosureFlow(\''+id+'\')">✓ '+(lang==='bm'?'Kerja Selesai':'Work Complete')+'</button>';
+  }
+  if(p.status==='pending_closure_hod'&&(r==='hod'||r==='admin')){
+    footerBtns+='<button class="btn btn-primary" style="width:auto;padding:0 16px;height:36px;margin:0" onclick="openClosureFlow(\''+id+'\')">📋 '+(lang==='bm'?'Post Inspection & Acknowledge':'Post Inspection & Ack')+'</button>';
+  }
+  if(p.status==='pending_closure_hse'&&(r==='hse'||r==='admin')){
+    footerBtns+='<button class="btn btn-primary" style="width:auto;padding:0 16px;height:36px;margin:0;background:var(--danger)" onclick="openClosureFlow(\''+id+'\')">🔒 '+(lang==='bm'?'Final Acknowledge & Tutup':'Final Acknowledge & Close')+'</button>';
+  }
+  if(r==='admin'&&['approved','pending_closure_hod','pending_closure_hse'].includes(p.status)){
+    footerBtns+='<button class="btn btn-outline" style="width:auto;padding:0 12px;height:36px;margin:0;font-size:11px;color:var(--danger)" onclick="forceClosePermit(\''+id+'\')">Force Close</button>';
+  }
+  // Download reports for closed permits
+  if(p.status==='closed'){
+    footerBtns+='<button class="btn btn-info" style="width:auto;padding:0 14px;height:36px;margin:0;border-radius:8px" onclick="downloadClosureReport(\''+id+'\')">'
+      +'&#128274; '+(lang==='bm'?'Muat Turun Closure Report':'Download Closure Report')+'</button>';
+    footerBtns+='<button class="btn btn-info" style="width:auto;padding:0 14px;height:36px;margin:0;border-radius:8px" onclick="downloadInspectionPDF(\''+id+'\')">'
+      +'&#128203; '+(lang==='bm'?'Muat Turun Inspection Report':'Download Inspection Report')+'</button>';
   }
   footer.innerHTML=footerBtns;
 openModal('modal-detail')};
@@ -969,7 +990,7 @@ window.submitApproval=async function(){
 };
 
 
-window.closePermit=async function(id){const p=allPermits.find(x=>x.id===id);if(!p)return;const tl={type:'closed',label:lang==='bm'?'Permit ditutup':'Permit closed',by:currentData.name,at:new Date().toISOString(),remark:''};await updateDoc(doc(db,'permits',id),{status:'closed',closedAt:new Date().toISOString(),timeline:[...(p.timeline||[]),tl]});closeModal('modal-detail');showToast(lang==='bm'?'Permit telah ditutup.':'Permit has been closed.','info')};
+window.closePermit=function(id){openClosureFlow(id);};
 
 window.openPermitForm=function(){draft={track:'A',activityTypes:[]};document.getElementById('pf-title').textContent=lang==='bm'?'Submit Permit Baru':'Submit New Permit';renderFormStep(1);openModal('modal-permit-form')};
 window.openActivityForm=function(track){draft={track,activityTypes:[]};document.getElementById('pf-title').textContent=track==='B'?(lang==='bm'?'Daftar Aktiviti Rutin':'Register Routine Activity'):(lang==='bm'?'Daftar Aktiviti Non-Rutin':'Register Non-Routine Activity');renderFormStep(1);openModal('modal-permit-form')};
@@ -2048,12 +2069,8 @@ window.downloadInspectionPDF=function(permitId){
 
     +'</body></html>';
 
-  // Open print window
-  var win=window.open('','_blank','width=900,height=700');
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  setTimeout(function(){win.print();},500);
+  // Generate PDF using html2canvas + jsPDF
+  generatePDFFromHTML(html, 'Inspection_Report_'+(p.permitNo||'permit').replace(/\//g,'-')+'.pdf');
 };
 
 
@@ -2112,6 +2129,404 @@ window.submitReply=async function(permitId,timelineIdx,inputId){
     console.error(e);
     showToast(lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.','error');
   }
+};
+
+
+
+// ── PERMIT CLOSURE FLOW ────────────────────────────────
+const SITE_CLEARANCE_CHECKLIST = [
+  {id:'sc1', bm:'Kerja telah diselesaikan mengikut skop yang diluluskan', en:'Work completed as per approved scope'},
+  {id:'sc2', bm:'Tapak kerja telah dibersihkan sepenuhnya', en:'Work site has been fully cleaned'},
+  {id:'sc3', bm:'Tiada sisa sampah, bahan buangan, atau bahan berbahaya ditinggalkan', en:'No waste, debris, or hazardous materials left behind'},
+  {id:'sc4', bm:'Semua peralatan, mesin, dan bahan telah dikeluarkan dari tapak', en:'All equipment, machinery, and materials removed from site'},
+  {id:'sc5', bm:'Laluan masuk dan keluar tapak dalam keadaan selamat', en:'Site access and egress routes are safe'},
+  {id:'sc6', bm:'Kemudahan sedia ada tidak rosak / kerosakan telah dilaporkan', en:'Existing facilities undamaged / damages reported'},
+  {id:'sc7', bm:'Semua pekerja telah meninggalkan tapak kerja', en:'All workers have left the work site'},
+];
+
+const HOD_CLOSURE_CHECKLIST = [
+  {id:'hc1', bm:'Kerja telah disahkan selesai mengikut skop', en:'Work verified complete as per scope'},
+  {id:'hc2', bm:'Tapak kerja telah diperiksa dan dalam keadaan bersih', en:'Work site inspected and found clean'},
+  {id:'hc3', bm:'Tiada bahaya berbaki di tapak kerja', en:'No residual hazards at work site'},
+  {id:'hc4', bm:'Semua permit dan dokumen berkaitan telah dikemaskini', en:'All permits and related documents updated'},
+  {id:'hc5', bm:'Peralatan dan aset jabatan telah disahkan selamat', en:'Department equipment and assets confirmed safe'},
+];
+
+const HSE_CLOSURE_CHECKLIST = [
+  {id:'hse1', bm:'Self-declaration kontraktor telah disemak dan lengkap', en:'Contractor self-declaration reviewed and complete'},
+  {id:'hse2', bm:'Post inspection HOD/Process Owner telah diterima', en:'HOD/Process Owner post inspection acknowledged'},
+  {id:'hse3', bm:'Tiada insiden, hampir celaka, atau isu keselamatan berbaki', en:'No incidents, near misses, or outstanding safety issues'},
+  {id:'hse4', bm:'Semua dokumen HSE (HIRARC, MS, checklist) telah difailkan', en:'All HSE documents (HIRARC, MS, checklists) filed'},
+  {id:'hse5', bm:'Permit boleh ditutup secara rasmi', en:'Permit may be officially closed'},
+];
+
+window.openClosureFlow=function(permitId){
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+  const r=currentData?.role;
+
+  // Determine which closure step this user is doing
+  let step, checklist, title, btnLabel, nextStatus;
+  if(p.status==='approved'&&(p.submittedBy===currentData?.uid||r==='contractor'||r==='stevedore')){
+    step='contractor';
+    checklist=SITE_CLEARANCE_CHECKLIST;
+    title=lang==='bm'?'Perisytiharan Kerja Selesai (Site Clearance)':'Work Completion Declaration (Site Clearance)';
+    btnLabel=lang==='bm'?'✓ Hantar Perisytiharan':'✓ Submit Declaration';
+    nextStatus='pending_closure_hod';
+  } else if(p.status==='pending_closure_hod'&&(r==='hod'||r==='admin')){
+    step='hod';
+    checklist=HOD_CLOSURE_CHECKLIST;
+    title=lang==='bm'?'Post Inspection — HOD/Process Owner':'Post Inspection — HOD/Process Owner';
+    btnLabel=lang==='bm'?'✓ Acknowledge & Hantar ke HSE':'✓ Acknowledge & Forward to HSE';
+    nextStatus='pending_closure_hse';
+  } else if(p.status==='pending_closure_hse'&&(r==='hse'||r==='admin')){
+    step='hse';
+    checklist=HSE_CLOSURE_CHECKLIST;
+    title=lang==='bm'?'Final Acknowledgement — HSE Officer':'Final Acknowledgement — HSE Officer';
+    btnLabel=lang==='bm'?'🔒 Tutup Permit Secara Rasmi':'🔒 Officially Close Permit';
+    nextStatus='closed';
+  } else return;
+
+  const overlay=document.createElement('div');
+  overlay.id='closure-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+
+  // Previous closure entries for context
+  const prevClosure=p.closure||{};
+  let contextHtml='';
+  if(step==='hod'&&prevClosure.contractor){
+    contextHtml+='<div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:12px 14px;margin-bottom:16px">'
+      +'<div style="font-size:11px;color:var(--success);font-family:var(--mono);margin-bottom:6px">✓ PERISYTIHARAN KONTRAKTOR — '+(prevClosure.contractor.submittedBy||'')+' · '+fmtDate(prevClosure.contractor.at)+'</div>'
+      +SITE_CLEARANCE_CHECKLIST.map(function(item){
+        const ans=(prevClosure.contractor.items||{})[item.id];
+        return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px"><span style="color:var(--text2)">'+(lang==='bm'?item.bm:item.en)+'</span><span style="color:'+(ans?'var(--success)':'var(--danger)')+';font-weight:600">'+(ans?'✓ Ya':'✗ Tidak')+'</span></div>';
+      }).join('')
+      +(prevClosure.contractor.remarks?'<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">Remarks: '+prevClosure.contractor.remarks+'</div>':'')
+      +'</div>';
+  }
+  if(step==='hse'&&prevClosure.hod){
+    contextHtml+='<div style="background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:12px 14px;margin-bottom:16px">'
+      +'<div style="font-size:11px;color:var(--accent2);font-family:var(--mono);margin-bottom:6px">✓ POST INSPECTION HOD — '+(prevClosure.hod.submittedBy||'')+' · '+fmtDate(prevClosure.hod.at)+'</div>'
+      +HOD_CLOSURE_CHECKLIST.map(function(item){
+        const ans=(prevClosure.hod.items||{})[item.id];
+        return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px"><span style="color:var(--text2)">'+(lang==='bm'?item.bm:item.en)+'</span><span style="color:'+(ans?'var(--success)':'var(--danger)')+';font-weight:600">'+(ans?'✓ Ya':'✗ Tidak')+'</span></div>';
+      }).join('')
+      +(prevClosure.hod.remarks?'<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">Remarks: '+prevClosure.hod.remarks+'</div>':'')
+      +'</div>';
+  }
+
+  // Build checklist
+  const checklistHtml=checklist.map(function(item){
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="display:flex;gap:6px;margin-top:2px">'
+      +'<button class="cls-yes" data-iid="'+item.id+'" id="cls-yes-'+item.id+'" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">Ya</button>'
+      +'<button class="cls-no" data-iid="'+item.id+'" id="cls-no-'+item.id+'" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">Tidak</button>'
+      +'</div>'
+      +'<div><div style="font-size:13px;color:var(--text)">'+(lang==='bm'?item.bm:item.en)+'</div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+(lang==='bm'?item.en:item.bm)+'</div></div>'
+      +'</div>';
+  }).join('');
+
+  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:600px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
+    +'<div><div style="font-size:15px;font-weight:600">'+title+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.permitNo||'—')+' — '+(p.projectName||p.vesselName||'—')+'</div></div>'
+    +'<button id="btn-close-closure" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">✕</button>'
+    +'</div>'
+    +'<div style="padding:20px">'
+    +contextHtml
+    +(step!=='contractor'?'':'<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#fbbf24">⚠ '+(lang==='bm'?'Pastikan semua kerja pembersihan dan pemulihan tapak telah selesai sebelum menghantar perisytiharan ini.':'Ensure all site cleanup and restoration work is complete before submitting this declaration.')+'</div>')
+    +'<div id="closure-checklist">'+checklistHtml+'</div>'
+    +'<div class="form-group" style="margin-top:16px">'
+    +'<label class="form-label">'+(lang==='bm'?'Remarks / Catatan':'Remarks / Notes')+' <span style="color:var(--text3);font-weight:400">('+( lang==='bm'?'pilihan':'optional')+')</span></label>'
+    +'<textarea class="form-input" id="closure-remarks" style="min-height:80px" placeholder="'+(lang==='bm'?'Tambah catatan jika perlu...':'Add notes if needed...')+'"></textarea>'
+    +'</div>'
+    +'<div id="closure-err" class="alert alert-error" style="display:none;margin-top:8px"></div>'
+    +'</div>'
+    +'<div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end">'
+    +'<button id="btn-cancel-closure" style="height:38px;padding:0 16px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">'+(lang==='bm'?'Batal':'Cancel')+'</button>'
+    +'<button id="btn-submit-closure" style="height:38px;padding:0 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">'+btnLabel+'</button>'
+    +'</div>'
+    +'</div>';
+
+  document.body.appendChild(overlay);
+
+  // Wire buttons
+  document.getElementById('btn-close-closure').onclick=function(){overlay.remove();};
+  document.getElementById('btn-cancel-closure').onclick=function(){overlay.remove();};
+  document.getElementById('btn-submit-closure').onclick=function(){submitClosure(permitId,step,checklist,nextStatus,overlay);};
+};
+
+// Track closure checkbox state
+var _closureState={};
+// Use event delegation for closure buttons
+document.addEventListener('click',function(e){
+  if(e.target.classList.contains('cls-yes')){
+    var iid=e.target.dataset.iid;
+    if(iid) window.setClosure(iid,true,e.target);
+  } else if(e.target.classList.contains('cls-no')){
+    var iid=e.target.dataset.iid;
+    if(iid) window.setClosure(iid,false,e.target);
+  }
+});
+
+window.setClosure=function(itemId,val,btn){
+  _closureState[itemId]=val;
+  var yes=document.getElementById('cls-yes-'+itemId);
+  var no=document.getElementById('cls-no-'+itemId);
+  if(yes&&no){
+    if(val){
+      yes.style.background='rgba(16,185,129,.15)';yes.style.borderColor='var(--success)';yes.style.color='var(--success)';
+      no.style.background='transparent';no.style.borderColor='var(--border)';no.style.color='var(--text2)';
+    } else {
+      no.style.background='rgba(239,68,68,.1)';no.style.borderColor='var(--danger)';no.style.color='var(--danger)';
+      yes.style.background='transparent';yes.style.borderColor='var(--border)';yes.style.color='var(--text2)';
+    }
+  }
+};
+
+async function submitClosure(permitId,step,checklist,nextStatus,overlay){
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+
+  // Validate all items answered
+  var unanswered=checklist.filter(function(item){return _closureState[item.id]===undefined;});
+  if(unanswered.length){
+    var err=document.getElementById('closure-err');
+    if(err){err.textContent=(lang==='bm'?'Sila jawab semua item checklist sebelum hantar. ('+unanswered.length+' belum dijawab)':'Please answer all checklist items. ('+unanswered.length+' unanswered)');err.style.display='flex';}
+    return;
+  }
+
+  const btn=document.getElementById('btn-submit-closure');
+  if(btn){btn.disabled=true;btn.textContent=lang==='bm'?'Menyimpan...':'Saving...';}
+
+  const remarks=document.getElementById('closure-remarks')?.value.trim()||'';
+  const items={};
+  checklist.forEach(function(item){items[item.id]=_closureState[item.id];});
+  _closureState={};
+
+  const closureEntry={
+    items,remarks,
+    submittedBy:currentData.name,
+    role:rl(currentData.role),
+    at:new Date().toISOString()
+  };
+
+  const tlLabels={
+    contractor:{bm:'Perisytiharan Kerja Selesai oleh Kontraktor',en:'Work Completion Declaration by Contractor'},
+    hod:{bm:'Post Inspection & Acknowledge oleh HOD/Process Owner',en:'Post Inspection & Acknowledgement by HOD/Process Owner'},
+    hse:{bm:'Final Acknowledge & Permit Ditutup oleh HSE Officer',en:'Final Acknowledgement & Permit Closed by HSE Officer'}
+  };
+
+  const tl={
+    type:nextStatus==='closed'?'closed':'closure_step',
+    label:tlLabels[step][lang],
+    by:currentData.name,
+    role:currentData.role,
+    at:new Date().toISOString(),
+    remark:remarks
+  };
+
+  try{
+    const updateData={
+      status:nextStatus,
+      timeline:[...(p.timeline||[]),tl],
+    };
+    updateData['closure.'+step]=closureEntry;
+    if(nextStatus==='closed') updateData.closedAt=new Date().toISOString();
+    await updateDoc(doc(db,'permits',permitId),updateData);
+
+    // Notify relevant parties
+    var notifyMsg='';
+    if(step==='contractor'){
+      notifyMsg=p.permitNo+' — '+(lang==='bm'?'Kontraktor telah nyatakan kerja selesai. Sila buat Post Inspection.':'Contractor declared work complete. Please conduct Post Inspection.');
+      var hods=allUsers.filter(function(u){return u.role==='hod'&&u.status==='active';});
+      await Promise.all(hods.map(function(u){return sendNotif(u.uid,'📋 '+(lang==='bm'?'Kerja Selesai — Post Inspection Diperlukan':'Work Complete — Post Inspection Required'),notifyMsg);}));
+    } else if(step==='hod'){
+      notifyMsg=p.permitNo+' — '+(lang==='bm'?'HOD telah buat Post Inspection. Sila buat Final Acknowledge.':'HOD Post Inspection done. Please do Final Acknowledgement.');
+      var hses=allUsers.filter(function(u){return u.role==='hse'&&u.status==='active';});
+      await Promise.all(hses.map(function(u){return sendNotif(u.uid,'🔒 '+(lang==='bm'?'Permit Sedia untuk Ditutup':'Permit Ready to Close'),notifyMsg);}));
+    } else if(step==='hse'){
+      notifyMsg=p.permitNo+' — '+(lang==='bm'?'Permit telah ditutup secara rasmi.':'Permit has been officially closed.');
+      await sendNotif(p.submittedBy,'🔒 '+(lang==='bm'?'Permit Ditutup':'Permit Closed'),notifyMsg);
+    }
+
+    overlay.remove();
+    closeModal('modal-detail');
+    const msgs={contractor:lang==='bm'?'✓ Perisytiharan dihantar. HOD akan buat post inspection.':'✓ Declaration submitted. HOD will conduct post inspection.',hod:lang==='bm'?'✓ Post inspection dihantar ke HSE untuk final acknowledge.':'✓ Post inspection forwarded to HSE.',hse:lang==='bm'?'🔒 Permit telah ditutup secara rasmi.':'🔒 Permit officially closed.'};
+    showToast(msgs[step]||'Done','success');
+  }catch(e){
+    console.error(e);
+    showToast(lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.','error');
+    if(btn){btn.disabled=false;btn.textContent=lang==='bm'?'Cuba Lagi':'Try Again';}
+  }
+}
+
+window.forceClosePermit=async function(permitId){
+  if(!confirm(lang==='bm'?'Force close permit ini? (Admin only)':'Force close this permit? (Admin only)'))return;
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+  const tl={type:'closed',label:lang==='bm'?'Permit ditutup oleh Admin (Force Close)':'Permit force closed by Admin',by:currentData.name,at:new Date().toISOString(),remark:'Force closed by Admin'};
+  await updateDoc(doc(db,'permits',permitId),{status:'closed',closedAt:new Date().toISOString(),timeline:[...(p.timeline||[]),tl]});
+  closeModal('modal-detail');
+  showToast(lang==='bm'?'Permit telah ditutup.':'Permit closed.','info');
+};
+
+
+
+// ── PDF DOWNLOAD UTILITIES ─────────────────────────────
+window.generatePDFFromHTML=function(htmlContent, filename){
+  // Create hidden iframe to render HTML
+  var iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:794px;height:1123px;border:none;';
+  document.body.appendChild(iframe);
+
+  showToast(lang==='bm'?'⏳ Menjana PDF...':'⏳ Generating PDF...','info');
+
+  iframe.onload=function(){
+    try{
+      var iDoc=iframe.contentDocument||iframe.contentWindow.document;
+      var iBody=iDoc.body;
+      iBody.style.margin='0';iBody.style.padding='0';
+
+      // Wait for fonts/images to load
+      setTimeout(function(){
+        html2canvas(iBody,{
+          scale:2,
+          useCORS:true,
+          logging:false,
+          width:794,
+          windowWidth:794
+        }).then(function(canvas){
+          try{
+            var imgData=canvas.toDataURL('image/jpeg',0.95);
+            var pdf=new window.jspdf.jsPDF({
+              orientation:'portrait',
+              unit:'mm',
+              format:'a4'
+            });
+
+            var pageW=pdf.internal.pageSize.getWidth();
+            var pageH=pdf.internal.pageSize.getHeight();
+            var imgH=(canvas.height*pageW)/canvas.width;
+            var heightLeft=imgH;
+            var position=0;
+
+            pdf.addImage(imgData,'JPEG',0,position,pageW,imgH);
+            heightLeft-=pageH;
+
+            while(heightLeft>0){
+              position=heightLeft-imgH;
+              pdf.addPage();
+              pdf.addImage(imgData,'JPEG',0,position,pageW,imgH);
+              heightLeft-=pageH;
+            }
+
+            pdf.save(filename);
+            showToast(lang==='bm'?'✓ PDF berjaya dimuat turun.':'✓ PDF downloaded successfully.','success');
+          }catch(e){
+            console.error('PDF gen error:',e);
+            showToast(lang==='bm'?'Gagal jana PDF. Cuba lagi.':'Failed to generate PDF. Try again.','error');
+          }
+          document.body.removeChild(iframe);
+        }).catch(function(e){
+          console.error('html2canvas error:',e);
+          showToast('Error generating PDF','error');
+          document.body.removeChild(iframe);
+        });
+      },800);
+    }catch(e){
+      console.error(e);
+      document.body.removeChild(iframe);
+    }
+  };
+
+  var iDoc=iframe.contentDocument||iframe.contentWindow.document;
+  iDoc.open();iDoc.write(htmlContent);iDoc.close();
+};
+
+window.downloadClosureReport=function(permitId){
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+  const closure=p.closure||{};
+  const printDate=new Date().toLocaleDateString('ms-MY',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+
+  function closureSection(data,checklist,title,color){
+    if(!data) return '<div style="padding:12px;color:#64748b;font-style:italic;font-size:12px">Belum selesai</div>';
+    let rows='';
+    checklist.forEach(function(item){
+      const ans=(data.items||{})[item.id];
+      rows+='<tr style="border-bottom:1px solid #e2e8f0;background:'+(ans===false?'#fff5f5':'')+'">'
+        +'<td style="padding:7px 12px;font-size:12px;color:#1e293b">'+item.bm+'</td>'
+        +'<td style="padding:7px 12px;font-size:11px;color:#64748b;font-style:italic">'+item.en+'</td>'
+        +'<td style="padding:7px 12px;text-align:center;font-weight:700;color:'+(ans===true?'#16a34a':'#dc2626')+'">'+( ans===true?'✓ Ya':ans===false?'✗ Tidak':'—')+'</td>'
+        +'</tr>';
+    });
+    return '<table style="width:100%;border-collapse:collapse;font-family:Arial">'
+      +'<thead><tr style="background:#f8fafc"><th style="padding:7px 12px;text-align:left;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0">Item (BM)</th><th style="padding:7px 12px;text-align:left;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0">Item (EN)</th><th style="padding:7px 12px;text-align:center;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0;width:80px">Jawapan</th></tr></thead>'
+      +'<tbody>'+rows+'</tbody></table>'
+      +(data.remarks?'<div style="margin-top:8px;padding:8px 12px;background:#f0f9ff;border-left:3px solid #0ea5e9;font-size:12px;color:#0369a1;font-style:italic">Remarks: '+data.remarks+'</div>':'')
+      +'<div style="margin-top:6px;font-size:11px;color:#64748b">Oleh: '+( data.submittedBy||'—')+' ('+( data.role||'—')+') · '+fmtDate(data.at)+'</div>';
+  }
+
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<title>Closure Report — '+(p.permitNo||'')+'</title>'
+    +'<style>body{font-family:Arial,sans-serif;color:#1e293b;margin:0;padding:0}'
+    +'.header{background:#1e3a5f;color:#fff;padding:20px 30px}'
+    +'.header h1{margin:0 0 4px;font-size:18px;font-weight:700}'
+    +'.header p{margin:0;font-size:12px;opacity:.8}'
+    +'.section{margin:20px 30px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}'
+    +'.sec-head{padding:12px 16px;font-weight:600;font-size:13px;border-bottom:1px solid #e2e8f0}'
+    +'.sec-body{padding:16px}'
+    +'.meta{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #e2e8f0;margin:20px 30px}'
+    +'.meta-item{padding:10px 14px;border-right:1px solid #e2e8f0}'
+    +'.meta-label{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}'
+    +'.meta-value{font-size:13px;font-weight:600}'
+    +'.status-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}'
+    +'.footer{margin:20px 30px;padding:12px 0;border-top:2px solid #e2e8f0;font-size:11px;color:#64748b;display:flex;justify-content:space-between}'
+    +'</style></head><body>'
+
+    // Header
+    +'<div class="header">'
+    +'<h1>&#128274; Closure Report — '+(p.permitNo||'—')+'</h1>'
+    +'<p>Kuantan Port Sdn Bhd &nbsp;·&nbsp; KP Work Registry &nbsp;·&nbsp; Dijana: '+printDate+'</p>'
+    +'</div>'
+
+    // Meta
+    +'<div class="meta">'
+    +'<div class="meta-item"><div class="meta-label">No. Permit</div><div class="meta-value">'+(p.permitNo||'—')+'</div></div>'
+    +'<div class="meta-item"><div class="meta-label">Projek / Kapal</div><div class="meta-value">'+(p.projectName||p.vesselName||'—')+'</div></div>'
+    +'<div class="meta-item"><div class="meta-label">Status Akhir</div><div class="meta-value">&#128274; DITUTUP</div></div>'
+    +'<div class="meta-item"><div class="meta-label">Lokasi</div><div class="meta-value">'+(p.location||'—')+'</div></div>'
+    +'<div class="meta-item"><div class="meta-label">PIC Kontraktor</div><div class="meta-value">'+(p.pic||'—')+'</div></div>'
+    +'<div class="meta-item"><div class="meta-label">Tarikh Tutup</div><div class="meta-value">'+fmtDate(p.closedAt)+'</div></div>'
+    +'</div>'
+
+    // Section 1: Contractor
+    +'<div class="section">'
+    +'<div class="sec-head" style="background:#f0fdf4;color:#166534">&#10003; Peringkat 1 — Perisytiharan Kerja Selesai (Kontraktor)</div>'
+    +'<div class="sec-body">'+closureSection(closure.contractor,SITE_CLEARANCE_CHECKLIST,'Kontraktor','#166534')+'</div>'
+    +'</div>'
+
+    // Section 2: HOD
+    +'<div class="section">'
+    +'<div class="sec-head" style="background:#eff6ff;color:#1e40af">&#128203; Peringkat 2 — Post Inspection (HOD/Process Owner)</div>'
+    +'<div class="sec-body">'+closureSection(closure.hod,HOD_CLOSURE_CHECKLIST,'HOD','#1e40af')+'</div>'
+    +'</div>'
+
+    // Section 3: HSE
+    +'<div class="section">'
+    +'<div class="sec-head" style="background:#fff7ed;color:#9a3412">&#128274; Peringkat 3 — Final Acknowledgement (HSE Officer)</div>'
+    +'<div class="sec-body">'+closureSection(closure.hse,HSE_CLOSURE_CHECKLIST,'HSE','#9a3412')+'</div>'
+    +'</div>'
+
+    +'<div class="footer">'
+    +'<span>KP Work Registry &nbsp;·&nbsp; Kuantan Port Sdn Bhd</span>'
+    +'<span>Dijana oleh: '+currentData.name+' · '+printDate+'</span>'
+    +'</div>'
+    +'</body></html>';
+
+  generatePDFFromHTML(html,'Closure_Report_'+(p.permitNo||'permit').replace(/\//g,'-')+'.pdf');
 };
 
 
