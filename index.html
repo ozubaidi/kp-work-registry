@@ -197,8 +197,6 @@ select.form-input option{background:var(--bg2)}
 .step{flex:1;height:3px;background:var(--border);border-radius:2px;transition:background .3s}
 .step.done{background:var(--accent)}
 .step.active{background:var(--accent2)}
-.profile-card{position:fixed;top:60px;right:16px;width:260px;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);z-index:250;display:none;overflow:hidden;animation:modalIn .2s ease}
-.profile-card.show{display:block}
 .toast{position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-size:13px;color:var(--text);box-shadow:var(--shadow);z-index:400;transform:translateY(80px);opacity:0;transition:all .3s;max-width:320px;display:flex;align-items:center;gap:10px}
 .toast.show{transform:translateY(0);opacity:1}
 .toast.success{border-color:rgba(16,185,129,.3)}
@@ -293,7 +291,7 @@ select.form-input option{background:var(--bg2)}
       <button class="ctrl-btn" onclick="toggleLang()"><span id="dlang-lbl">EN</span></button>
       <button class="ctrl-btn" onclick="toggleTheme()"><span id="dtheme-ic">☀</span></button>
       <button class="ctrl-btn notif-btn" onclick="toggleNotif()" id="notif-btn">🔔<span class="notif-dot" id="notif-dot"></span></button>
-      <div class="user-chip" onclick="toggleProfileCard()" style="cursor:pointer" title="Profil"><div class="user-av" id="user-av">?</div><div class="user-nm" id="user-nm">—</div></div>
+      <div class="user-chip"><div class="user-av" id="user-av">?</div><div class="user-nm" id="user-nm">—</div></div>
       <button class="ctrl-btn" onclick="openChangePass()" title="Tukar Kata Laluan" style="font-size:14px">🔒</button><button class="btn-logout" onclick="doLogout()" id="btn-lo-txt">Log Keluar</button>
     </div>
   </header>
@@ -467,7 +465,7 @@ window.showLupaPassword=function(){
         <input class="form-input" type="email" id="lupa-email" placeholder="nama@email.com" style="margin-bottom:0">
       </div>
       <div style="display:flex;gap:8px;margin-top:14px">
-        <button id="btn-close-lupa" style="flex:1;height:38px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">${lang==='bm'?'Batal':'Cancel'}</button>
+        <button onclick="document.getElementById('lupa-overlay').remove()" style="flex:1;height:38px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">${lang==='bm'?'Batal':'Cancel'}</button>
         <button id="btn-lupa-send" onclick="sendLupaReset()" style="flex:2;height:38px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">${lang==='bm'?'Hantar Link Reset':'Send Reset Link'}</button>
       </div>
     </div>`;
@@ -536,26 +534,8 @@ function buildSidebar(data){
   }
   document.getElementById('nav-items').innerHTML=h;
 }
-window.showPage=function(pg){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const page=document.getElementById(`pg-${pg}`);if(page)page.classList.add('active');const nav=document.getElementById(`nav-${pg}`);if(nav)nav.classList.add('active');document.getElementById('app-sub').textContent={dashboard:'Dashboard',permits:lang==='bm'?'Permit & Aktiviti':'Permits',approvals:lang==='bm'?'Kelulusan':'Approvals',users:lang==='bm'?'Pengguna':'Users',inspection:'Inspection'}[pg]||pg;if(pg==='permits')renderPermitsPage();if(pg==='approvals')renderApprovalsPage();if(pg==='users')renderUsersPage();if(pg==='inspection')renderInspectionPage()};
 
-function loadUsers(data){
-  if(data.role!=='admin')return;
-  // Realtime listener for pending users — updates badge live
-  const q=query(collection(db,'users'),where('status','==','pending'));
-  onSnapshot(q,function(snap){
-    const pendingCount=snap.docs.length;
-    const nb=document.getElementById('nb-users');
-    if(nb){nb.textContent=pendingCount||'';nb.classList.toggle('show',pendingCount>0);}
-    // Also update allUsers pending count
-    const pendingUsers=snap.docs.map(d=>d.data());
-    // Merge into allUsers (update pending entries)
-    pendingUsers.forEach(function(pu){
-      const idx=allUsers.findIndex(u=>u.uid===pu.uid);
-      if(idx===-1) allUsers.push(pu);
-      else allUsers[idx]=pu;
-    });
-  });
-}
+window.showPage=function(pg){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const page=document.getElementById(`pg-${pg}`);if(page)page.classList.add('active');const nav=document.getElementById(`nav-${pg}`);if(nav)nav.classList.add('active');document.getElementById('app-sub').textContent={dashboard:'Dashboard',permits:lang==='bm'?'Permit & Aktiviti':'Permits',approvals:lang==='bm'?'Kelulusan':'Approvals',users:lang==='bm'?'Pengguna':'Users',inspection:'Inspection'}[pg]||pg;if(pg==='permits')renderPermitsPage();if(pg==='approvals')renderApprovalsPage();if(pg==='users')renderUsersPage();if(pg==='inspection')renderInspectionPage()};
 
 function loadPermits(data){
   if(permitUnsub){permitUnsub();permitUnsub=null}
@@ -763,7 +743,6 @@ function renderDash(data){
   document.getElementById('dash-body').innerHTML=html;
 }
 
-
 function renderPermitsPage(){const r=currentData?.role;document.getElementById('btn-new-permit').style.display=['contractor','stevedore','admin'].includes(r)?'flex':'none';const s=(document.getElementById('permit-search')?.value||'').toLowerCase();const f=allPermits.filter(p=>!s||`${p.permitNo||''} ${p.projectName||''} ${p.vesselName||''} ${p.location||''}`.toLowerCase().includes(s));document.getElementById('tbl-count').textContent=`${f.length} ${lang==='bm'?'rekod':'records'}`;document.getElementById('permit-thead').innerHTML=`<div>No. Permit</div><div>${lang==='bm'?'Projek/Kapal':'Project/Vessel'}</div><div>${lang==='bm'?'Lokasi':'Location'}</div><div>${lang==='bm'?'Tarikh':'Date'}</div><div>Status</div><div>Track</div>`;document.getElementById('permit-tbody').innerHTML=f.length?f.map(p=>`<div class="table-row" style="grid-template-columns:130px 1fr 120px 110px 90px 70px" onclick="viewPermit('${p.id}')"><div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">${p.permitNo||'—'}</div><div><div style="font-size:13px;font-weight:500">${p.projectName||p.vesselName||'—'}</div><div style="font-size:11px;color:var(--text3)">${p.submittedByName||''}</div></div><div style="font-size:12px;color:var(--text2)">${p.location||'—'}</div><div style="font-size:11px;color:var(--text3);font-family:var(--mono)">${fmtDate(p.createdAt)}</div><div><span class="status s-${(p.status||'draft').replace(/_/g,'-')}">${sl(p.status)}</span></div><div><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span></div></div>`).join(''):`<div class="table-empty"><span class="em-icon">📄</span>${lang==='bm'?'Tiada permit lagi':'No permits yet'}</div>`}
 
 function buildSelfDeclHTML(sd){
@@ -941,47 +920,700 @@ window.viewPermit=function(id){
   },50);
 }
 
-window.viewDuringRound=function(permitId,inspKey,roundIdx){
-  const p=allPermits.find(x=>x.id===permitId);
+
+function renderApprovalsPage(){const r=currentData?.role;let pending=[];if(r==='hod')pending=allPermits.filter(p=>p.status==='pending_hod');else if(r==='hse')pending=allPermits.filter(p=>p.status==='pending_hse');else if(r==='admin')pending=allPermits.filter(p=>['submitted','pending_hod','pending_hse','pending_op'].includes(p.status));document.getElementById('approvals-body').innerHTML=pending.length?pending.map(p=>`<div class="data-table" style="margin-bottom:14px"><div class="table-toolbar"><div><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${p.permitNo||'—'}</span> · <span style="font-size:13px;font-weight:500">${p.projectName||p.vesselName||'—'}</span></div><div style="display:flex;gap:8px"><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span><span class="status s-${p.status.replace(/_/g,'-')}">${sl(p.status)}</span></div></div><div style="padding:12px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:12px;border-bottom:1px solid var(--border)"><div><span style="color:var(--text3)">${lang==='bm'?'Syarikat':'Company'}:</span> ${p.company||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Lokasi':'Location'}:</span> ${p.location||'—'}</div><div><span style="color:var(--text3)">PIC:</span> ${p.pic||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Tarikh Mula':'Start'}:</span> ${p.startDate||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Pekerja':'Workers'}:</span> ${p.workers||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Dihantar':'Submitted'}:</span> ${fmtDate(p.createdAt)}</div></div><div style="padding:10px 16px;display:flex;gap:8px;justify-content:flex-end"><button class="btn-sm btn-info" onclick="viewPermit('${p.id}')">${lang==='bm'?'Lihat Detail':'View Detail'}</button><button class="btn-sm btn-reject" onclick="openApproval('${p.id}','reject')">${lang==='bm'?'Tolak':'Reject'}</button><button class="btn-sm btn-approve" onclick="openApproval('${p.id}','${r}')">${lang==='bm'?'Lulus':'Approve'}</button></div></div>`).join(''):`<div class="data-table"><div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permit menunggu kelulusan':'No permits awaiting approval'}</div></div>`}
+
+window.openApproval=function(id,type){
+  currentApprId=id;
+  window._apprType=type;
+  const p=allPermits.find(x=>x.id===id);
   if(!p)return;
-  const insp=p.inspections||{};
-  const myInsp=insp[inspKey]||{};
-  const rounds=Array.isArray(myInsp.during)?myInsp.during:[];
-  const rd=rounds[roundIdx];
-  if(!rd)return;
+  // Reset state
+  ['approve','onhold','reject'].forEach(a=>{
+    const el=document.getElementById('ac-'+a);
+    if(el)el.className='appr-choice';
+  });
+  window._apprAction=null;
+  const remark=document.getElementById('appr-remark');
+  if(remark)remark.value='';
+  const err=document.getElementById('appr-err'),warn=document.getElementById('appr-warn');
+  if(err){err.classList.remove('show');err.textContent=''}
+  if(warn){warn.style.display='none';warn.textContent=''}
+  const submitBtn=document.getElementById('btn-appr-submit');
+  if(submitBtn){submitBtn.disabled=true;submitBtn.innerHTML='<span id="btn-appr-txt">'+(lang==='bm'?'Pilih Tindakan':'Select Action')+'</span>'}
+  // Set labels
+  document.getElementById('appr-title').textContent=`${lang==='bm'?'Tindakan Kelulusan':'Approval Action'} — ${p.permitNo||'—'}`;
+  document.getElementById('ac-lbl-approve').textContent=lang==='bm'?'Lulus':'Approve';
+  document.getElementById('ac-lbl-onhold').textContent='On Hold';
+  document.getElementById('ac-lbl-reject').textContent=lang==='bm'?'Tolak':'Reject';
+  document.getElementById('ac-sub-approve').textContent=lang==='bm'?'Permit diluluskan':'Permit approved';
+  document.getElementById('ac-sub-onhold').textContent=lang==='bm'?'Tangguhkan sementara':'Temporarily hold';
+  document.getElementById('ac-sub-reject').textContent=lang==='bm'?'Permit ditolak':'Permit rejected';
+  document.getElementById('appr-remark-lbl').textContent=lang==='bm'?'Remarks / Catatan':'Remarks / Notes';
+  document.getElementById('appr-remark-hint').textContent=lang==='bm'
+    ?'Remarks ini akan dipaparkan kepada kontraktor dalam timeline permit.'
+    :'These remarks will be visible to the contractor in the permit timeline.';
+  // Permit info summary
+  document.getElementById('appr-info').innerHTML=`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${p.permitNo||'—'}</span>
+        <span class="status s-${(p.status||'').replace(/_/g,'-')}">${sl(p.status)}</span>
+      </div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:6px">${p.projectName||p.vesselName||'—'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:var(--text2)">
+        <div>📍 ${p.location||'—'}</div>
+        <div>👷 ${p.pic||'—'}</div>
+        <div>📅 ${p.startDate||'—'} → ${p.endDate||'—'}</div>
+        <div>👥 ${p.workers||'—'} ${lang==='bm'?'pekerja':'workers'}</div>
+      </div>
+      ${(p.activityTypes||[]).map(at=>`<span class="track-${(p.track||'a').toLowerCase()}" style="margin-top:6px;display:inline-block;margin-right:4px">${pt(at)}</span>`).join('')}
+    </div>`;
+  openModal('modal-approval');
+};
 
-  const cl=getChecklistForPermit(p);
-  const items=cl.during||[];
-  const content=document.getElementById('insp-stage-content');
-  if(!content)return;
+window.selectApprAction=function(action){
+  window._apprAction=action;
+  ['approve','onhold','reject'].forEach(a=>{
+    const el=document.getElementById('ac-'+a);
+    if(el)el.className='appr-choice'+(a===action?' selected-'+a:'');
+  });
+  const remark=document.getElementById('appr-remark');
+  const warn=document.getElementById('appr-warn');
+  const submitBtn=document.getElementById('btn-appr-submit');
+  const req=document.getElementById('appr-remark-req');
+  if(action==='approve'){
+    if(remark)remark.placeholder=lang==='bm'?'(Pilihan) Nyatakan syarat kelulusan, perkara yang perlu diberi perhatian oleh kontraktor...':'(Optional) State approval conditions or things contractor must note...';
+    if(req)req.style.display='none';
+    if(warn){warn.style.display='none'}
+    if(submitBtn){submitBtn.disabled=false;submitBtn.style.background='var(--success)';submitBtn.innerHTML='<span id="btn-appr-txt">✅ '+(lang==='bm'?'Lulus Permit':'Approve Permit')+'</span>'}
+  } else if(action==='onhold'){
+    if(remark)remark.placeholder=lang==='bm'?'Nyatakan sebab permit ditangguhkan dan apa yang perlu dilakukan sebelum boleh diteruskan...':'State reason for hold and what must be done before proceeding...';
+    if(req)req.style.display='inline';
+    if(warn){warn.style.display='flex';warn.textContent=lang==='bm'?'⏸ Kontraktor akan dimaklumkan bahawa permit mereka sedang ditangguhkan.':'⏸ Contractor will be notified their permit is on hold.';warn.classList.add('show')}
+    if(submitBtn){submitBtn.disabled=false;submitBtn.style.background='var(--warning)';submitBtn.innerHTML='<span id="btn-appr-txt">⏸ On Hold</span>'}
+  } else if(action==='reject'){
+    if(remark)remark.placeholder=lang==='bm'?'Nyatakan sebab permit ditolak. Kontraktor perlu memahami kenapa dan apa langkah seterusnya...':'State reason for rejection. Contractor needs to understand why and next steps...';
+    if(req)req.style.display='inline';
+    if(warn){warn.style.display='flex';warn.textContent=lang==='bm'?'❌ Kontraktor akan dimaklumkan bahawa permit mereka telah ditolak.':'❌ Contractor will be notified their permit has been rejected.';warn.classList.add('show')}
+    if(submitBtn){submitBtn.disabled=false;submitBtn.style.background='var(--danger)';submitBtn.innerHTML='<span id="btn-appr-txt">❌ '+(lang==='bm'?'Tolak Permit':'Reject Permit')+'</span>'}
+  }
+};
 
-  let html='<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">';
-  html+='<div style="font-size:14px;font-weight:600">'+(lang==='bm'?'Rondaan':'Round')+' '+(roundIdx+1)+' — '+INSP_STAGE_LABELS[lang].during+'</div>';
-  html+='<span class="status s-approved">'+(lang==='bm'?'Dah Submitted':'Submitted')+'</span>';
-  html+='</div>';
+window.submitApproval=async function(){
+  const id=currentApprId;
+  const action=window._apprAction;
+  const remark=document.getElementById('appr-remark').value.trim();
+  const p=allPermits.find(x=>x.id===id);
+  if(!p||!action)return;
+  const err=document.getElementById('appr-err');
+  err.classList.remove('show');
+  // Remarks required for onhold and reject
+  if((action==='onhold'||action==='reject')&&!remark){
+    err.textContent=lang==='bm'?'Sila masukkan sebab / remarks untuk tindakan ini.':'Please enter remarks for this action.';
+    err.classList.add('show');return;
+  }
+  const btn=document.getElementById('btn-appr-submit');
+  btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  // Build timeline entry
+  const actionLabels={
+    approve:{bm:`Diluluskan oleh ${rl(currentData.role)}`,en:`Approved by ${rl(currentData.role)}`},
+    onhold:{bm:`Ditangguhkan oleh ${rl(currentData.role)}`,en:`Put On Hold by ${rl(currentData.role)}`},
+    reject:{bm:`Ditolak oleh ${rl(currentData.role)}`,en:`Rejected by ${rl(currentData.role)}`},
+  };
+  const tl={
+    type:action==='approve'?'approved':action==='onhold'?'onhold':'rejected',
+    label:actionLabels[action][lang]||actionLabels[action].bm,
+    by:currentData.name,
+    role:currentData.role,
+    at:new Date().toISOString(),
+    remark:remark||''
+  };
+  // Determine next status
+  let newStatus;
+  if(action==='reject') newStatus='rejected';
+  else if(action==='onhold') newStatus='onhold';
+  else {
+    if(p.status==='pending_hod') newStatus='pending_hse';
+    else if(p.status==='pending_op') newStatus='pending_hse';
+    else if(p.status==='pending_hse') newStatus='approved';
+    else newStatus='approved';
+  }
+  try{
+    await updateDoc(doc(db,'permits',id),{
+      status:newStatus,
+      timeline:[...(p.timeline||[]),tl],
+      ...(newStatus==='approved'?{approvedAt:new Date().toISOString()}:{}),
+      ...(newStatus==='rejected'?{rejectedAt:new Date().toISOString()}:{}),
+      ...(newStatus==='onhold'?{onholdAt:new Date().toISOString()}:{}),
+    });
+    // Notify contractor
+    const notifMap={
+      approve:{title:`✅ Permit ${lang==='bm'?'Diluluskan':'Approved'}`,msg:`${p.permitNo} ${lang==='bm'?'telah diluluskan oleh':'approved by'} ${rl(currentData.role)}`},
+      onhold:{title:`⏸ Permit On Hold`,msg:`${p.permitNo} ${lang==='bm'?'ditangguhkan oleh':'put on hold by'} ${rl(currentData.role)}. ${remark?lang==='bm'?'Catatan: ':'Note: ':''}${remark||''}`},
+      reject:{title:`❌ Permit ${lang==='bm'?'Ditolak':'Rejected'}`,msg:`${p.permitNo} ${lang==='bm'?'ditolak oleh':'rejected by'} ${rl(currentData.role)}. ${remark?lang==='bm'?'Sebab: ':'Reason: ':''}${remark||''}`},
+    };
+    await sendNotif(p.submittedBy, notifMap[action].title, notifMap[action].msg);
+    // If HOD approved → notify HSE
+    if(action==='approve'&&newStatus==='pending_hse'){
+      try{
+        const hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');
+        await Promise.all(hses.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Menunggu Kelulusan HSE':'Permit Awaiting HSE Approval'}`,`${p.permitNo} — ${p.projectName||p.vesselName||''}`)));
+      }catch(ne){}
+    }
+    closeModal('modal-approval');
+    closeModal('modal-detail');
+    const toastMap={approve:lang==='bm'?'✅ Permit telah diluluskan.':'✅ Permit approved.',onhold:lang==='bm'?'⏸ Permit ditangguhkan.':'⏸ Permit on hold.',reject:lang==='bm'?'❌ Permit telah ditolak.':'❌ Permit rejected.'};
+    showToast(toastMap[action],action==='approve'?'success':action==='onhold'?'warn':'error');
+  }catch(e){
+    console.error(e);
+    err.textContent='Ralat. Cuba lagi.';err.classList.add('show');
+    btn.disabled=false;
+    btn.innerHTML=`<span id="btn-appr-txt">${action==='approve'?'✅ '+(lang==='bm'?'Lulus':'Approve'):action==='onhold'?'⏸ On Hold':'❌ '+(lang==='bm'?'Tolak':'Reject')}</span>`;
+  }
+};
 
-  if(rd.overallRemark){
-    html+='<div style="background:rgba(37,99,235,.08);border-left:3px solid var(--accent);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--text2)">📝 '+rd.overallRemark+'</div>';
+
+window.closePermit=async function(id){const p=allPermits.find(x=>x.id===id);if(!p)return;const tl={type:'closed',label:lang==='bm'?'Permit ditutup':'Permit closed',by:currentData.name,at:new Date().toISOString(),remark:''};await updateDoc(doc(db,'permits',id),{status:'closed',closedAt:new Date().toISOString(),timeline:[...(p.timeline||[]),tl]});closeModal('modal-detail');showToast(lang==='bm'?'Permit telah ditutup.':'Permit has been closed.','info')};
+
+window.openPermitForm=function(){draft={track:'A',activityTypes:[]};document.getElementById('pf-title').textContent=lang==='bm'?'Submit Permit Baru':'Submit New Permit';renderFormStep(1);openModal('modal-permit-form')};
+window.openActivityForm=function(track){draft={track,activityTypes:[]};document.getElementById('pf-title').textContent=track==='B'?(lang==='bm'?'Daftar Aktiviti Rutin':'Register Routine Activity'):(lang==='bm'?'Daftar Aktiviti Non-Rutin':'Register Non-Routine Activity');renderFormStep(1);openModal('modal-permit-form')};
+
+function renderFormStep(step){formStep=step;['stp1','stp2','stp3'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.className='step'+(i+1<step?' done':i+1===step?' active':'')});const tr=draft.track||'A',isS=tr==='B'||tr==='C';if(step===1){document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Maklumat Asas':'Basic Information'}</p><div class="form-group"><label class="form-label">${isS?(lang==='bm'?'Nama Kapal':'Vessel Name'):(lang==='bm'?'Nama Projek':'Project Name')} <span class="req">*</span></label><input class="form-input" id="pf-name" placeholder="${isS?'MV Ocean Star':'Nama projek...'}" value="${draft.projectName||draft.vesselName||''}"></div>${isS?`<div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Jenis Kargo':'Cargo Type'}</label><input class="form-input" id="pf-cargo" placeholder="Clinker, Coal..." value="${draft.cargo||''}"></div><div class="form-group"><label class="form-label">Berth</label><select class="form-input" id="pf-berth"><option value="">--</option>${LOCS.filter(l=>l.startsWith('Berth')).map(l=>`<option${draft.berth===l?' selected':''}>${l}</option>`).join('')}</select></div></div>`:''}<div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Lokasi':'Location'} <span class="req">*</span></label><select class="form-input" id="pf-loc"><option value="">--</option>${LOCS.map(l=>`<option${draft.location===l?' selected':''}>${l}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">${lang==='bm'?'Bil. Pekerja':'No. Workers'}</label><input class="form-input" type="number" id="pf-workers" min="1" placeholder="10" value="${draft.workers||''}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Mula':'Start Date'} <span class="req">*</span></label><input class="form-input" type="date" id="pf-start" value="${draft.startDate||''}"></div><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Tamat':'End Date'}</label><input class="form-input" type="date" id="pf-end" value="${draft.endDate||''}"></div></div><div class="form-group"><label class="form-label">PIC <span class="req">*</span></label><input class="form-input" id="pf-pic" placeholder="${lang==='bm'?'Nama pegawai':'Officer name'}" value="${draft.pic||''}"></div>`;document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →'}
+if(step===2){const tt=Object.entries(PTYPES).filter(([,v])=>v.track===tr);document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Jenis Aktiviti':'Activity Types'} — Track ${tr}</p><div class="check-grid">${tt.map(([k,v])=>`<div class="check-item${(draft.activityTypes||[]).includes(k)?' selected':''}" onclick="toggleAct('${k}',this)"><div class="check-icon">${(draft.activityTypes||[]).includes(k)?'✓':''}</div><span>${lang==='bm'?v.bm:v.en}</span>${v.hr?'<span style="font-size:9px;color:var(--danger);margin-left:auto">⚠</span>':''}</div>`).join('')}</div>`;document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →'}
+if(step===3){
+  let s3html='<p style="font-size:12px;color:var(--text3);margin-bottom:14px">'+(lang==='bm'?'Dokumen & Maklumat Tambahan':'Documents & Additional Info')+'</p>'
+    +'<div class="form-group"><label class="form-label">'+(lang==='bm'?'Penerangan Kerja':'Work Description')+'</label><textarea class="form-input" id="pf-desc">'+(draft.description||'')+'</textarea></div>';
+  if(tr!=='B'){
+    const docReq=tr==='C'?'<span class="req">*</span>':'';
+    s3html+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Link Dokumen (Google Drive)':'Document Link (Google Drive)')+' '+docReq+'</label>'
+      +'<input class="form-input" id="pf-doc" type="url" placeholder="https://drive.google.com/..." value="'+(draft.docLink||'')+'"><div style="font-size:11px;color:var(--text3);margin-top:4px">'
+      +(lang==='bm'?'Submit HIRARC & Method Statement via emel ke HSE/Operasi, paste link di sini.':'Submit HIRARC & Method Statement via email to HSE/Operations, paste link here.')+'</div></div>';
   }
 
-  html+='<div style="font-size:12px;color:var(--text3);margin-bottom:10px">'+rd.submittedBy+' · '+(rd.submittedAt?new Date(rd.submittedAt).toLocaleString():'')+'</div>';
-  html+='<div style="display:flex;flex-direction:column;gap:8px">';
+  // Track A: Add self-declaration sections
+  if(tr==='A'){
+    s3html+=`
+    <div style="margin-top:16px">
+      <div style="font-size:12px;font-weight:600;color:var(--text);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+        📋 ${lang==='bm'?'Section 2 — Work Preparation Checklist (Self-Declaration)':'Section 2 — Work Preparation Checklist (Self-Declaration)'}
+      </div>
 
-  items.forEach(function(item){
-    const res=(rd.items&&rd.items[item.id])||{};
-    const colors={ok:'#34d399',nc:'#f87171',attention:'#fbbf24',na:'#64748b','':''};
-    const col=colors[res.result||'']||'var(--text3)';
-    const bg=res.result==='nc'?'rgba(239,68,68,.06)':res.result==='attention'?'rgba(245,158,11,.06)':res.result==='ok'?'rgba(16,185,129,.04)':'var(--bg2)';
-    html+='<div style="background:'+bg+';border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">';
-    html+='<div style="flex:1"><div style="font-size:12px;color:var(--text)">'+(lang==='bm'?item.itemBM:item.item)+'</div>';
-    if(res.remark) html+='<div style="font-size:11px;color:var(--warning);margin-top:4px;font-style:italic">⚠ '+res.remark+'</div>';
-    html+='</div>';
-    if(res.result) html+='<span style="color:'+col+';font-size:11px;font-weight:600;font-family:var(--mono);white-space:nowrap">'+res.result.toUpperCase()+'</span>';
-    html+='</div>';
+      <div style="margin-bottom:14px">
+        <div class="form-label" style="margin-bottom:8px">${lang==='bm'?'Jenis Aktiviti (* perlu sijil berkaitan)':'Activity Includes (* to include relevant certificates)'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          ${CONTRACTOR_DECL.activityTypes.map(a=>`
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;color:var(--text2)">
+              <input type="checkbox" name="act_type" value="${a}" style="width:14px;height:14px;accent-color:var(--accent)"> ${a}
+            </label>`).join('')}
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <div class="form-label" style="margin-bottom:8px">${lang==='bm'?'Hazard Identification':'Hazard Identification'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
+          ${CONTRACTOR_DECL.hazards.map(h=>`
+            <label style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:11px;color:var(--text2)">
+              <input type="checkbox" name="hazard" value="${h}" style="width:13px;height:13px;accent-color:var(--accent)"> ${h}
+            </label>`).join('')}
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <div class="form-label" style="margin-bottom:8px">${lang==='bm'?'PPE Diperlukan':'PPE Required'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          ${CONTRACTOR_DECL.ppe.map(p=>`
+            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;color:var(--text2)">
+              <input type="checkbox" name="ppe" value="${p}" style="width:14px;height:14px;accent-color:var(--accent)"> ${p}
+            </label>`).join('')}
+        </div>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <div class="form-label" style="margin-bottom:8px">${lang==='bm'?'Safety Control Checklist':'Safety Control Checklist'}</div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+          <div style="display:grid;grid-template-columns:1fr 60px 60px 60px;padding:8px 12px;background:var(--bg3);font-size:11px;font-weight:600;color:var(--text3);font-family:var(--mono)">
+            <div>${lang==='bm'?'Item':'Item'}</div><div style="text-align:center">Yes</div><div style="text-align:center">No</div><div style="text-align:center">N/A</div>
+          </div>
+          ${CONTRACTOR_DECL.safetyChecklist.map(item=>`
+            <div style="display:grid;grid-template-columns:1fr 60px 60px 60px;padding:9px 12px;border-top:1px solid var(--border);align-items:center">
+              <div style="font-size:12px;color:var(--text2)">${lang==='bm'?item.itemBM:item.item}</div>
+              <div style="text-align:center"><input type="radio" name="${item.id}" value="yes" style="accent-color:var(--success);width:15px;height:15px"></div>
+              <div style="text-align:center"><input type="radio" name="${item.id}" value="no" style="accent-color:var(--danger);width:15px;height:15px"></div>
+              <div style="text-align:center"><input type="radio" name="${item.id}" value="na" style="accent-color:var(--text3);width:15px;height:15px"></div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  s3html+=`<div class="alert alert-warn show" style="margin-top:12px">${tr==='A'?(lang==='bm'?'Track A: Permit akan dihantar ke HOD untuk 1st approval, kemudian HSE untuk 2nd approval. Pastikan dokumen (HIRARC, MS) telah dihantar via emel.':'Track A: Permit will be sent to HOD for 1st approval, then HSE for 2nd approval. Ensure documents (HIRARC, MS) have been sent via email.'):tr==='B'?(lang==='bm'?'Track B: Notifikasi HSE sahaja. Tiada kelulusan diperlukan.':'Track B: HSE notification only. No approval required.'):(lang==='bm'?'Track C: Permit akan dihantar ke Operasi kemudian HSE untuk kelulusan.':'Track C: Permit sent to Operations then HSE for approval.')}</div>`;
+
+  document.getElementById('pf-content').innerHTML=s3html;
+  document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Hantar':'Submit'}}
+
+window.toggleAct=function(k,el){if(!draft.activityTypes)draft.activityTypes=[];const i=draft.activityTypes.indexOf(k);if(i>-1)draft.activityTypes.splice(i,1);else draft.activityTypes.push(k);el.classList.toggle('selected',draft.activityTypes.includes(k));el.querySelector('.check-icon').textContent=draft.activityTypes.includes(k)?'✓':''};
+
+window.submitPermitForm=async function(){if(formStep===1){const name=document.getElementById('pf-name')?.value.trim(),loc=document.getElementById('pf-loc')?.value,start=document.getElementById('pf-start')?.value,pic=document.getElementById('pf-pic')?.value.trim();if(!name)return showToast(lang==='bm'?'Sila masukkan nama.':'Please enter name.','error');if(!loc)return showToast(lang==='bm'?'Sila pilih lokasi.':'Please select location.','error');if(!start)return showToast(lang==='bm'?'Sila pilih tarikh mula.':'Please select start date.','error');if(!pic)return showToast(lang==='bm'?'Sila masukkan PIC.':'Please enter PIC.','error');const iS=draft.track==='B'||draft.track==='C';if(iS)draft.vesselName=name;else draft.projectName=name;draft.location=loc;draft.startDate=start;draft.endDate=document.getElementById('pf-end')?.value||'';draft.workers=document.getElementById('pf-workers')?.value||'';draft.pic=pic;if(iS){draft.cargo=document.getElementById('pf-cargo')?.value||'';draft.berth=document.getElementById('pf-berth')?.value||''}renderFormStep(2)}else if(formStep===2){if(!draft.activityTypes?.length)return showToast(lang==='bm'?'Pilih sekurang-kurangnya satu aktiviti.':'Select at least one activity.','error');renderFormStep(3)}else{draft.description=document.getElementById('pf-desc')?.value.trim()||'';draft.docLink=document.getElementById('pf-doc')?.value.trim()||'';if(draft.track==='C'&&!draft.docLink)return showToast(lang==='bm'?'Track C memerlukan link dokumen.':'Track C requires document link.','error');
+// Collect self-declaration for Track A
+if(draft.track==='A'){
+  draft.selfDecl={
+    activityTypes:[...document.querySelectorAll('input[name="act_type"]:checked')].map(e=>e.value),
+    hazards:[...document.querySelectorAll('input[name="hazard"]:checked')].map(e=>e.value),
+    ppe:[...document.querySelectorAll('input[name="ppe"]:checked')].map(e=>e.value),
+    safetyChecklist:{}
+  };
+  CONTRACTOR_DECL.safetyChecklist.forEach(item=>{
+    const checked=document.querySelector(`input[name="${item.id}"]:checked`);
+    draft.selfDecl.safetyChecklist[item.id]=checked?checked.value:'';
   });
+}const btn=document.getElementById('btn-pf-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{const pn=genPermitNo(draft.track),is=draft.track==='A'?'pending_hod':draft.track==='B'?'approved':'pending_op',tl=[{type:'submitted',label:lang==='bm'?'Permit dihantar':'Permit submitted',by:currentData.name,at:new Date().toISOString(),remark:''}];let ea=null;if(draft.track==='A'){const tps=draft.activityTypes||[];let me=null;tps.forEach(at=>{const p=PTYPES[at];if(p?.expiry_hours){const ex=new Date(draft.startDate);ex.setHours(ex.getHours()+p.expiry_hours);if(!me||ex<me)me=ex}});if(me)ea=me.toISOString();else if(draft.endDate){const ed=new Date(draft.endDate);ed.setDate(ed.getDate()+30);ea=ed.toISOString()}}const pd={permitNo:pn,track:draft.track,status:is,...draft,submittedBy:currentData.uid,submittedByName:currentData.name,company:currentData.company||'',createdAt:new Date().toISOString(),timeline:tl,expiryAt:ea};await addDoc(collection(db,'permits'),pd);if(draft.track==='A'){const hods=allUsers.filter(u=>u.role==='hod'&&u.status==='active'),hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all([...hods.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru – Kelulusan HOD':'New Permit – HOD Approval'}`,`${pn} – ${pd.projectName||''}`)),...hses.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru Dihantar':'New Permit Submitted'}`,`${pn} – ${pd.projectName||''}`))])}else if(draft.track==='B'){const hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all(hses.map(u=>sendNotif(u.uid,`🚢 ${lang==='bm'?'Aktiviti Rutin Didaftarkan':'Routine Activity Registered'}`,`${pn} – ${pd.vesselName||''} @ ${pd.location||''}`)))}closeModal('modal-permit-form');showToast(draft.track==='B'?(lang==='bm'?'Aktiviti berjaya didaftarkan.':'Activity registered successfully.'):(lang==='bm'?'Permit berjaya dihantar.':'Permit submitted successfully.'),'success')}catch(e){console.error(e);showToast('Ralat. Cuba lagi.','error')}finally{btn.disabled=false;btn.innerHTML=`<span id="btn-pf-txt">${lang==='bm'?'Hantar':'Submit'}</span>`}}};
 
+function genPermitNo(t){const n=new Date(),y=n.getFullYear().toString().slice(-2),m=String(n.getMonth()+1).padStart(2,'0'),d=String(n.getDate()).padStart(2,'0'),r=String(Math.floor(Math.random()*9000)+1000);return `KP/${t}/${y}${m}${d}/${r}`}
+
+async function renderUsersPage(){
+  try{const snap=await getDocs(collection(db,'users'));allUsers=snap.docs.map(d=>d.data())}catch(e){console.error(e)}
+  updateBadges();
+  const pending=allUsers.filter(u=>u.status==='pending');
+  const active=allUsers.filter(u=>u.status==='active');
+  let html='';
+  html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+    <button class="btn-sm btn-info" onclick="openCreateUser()" style="height:34px;padding:0 16px;font-size:12px;border-radius:8px">+ ${lang==='bm'?'Tambah Pengguna Baru':'Add New User'}</button>
+  </div>`;
+  html+=`<div class="sec-title">${lang==='bm'?'Permohonan Pending':'Pending Applications'} (${pending.length})</div>`;
+  html+='<div class="data-table" style="margin-bottom:16px">';
+  if(pending.length){
+    html+=`<div class="table-head" style="grid-template-columns:1fr 130px 140px 120px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>${lang==='bm'?'Tindakan':'Actions'}</div></div>`;
+    pending.forEach(u=>{html+=`<div class="table-row" style="grid-template-columns:1fr 130px 140px 120px" id="ur-${u.uid}"><div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div style="display:flex;gap:6px"><button class="btn-sm btn-approve" onclick="approveUser('${u.uid}','${u.name}')">${lang==='bm'?'Lulus':'Approve'}</button><button class="btn-sm btn-reject" onclick="rejectUser('${u.uid}','${u.name}')">${lang==='bm'?'Tolak':'Reject'}</button></div></div>`;});
+  }else{html+=`<div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permohonan':'No pending applications'}</div>`;}
   html+='</div>';
-  content.innerHTML=html;
+  html+=`<div class="sec-title">${lang==='bm'?'Pengguna Aktif':'Active Users'} (${active.length})</div>`;
+  html+='<div class="data-table">';
+  html+=`<div class="table-head" style="grid-template-columns:1fr 120px 130px 110px"><div>Nama</div><div>Role</div><div>${lang==='bm'?'Jabatan':'Dept'}</div><div>${lang==='bm'?'Tindakan':'Actions'}</div></div>`;
+  active.forEach(u=>{
+    const isSelf=u.uid===currentData?.uid;
+    html+=`<div class="table-row" style="grid-template-columns:1fr 120px 130px 110px">
+      <div><div style="font-weight:500">${u.name}${u.mustChangePass?'<span style="font-size:9px;color:var(--warning);margin-left:6px;background:rgba(245,158,11,.15);padding:1px 5px;border-radius:4px">TUKAR PASS</span>':''}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div>
+      <div><span class="rbadge ${u.role}">${rl(u.role)}</span></div>
+      <div style="font-size:12px;color:var(--text2)">${u.dept||u.company||'—'}</div>
+      <div style="display:flex;gap:5px">${isSelf?'<span style="font-size:11px;color:var(--text3)">(anda)</span>':`<button class="btn-sm btn-warn" onclick="resetUserPassword('${u.uid}','${u.email}','${u.name}')">🔑</button><button class="btn-sm btn-reject" onclick="suspendUser('${u.uid}','${u.name}')">⊘</button>`}</div>
+    </div>`;
+  });
+  html+='</div>';
+
+  // Suspended users section
+  const suspended=allUsers.filter(u=>u.status==='suspended');
+  if(suspended.length){
+    html+=`<div class="sec-title" style="color:var(--danger)">${lang==='bm'?'Akaun Digantung':'Suspended Accounts'} (${suspended.length})</div>`;
+    html+='<div class="data-table">';
+    html+=`<div class="table-head" style="grid-template-columns:1fr 120px 130px 110px"><div>Nama</div><div>Role</div><div>${lang==='bm'?'Jabatan':'Dept'}</div><div>${lang==='bm'?'Tindakan':'Actions'}</div></div>`;
+    suspended.forEach(u=>{
+      html+=`<div class="table-row" style="grid-template-columns:1fr 120px 130px 110px;opacity:.7">
+        <div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div>
+        <div><span class="rbadge ${u.role}">${rl(u.role)}</span></div>
+        <div style="font-size:12px;color:var(--text2)">${u.dept||u.company||'—'}</div>
+        <div><button class="btn-sm btn-approve" onclick="reactivateUser('${u.uid}','${u.name}')">${lang==='bm'?'Aktifkan Semula':'Reactivate'}</button></div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+
+  document.getElementById('users-body').innerHTML=html;
+}
+
+
+window.approveUser=async function(uid,name){await updateDoc(doc(db,'users',uid),{status:'active'});await sendNotif(uid,lang==='bm'?'✓ Akaun Diluluskan':'✓ Account Approved',lang==='bm'?'Akaun anda telah diluluskan. Sila log masuk ke KP Work Registry.':'Your account has been approved. Please log in to KP Work Registry.');document.getElementById(`ur-${uid}`)?.remove();showToast(`${name} ${lang==='bm'?'telah diluluskan':'approved'}`,'success');renderUsersPage()};
+window.rejectUser=async function(uid,name){await updateDoc(doc(db,'users',uid),{status:'rejected'});document.getElementById(`ur-${uid}`)?.remove();showToast(`${name} ${lang==='bm'?'telah ditolak':'rejected'}`,'error');renderUsersPage()};
+
+window.openModal=function(id){document.getElementById(id)?.classList.add('show')};
+window.closeModal=function(id){document.getElementById(id)?.classList.remove('show')};
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show')}));
+
+function showToast(msg,type='info'){const el=document.getElementById('toast');const ic={success:'✓',error:'✕',info:'ℹ'};el.innerHTML=`<span>${ic[type]||'ℹ'}</span><span>${msg}</span>`;el.className=`toast ${type} show`;setTimeout(()=>el.classList.remove('show'),3500)}
+
+window.createAdmin=async function(email,password,name){try{const cred=await createUserWithEmailAndPassword(auth,email,password);await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name:name||'Admin KP',email,role:'admin',status:'active',company:'Kuantan Port Sdn Bhd',phone:'',dept:'',createdAt:new Date().toISOString()});console.log('Admin created:',cred.user.uid);showToast('Admin account created!','success')}catch(e){console.error(e)}};
+
+window.openCreateUser=function(){
+  ['cu-name','cu-phone','cu-email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  const cp=document.getElementById('cu-pass');if(cp)cp.value='KP@2026';
+  const cc=document.getElementById('cu-company');if(cc)cc.value='Kuantan Port Sdn Bhd';
+  const cr=document.getElementById('cu-role');if(cr)cr.value='';
+  const cd=document.getElementById('cu-dept');if(cd)cd.value='';
+  const err=document.getElementById('cu-err'),ok=document.getElementById('cu-ok');
+  if(err){err.classList.remove('show');err.textContent=''}
+  if(ok){ok.classList.remove('show');ok.textContent=''}
+  openModal('modal-create-user');
+};
+
+window.submitCreateUser=async function(){
+  const name=document.getElementById('cu-name').value.trim(),phone=document.getElementById('cu-phone').value.trim(),email=document.getElementById('cu-email').value.trim(),pass=document.getElementById('cu-pass').value,company=document.getElementById('cu-company').value.trim(),role=document.getElementById('cu-role').value,dept=document.getElementById('cu-dept').value;
+  const err=document.getElementById('cu-err'),ok=document.getElementById('cu-ok');
+  err.classList.remove('show');ok.classList.remove('show');
+  if(!name){err.textContent=lang==='bm'?'Sila masukkan nama.':'Please enter name.';err.classList.add('show');return}
+  if(!email||!email.includes('@')){err.textContent=lang==='bm'?'Sila masukkan emel yang sah.':'Please enter valid email.';err.classList.add('show');return}
+  if(pass.length<6){err.textContent='Password minimum 6 aksara.';err.classList.add('show');return}
+  if(!role){err.textContent=lang==='bm'?'Sila pilih role.':'Please select role.';err.classList.add('show');return}
+  const btn=document.getElementById('btn-cu-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  try{
+    const cred=await createUserWithEmailAndPassword(auth2,email,pass);
+    await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name,phone,email,role,company:company||'Kuantan Port Sdn Bhd',dept:dept||'',status:'active',mustChangePass:true,lastPass:pass,createdAt:new Date().toISOString(),createdBy:currentData.uid,createdByName:currentData.name});
+    await signOut(auth2);
+    ok.textContent=lang==='bm'?`✓ Akaun ${name} berjaya dicipta. Credentials: ${email} / ${pass}`:`✓ Account created for ${name}. Credentials: ${email} / ${pass}`;
+    ok.classList.add('show');
+    ['cu-name','cu-phone','cu-email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+    document.getElementById('cu-role').value='';document.getElementById('cu-dept').value='';
+    renderUsersPage();
+  }catch(e){
+    let msg=lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.';
+    if(e.code==='auth/email-already-in-use')msg=lang==='bm'?'Emel ini sudah berdaftar.':'Email already registered.';
+    err.textContent=msg;err.classList.add('show');
+  }finally{btn.disabled=false;btn.innerHTML=`<span id="btn-cu-txt">${lang==='bm'?'Cipta Akaun':'Create Account'}</span>`}
+};
+
+window.openChangePass=function(){
+  ['cp-old','cp-new','cp-confirm'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
+  const err=document.getElementById('cp-err'),ok=document.getElementById('cp-ok');
+  if(err){err.classList.remove('show');err.textContent=''}
+  if(ok){ok.classList.remove('show');ok.textContent=''}
+  openModal('modal-change-pass');
+};
+
+window.submitChangePass=async function(){
+  const oldP=document.getElementById('cp-old').value,newP=document.getElementById('cp-new').value,conf=document.getElementById('cp-confirm').value;
+  const err=document.getElementById('cp-err'),ok=document.getElementById('cp-ok');
+  err.classList.remove('show');ok.classList.remove('show');
+  if(!oldP){err.textContent=lang==='bm'?'Masukkan kata laluan semasa.':'Enter current password.';err.classList.add('show');return}
+  if(newP.length<6){err.textContent=lang==='bm'?'Kata laluan baru minimum 6 aksara.':'Min 6 characters.';err.classList.add('show');return}
+  if(newP!==conf){err.textContent=lang==='bm'?'Kata laluan baru tidak sepadan.':'Passwords do not match.';err.classList.add('show');return}
+  const btn=document.getElementById('btn-cp-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  try{
+    const cred=EmailAuthProvider.credential(currentUser.email,oldP);
+    await reauthenticateWithCredential(currentUser,cred);
+    await updatePassword(currentUser,newP);
+    await updateDoc(doc(db,'users',currentUser.uid),{mustChangePass:false,lastPass:''});
+    ok.textContent=lang==='bm'?'✓ Kata laluan berjaya ditukar.':'✓ Password changed successfully.';
+    ok.classList.add('show');
+    setTimeout(()=>closeModal('modal-change-pass'),2000);
+  }catch(e){
+    let msg=lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.';
+    if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')msg=lang==='bm'?'Kata laluan semasa tidak betul.':'Current password incorrect.';
+    err.textContent=msg;err.classList.add('show');
+  }finally{btn.disabled=false;btn.innerHTML=`<span id="btn-cp-txt">${lang==='bm'?'Tukar Password':'Change Password'}</span>`}
+};
+
+window.resetUserPassword=async function(uid,email,name){
+  const defPass='Abc@1234';
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML=`
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">🔑 Reset Password</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">${name} &nbsp;·&nbsp; <span style="font-family:var(--mono);font-size:11px">${email}</span></div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;text-align:center">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">${lang==='bm'?'Password baru':'New password'}</div>
+        <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--accent2);letter-spacing:.15em">${defPass}</div>
+      </div>
+      <div id="reset-status" style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:14px;min-height:16px"></div>
+      <div style="display:flex;gap:8px">
+        <button id="btn-rc" style="flex:1;height:38px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">${lang==='bm'?'Batal':'Cancel'}</button>
+        <button id="btn-rk" style="flex:2;height:38px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">✓ Reset</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('btn-rc').onclick=()=>overlay.remove();
+  document.getElementById('btn-rk').onclick=async()=>{
+    const btn=document.getElementById('btn-rk');
+    const status=document.getElementById('reset-status');
+    btn.disabled=true;btn.textContent=lang==='bm'?'Memproses...':'Processing...';
+    status.textContent=lang==='bm'?'Mencuba reset password...':'Attempting reset...';
+    // Try to get stored password from Firestore
+    let success=false;
+    try{
+      const usnap=await getDoc(doc(db,'users',uid));
+      const udata=usnap.data();
+      const storedPass=udata?.lastPass||null;
+      if(storedPass){
+        // Use secondary app to sign in with stored pass then change to defPass
+        status.textContent=lang==='bm'?'Menukar password...':'Changing password...';
+        const cred2=await signInWithEmailAndPassword(auth2,email,storedPass);
+        await updatePassword(cred2.user,defPass);
+        await signOut(auth2);
+        // Update stored pass and flag
+        await updateDoc(doc(db,'users',uid),{lastPass:defPass,mustChangePass:true,resetBy:currentData.name,resetAt:new Date().toISOString()});
+        success=true;
+        status.style.color='#34d399';
+        status.textContent='✓ '+(lang==='bm'?'Password berjaya ditukar kepada Abc@1234':'Password successfully changed to Abc@1234');
+        btn.style.background='var(--success)';btn.textContent='✓ Done';
+        setTimeout(()=>{overlay.remove();showToast(lang==='bm'?`✓ Password ${name} berjaya direset kepada "${defPass}"`:`✓ ${name}'s password reset to "${defPass}"`,'success');renderUsersPage()},1500);
+      } else {
+        throw new Error('no_stored_pass');
+      }
+    }catch(e){
+      console.log('Reset attempt:',e.code||e.message);
+      // Can't reset Firebase Auth password — show manual instruction
+      status.style.color='var(--warning)';
+      status.textContent='';
+      overlay.querySelector('div > div:last-child').insertAdjacentHTML('beforebegin',`
+        <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#fbbf24">
+          ⚠ ${lang==='bm'
+            ?'Password tidak dapat ditukar secara automatik. Sila maklumkan kepada <strong>'+name+'</strong> untuk log masuk dengan password asal mereka, kemudian guna butang 🔒 untuk tukar kepada <strong>'+defPass+'</strong>.'
+            :'Password cannot be changed automatically. Please inform <strong>'+name+'</strong> to login with their current password, then use the 🔒 button to change it to <strong>'+defPass+'</strong>.'}
+          <br><br>
+          ${lang==='bm'?'Atau, Admin boleh <strong>delete dan recreate</strong> akaun mereka.':'Or, Admin can <strong>delete and recreate</strong> their account.'}
+        </div>`);
+      await updateDoc(doc(db,'users',uid),{mustChangePass:true,resetBy:currentData.name,resetAt:new Date().toISOString()}).catch(()=>{});
+      btn.disabled=false;btn.style.background='var(--bg3)';btn.style.color='var(--text2)';btn.textContent=lang==='bm'?'Tutup':'Close';
+      btn.onclick=()=>overlay.remove();
+      document.getElementById('btn-rc').style.display='none';
+    }
+  };
+};
+
+window.reactivateUser=async function(uid,name){
+  if(!confirm(lang==='bm'?`Aktifkan semula akaun ${name}?`:`Reactivate account for ${name}?`))return;
+  await updateDoc(doc(db,'users',uid),{status:'active'});
+  showToast(lang==='bm'?`✓ Akaun ${name} telah diaktifkan semula.`:`✓ ${name}'s account reactivated.`,'success');
+  renderUsersPage();
+};
+
+window.suspendUser=async function(uid,name){
+  if(!confirm(lang==='bm'
+    ?`Gantung akaun ${name}?\n\nUser tidak akan dapat log masuk. Akaun boleh diaktifkan semula kemudian.\n(Ini BUKAN delete — rekod PTW kekal selamat.)`
+    :`Suspend ${name}'s account?\n\nUser will not be able to login. Account can be reactivated later.\n(This is NOT delete — PTW records remain safe.)`))return;
+  await updateDoc(doc(db,'users',uid),{status:'suspended'});
+  showToast(lang==='bm'?`Akaun ${name} digantung.`:`${name} suspended.`,'warn');
+  renderUsersPage();
+};
+
+
+// ── INSPECTION CHECKLISTS ──────────────────────────────
+const CHECKLISTS = {
+  trackBC: {
+    pre: [
+      {id:'bc_pre_1', item:'Routine work / Non-routine work / Emergency', itemBM:'Jenis kerja: Rutin / Non-Rutin / Kecemasan', type:'select', options:['Rutin','Non-Rutin','Kecemasan']},
+      {id:'bc_pre_2', item:'Updated risk assessment (HIRARC) available', itemBM:'HIRARC terkini tersedia', type:'yn'},
+      {id:'bc_pre_3', item:'Updated Environmental Aspect Impact (EAI)', itemBM:'EAI (Aspek Impak Alam Sekitar) terkini', type:'yn'},
+      {id:'bc_pre_4', item:'All workers are trained (training records available)', itemBM:'Semua pekerja terlatih (ada rekod latihan)', type:'yn'},
+      {id:'bc_pre_5', item:'Method agreed by client', itemBM:'Kaedah operasi dipersetujui oleh klien', type:'yn'},
+      {id:'bc_pre_6', item:'Reviewed and approved by Operation', itemBM:'Disemak dan diluluskan oleh Operasi', type:'yn'},
+      {id:'bc_pre_7', item:'Equipment in good condition (maintenance records available)', itemBM:'Peralatan dalam keadaan baik (ada rekod penyelenggaraan)', type:'yn'},
+      {id:'bc_pre_8', item:'Lifting equipment verified (optional for breakbulk)', itemBM:'Peralatan angkat disahkan (pilihan untuk breakbulk)', type:'yn', optional:true},
+    ],
+    during: [
+      {id:'bc_dur_1', item:'Access and egress routes — Safe / Unsafe', itemBM:'Laluan masuk dan keluar — Selamat / Tidak selamat', type:'status', options:['Selamat','Tidak Selamat']},
+      {id:'bc_dur_2', item:'Signalman for each gang (cargo hold) — Present / Not visible', itemBM:'Signalman untuk setiap gang (petak kapal) — Ada / Tidak kelihatan', type:'status', options:['Ada','Tidak Kelihatan']},
+      {id:'bc_dur_3', item:'Operation supervisor — Present / Not visible', itemBM:'Penyelia operasi — Ada / Tidak kelihatan', type:'status', options:['Ada','Tidak Kelihatan']},
+      {id:'bc_dur_4', item:'Worker PPE compliance — Compliant / Non-compliant', itemBM:'Pematuhan pekerja kepada pemakaian PPE — Patuh / Tidak patuh', type:'status', options:['Patuh','Tidak Patuh']},
+      {id:'bc_dur_5', item:'Housekeeping — Clean / Needs attention', itemBM:'Kebersihan dan kekemasan kerja — Baik / Perlu perhatian', type:'status', options:['Baik','Perlu Perhatian']},
+      {id:'bc_dur_6', item:'Dust/debris generation (drybulk) — Controlled / Uncontrolled', itemBM:'Operasi menghasilkan debu/habuk (drybulk) — Terkawal / Tidak terkawal', type:'status', options:['Terkawal','Tidak Terkawal'], optional:true, tag:'drybulk'},
+      {id:'bc_dur_7', item:'Lighting (night operations) — Adequate / Inadequate', itemBM:'Pencahayaan (operasi malam) — Mencukupi / Tidak mencukupi', type:'status', options:['Mencukupi','Tidak Mencukupi'], optional:true, tag:'night'},
+    ],
+    post: [
+      {id:'bc_post_1', item:'Work area cleared and cleaned', itemBM:'Kawasan kerja telah dibersihkan', type:'yn'},
+      {id:'bc_post_2', item:'Equipment returned and accounted for', itemBM:'Peralatan dipulangkan dan disahkan', type:'yn'},
+      {id:'bc_post_3', item:'No outstanding hazards or incidents', itemBM:'Tiada bahaya atau insiden yang belum diselesaikan', type:'yn'},
+      {id:'bc_post_4', item:'Cargo secured/stowed properly', itemBM:'Kargo telah disimpan dengan selamat', type:'yn'},
+      {id:'bc_post_5', item:'All workers have left the work area', itemBM:'Semua pekerja telah meninggalkan kawasan kerja', type:'yn'},
+      {id:'bc_post_6', item:'Any incidents/near misses to report?', itemBM:'Ada insiden / hampir celaka untuk dilaporkan?', type:'yn'},
+    ]
+  },
+  trackA: {
+    pre: [
+      {id:'a_pre_1', item:'Work permit approved and displayed at worksite', itemBM:'Permit kerja diluluskan dan dipamerkan di tapak kerja', type:'yn'},
+      {id:'a_pre_2', item:'HIRARC reviewed and available at worksite', itemBM:'HIRARC disemak dan tersedia di tapak kerja', type:'yn'},
+      {id:'a_pre_3', item:'Method Statement available and briefed to workers', itemBM:'Method Statement tersedia dan dibriefing kepada pekerja', type:'yn'},
+      {id:'a_pre_4', item:'All workers attended KP safety induction', itemBM:'Semua pekerja hadir KP safety induction', type:'yn'},
+      {id:'a_pre_5', item:'PPE appropriate and worn correctly', itemBM:'PPE sesuai dan dipakai dengan betul', type:'yn'},
+      {id:'a_pre_6', item:'Equipment in good and safe working condition', itemBM:'Peralatan dalam keadaan baik dan selamat', type:'yn'},
+      {id:'a_pre_7', item:'Work area barricaded / warning signs installed', itemBM:'Kawasan kerja dipagar / tanda amaran dipasang', type:'yn'},
+      {id:'a_pre_8', item:'Emergency procedures communicated to all workers', itemBM:'Prosedur kecemasan dikomunikasikan kepada semua pekerja', type:'yn'},
+      {id:'a_pre_9', item:'Lock Out Tag Out (LOTO) implemented (if applicable)', itemBM:'LOTO dilaksanakan (jika berkenaan)', type:'yn', optional:true},
+      {id:'a_pre_10', item:'Standby person available (confined space / fire watch / lifting)', itemBM:'Standby person tersedia (confined space / fire watch / lifting)', type:'yn', optional:true},
+      {id:'a_pre_11', item:'Hot work: fire extinguisher available and inspected', itemBM:'Hot work: alat pemadam api tersedia dan diperiksa', type:'yn', optional:true, tag:'hot_work'},
+      {id:'a_pre_12', item:'Confined space: gas test completed, result OK', itemBM:'Confined space: ujian gas selesai, hasil OK', type:'yn', optional:true, tag:'confined_space'},
+    ],
+    during: [
+      {id:'a_dur_1', item:'Workers following approved method statement', itemBM:'Pekerja mengikut method statement yang diluluskan', type:'status', options:['Patuh','Tidak Patuh']},
+      {id:'a_dur_2', item:'PPE compliance', itemBM:'Pematuhan PPE', type:'status', options:['Patuh','Tidak Patuh']},
+      {id:'a_dur_3', item:'Work area safety maintained / barricade intact', itemBM:'Keselamatan kawasan kerja terjaga / pagar masih elok', type:'status', options:['Baik','Perlu Perhatian']},
+      {id:'a_dur_4', item:'Housekeeping — clean and tidy', itemBM:'Kebersihan dan kekemasan — bersih dan kemas', type:'status', options:['Baik','Perlu Perhatian']},
+      {id:'a_dur_5', item:'Supervisor / foreman present at worksite', itemBM:'Supervisor / foreman hadir di tapak kerja', type:'status', options:['Ada','Tidak Kelihatan']},
+      {id:'a_dur_6', item:'No unauthorized persons in work area', itemBM:'Tiada orang tidak dibenarkan dalam kawasan kerja', type:'yn'},
+      {id:'a_dur_7', item:'LOTO still in place (if applicable)', itemBM:'LOTO masih di tempatnya (jika berkenaan)', type:'yn', optional:true},
+      {id:'a_dur_8', item:'Fire watch present and alert (hot work)', itemBM:'Fire watch hadir dan berwaspada (hot work)', type:'yn', optional:true, tag:'hot_work'},
+      {id:'a_dur_9', item:'Confined space: continuous gas monitoring', itemBM:'Confined space: pemantauan gas berterusan', type:'yn', optional:true, tag:'confined_space'},
+    ],
+    post: [
+      {id:'a_post_1', item:'Work completed as per approved scope', itemBM:'Kerja selesai mengikut skop yang diluluskan', type:'yn'},
+      {id:'a_post_2', item:'Work area cleaned and restored to original condition', itemBM:'Kawasan kerja dibersihkan dan dipulihkan', type:'yn'},
+      {id:'a_post_3', item:'All tools, equipment and materials removed', itemBM:'Semua alatan, peralatan dan bahan telah dikeluarkan', type:'yn'},
+      {id:'a_post_4', item:'LOTO removed and documented (if applicable)', itemBM:'LOTO telah dilepaskan dan didokumenkan (jika berkenaan)', type:'yn', optional:true},
+      {id:'a_post_5', item:'Any damage to existing facilities noted', itemBM:'Ada kerosakan pada kemudahan sedia ada?', type:'yn'},
+      {id:'a_post_6', item:'Any incidents / near misses to report?', itemBM:'Ada insiden / hampir celaka untuk dilaporkan?', type:'yn'},
+      {id:'a_post_7', item:'Site supervisor sign-off obtained', itemBM:'Pengesahan supervisor tapak telah diperoleh', type:'yn'},
+    ]
+  }
+};
+
+// ── CONTRACTOR SELF-DECLARATION (Track A — submit masa PTW) ──
+const CONTRACTOR_DECL = {
+  activityTypes: [
+    'Working at Height','Confined Space*','Excavation*','Hot Work*','Lifting',
+    'Diving*','Heavy Lifting >40 tonne*','Work with Electrical (LOTO)*','NDT','Other'
+  ],
+  hazards: [
+    'Slip, Trip & Fall','Overhead Load','Danger of Falling','Hit an Object','Poor Lighting',
+    'Excavation Collapse','Heavy Loading','Open Flames or Arcs','Under Water Work','Combustible Materials',
+    'Dust','Radiation','Traffic Flow','Vibration (power tools)','Flammable Materials','Explosive Materials',
+    'Manual Handling','Extremes Temperature','Struck by Moving Objects','Flying/Falling Objects',
+    'Fire','Noise','Electrical','Biological','Heat Stress',
+    'Exposure of Hazardous Chemical','Stored Energy Release (high pressure/mechanical)','Other'
+  ],
+  ppe: [
+    'Safety Helmet','Safety Shoes','Safety Harness','Ear Muff / Plugs',
+    'Safety Glass / Goggle','Face Shield','Protective Overall','Respirator Protection',
+    'Hand Gloves','Life Jacket'
+  ],
+  safetyChecklist: [
+    {id:'sc1', item:'Has all workers attended KP safety induction?', itemBM:'Adakah semua pekerja hadir KP safety induction?'},
+    {id:'sc2', item:'HIRARC has been reviewed and approved? (as attached)', itemBM:'HIRARC telah disemak dan diluluskan? (lampirkan)'},
+    {id:'sc3', item:'EAIA has been reviewed and approved? (as attached)', itemBM:'EAIA telah disemak dan diluluskan? (lampirkan)'},
+    {id:'sc4', item:'Job Method Statement required for permit documentation attached?', itemBM:'Method Statement dilampirkan dalam dokumentasi permit?'},
+    {id:'sc5', item:'Warning signs / Barricade installed?', itemBM:'Tanda amaran / pagar dipasang?'},
+    {id:'sc6', item:'Lock Out Tag Out (LOTO)?', itemBM:'Lock Out Tag Out (LOTO) dilaksanakan?'},
+    {id:'sc7', item:'PMA/PMT attached?', itemBM:'PMA/PMT dilampirkan?'},
+    {id:'sc8', item:'Additional lighting?', itemBM:'Pencahayaan tambahan diperlukan?'},
+    {id:'sc9', item:'Standby person available? (Confined space / Fire watcher / Loading / Unloading)', itemBM:'Standby person tersedia? (Confined space / Fire watcher / Bongkar muat)'},
+    {id:'sc10', item:'Power tools / equipment in good and safe working condition?', itemBM:'Alat kuasa / peralatan dalam keadaan baik dan selamat?'},
+    {id:'sc11', item:'Is it permissible to use: Open flame / welding equipment?', itemBM:'Adakah dibenarkan menggunakan: Nyalaan terbuka / peralatan kimpalan?'},
+    {id:'sc12', item:'Is it permissible to use: Electrical equipment / power tools?', itemBM:'Adakah dibenarkan menggunakan: Peralatan elektrik / alat kuasa?'},
+  ]
+};
+
+const INSP_STAGES = ['pre','during','post'];
+const INSP_STAGE_LABELS = {bm:{pre:'Pre-Work (Sebelum Mula)',during:'During Work (Semasa Kerja)',post:'Post-Work (Selepas Selesai)'},en:{pre:'Pre-Work (Before Start)',during:'During Work (In Progress)',post:'Post-Work (After Completion)'}};
+const INSP_RESULTS = ['ok','attention','nc','na'];
+const INSP_RESULT_LABELS = {ok:{bm:'OK ✓',en:'OK ✓',color:'#34d399',bg:'rgba(16,185,129,.15)'},attention:{bm:'Perlu Perhatian ⚠',en:'Needs Attention ⚠',color:'#fbbf24',bg:'rgba(245,158,11,.15)'},nc:{bm:'Tidak Patuh ✕',en:'Non-Compliant ✕',color:'#f87171',bg:'rgba(239,68,68,.15)'},na:{bm:'N/A',en:'N/A',color:'#64748b',bg:'rgba(148,163,184,.1)'}};
+
+
+// ── INSPECTION FUNCTIONS ──────────────────────────────
+function getChecklistForPermit(p){
+  const track=p.track||'A';
+  return (track==='B'||track==='C')?CHECKLISTS.trackBC:CHECKLISTS.trackA;
+}
+
+function renderInspectionPage(){
+  const r=currentData?.role;
+  document.getElementById('pg-insp-title').textContent=lang==='bm'?'Inspection':'Inspection';
+  document.getElementById('pg-insp-sub').textContent=lang==='bm'?'Klik permit untuk buat inspection':'Click a permit to conduct inspection';
+
+  // Show approved permits for inspection
+  const inspectable=allPermits.filter(p=>['approved','extended'].includes(p.status));
+
+  let html='';
+  if(!inspectable.length){
+    html=`<div class="data-table"><div class="table-empty"><span class="em-icon">📋</span>${lang==='bm'?'Tiada permit aktif untuk inspection':'No active permits for inspection'}</div></div>`;
+  } else {
+    html+=`<div class="data-table">
+      <div class="table-head" style="grid-template-columns:130px 1fr 110px 100px 130px 130px">
+        <div>No. Permit</div><div>${lang==='bm'?'Projek/Kapal':'Project/Vessel'}</div>
+        <div>${lang==='bm'?'Lokasi':'Location'}</div><div>Track</div>
+        <div>Inspector 1</div><div>Inspector 2 (HSE)</div>
+      </div>`;
+    inspectable.forEach(p=>{
+      const insp=p.inspections||{};
+      const i1Done=insp.inspector1?.post?.submittedAt;
+      const i2Done=insp.inspector2?.post?.submittedAt;
+      const i1Pre=insp.inspector1?.pre?.submittedAt;
+      const i2Pre=insp.inspector2?.pre?.submittedAt;
+      const canInspect=(r==='hse'||r==='supervisor'||r==='admin');
+      html+=`<div class="table-row" style="grid-template-columns:130px 1fr 110px 100px 130px 130px" onclick="${canInspect?`openInspection('${p.id}')`:''}" ${!canInspect?'style="cursor:default"':''}>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">${p.permitNo||'—'}</div>
+        <div><div style="font-size:13px;font-weight:500">${p.projectName||p.vesselName||'—'}</div><div style="font-size:11px;color:var(--text3)">${p.submittedByName||''}</div></div>
+        <div style="font-size:12px;color:var(--text2)">${p.location||'—'}</div>
+        <div><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span></div>
+        <div>${renderInspBadge(insp.inspector1,i1Pre,i1Done)}</div>
+        <div>${renderInspBadge(insp.inspector2,i2Pre,i2Done,true)}</div>
+      </div>`;
+    });
+    html+='</div>';
+  }
+  document.getElementById('insp-body').innerHTML=html;
+}
+
+function renderInspBadge(insp,hasPre,hasDone,isHSE=false){
+  if(!insp&&!hasPre) return `<span style="font-size:11px;color:var(--text3)">${lang==='bm'?'Belum mula':'Not started'}</span>`;
+  if(hasDone) return `<span class="status s-approved">${lang==='bm'?'Selesai':'Done'}</span>`;
+  if(hasPre) return `<span class="status s-pending-hse">${lang==='bm'?'Sedang berjalan':'In Progress'}</span>`;
+  return `<span style="font-size:11px;color:var(--text3)">—</span>`;
+}
+
+window.openInspection=function(permitId){
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+  // Determine which inspector slot current user fills
+  const r=currentData?.role;
+  const isHSE=r==='hse';
+  const insp=p.inspections||{};
+
+  // Show inspection modal
+  const overlay=document.createElement('div');
+  overlay.id='insp-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+
+  const inspKey=isHSE?'inspector2':'inspector1';
+  const myInsp=insp[inspKey]||{};
+  const currentStage=myInsp.pre&&!myInsp.during?'during':myInsp.during&&!myInsp.post?'post':myInsp.post?'done':'pre';
+  const cl=getChecklistForPermit(p);
+
+  overlay.innerHTML=`
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:680px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">
+        <div>
+          <div style="font-size:15px;font-weight:600">📋 Inspection — ${p.permitNo||'—'}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${p.projectName||p.vesselName||'—'} &nbsp;·&nbsp; ${p.location||'—'}</div>
+        </div>
+        <button onclick="document.getElementById('insp-overlay').remove()" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">✕</button>
+      </div>
+
+      <!-- Inspector info -->
+      <div style="padding:14px 20px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+        <span class="rbadge ${r}">${rl(r)}</span>
+        <span style="font-size:13px;color:var(--text2)">${currentData.name}</span>
+        <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">${isHSE?'Inspector 2 (HSE)':'Inspector 1 ('+rl(r)+')'}</span>
+      </div>
+
+      <!-- Stage selector -->
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">${lang==='bm'?'Pilih Peringkat Inspection':'Select Inspection Stage'}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px" id="stage-btns">
+          ${INSP_STAGES.map(s=>{
+            const done=myInsp[s]?.submittedAt;
+            const active=s===currentStage&&currentStage!=='done';
+            return `<button onclick="loadStage('${permitId}','${inspKey}','${s}')" style="padding:10px 8px;border-radius:8px;border:2px solid ${done?'var(--success)':active?'var(--accent)':'var(--border)'};background:${done?'rgba(16,185,129,.08)':active?'rgba(37,99,235,.08)':'var(--bg2)'};cursor:pointer;transition:all .2s">
+              <div style="font-size:16px;margin-bottom:3px">${done?'✅':'s'==='pre'?'🔍':'s'==='during'?'👁️':'🏁'}</div>
+              <div style="font-size:11px;font-weight:500;color:${done?'var(--success)':active?'var(--accent2)':'var(--text2)'}">${INSP_STAGE_LABELS[lang][s]}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:2px">${done?(lang==='bm'?'Selesai':'Done'):(lang==='bm'?'Klik untuk buat':'Click to start')}</div>
+            </button>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Checklist content -->
+      <div id="insp-stage-content" style="padding:20px">
+        <div style="text-align:center;color:var(--text3);font-size:13px;padding:20px">
+          ${currentStage==='done'
+            ?`<div style="font-size:32px;margin-bottom:8px">✅</div>${lang==='bm'?'Semua peringkat inspection telah selesai.':'All inspection stages completed.'}`
+            :`${lang==='bm'?'Pilih peringkat inspection di atas untuk mula.':'Select an inspection stage above to begin.'}`}
+        </div>
+      </div>
+    </div>`;
+
+  document.body.appendChild(overlay);
+
+  // Auto-load current stage
+  if(currentStage!=='done') loadStage(permitId,inspKey,currentStage);
 };
 
 window.loadStage=function(permitId,inspKey,stage){
@@ -990,96 +1622,99 @@ window.loadStage=function(permitId,inspKey,stage){
   const cl=getChecklistForPermit(p);
   const items=cl[stage]||[];
   const myInsp=(p.inspections||{})[inspKey]||{};
-
-  // For during — always create NEW round (array)
-  const isDuring=stage==='during';
-  const existingData=isDuring?{}:(myInsp[stage]||{});
-  const isSubmitted=isDuring?false:!!existingData.submittedAt;
-  const roundNum=isDuring?((Array.isArray(myInsp.during)?myInsp.during.length:0)+1):null;
+  const stageData=myInsp[stage]||{};
+  const isSubmitted=!!stageData.submittedAt;
 
   const content=document.getElementById('insp-stage-content');
   if(!content)return;
 
-  let html='<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">';
-  html+='<div style="font-size:14px;font-weight:600">'+INSP_STAGE_LABELS[lang][stage]+(isDuring?' — '+(lang==='bm'?'Rondaan Baru':'New Round')+' #'+roundNum:'')+'</div>';
-  if(isSubmitted) html+='<span class="status s-approved">'+(lang==='bm'?'Dah Submitted':'Submitted')+'</span>';
-  html+='</div>';
+  let html=`<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+    <div style="font-size:14px;font-weight:600">${INSP_STAGE_LABELS[lang][stage]}</div>
+    ${isSubmitted?`<span class="status s-approved">${lang==='bm'?'Dah Submitted':'Submitted'} — ${new Date(stageData.submittedAt).toLocaleDateString()}</span>`:''}
+  </div>`;
 
-  if(isDuring){
-    html+='<div style="background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--accent2)">';
-    html+='📅 '+(lang==='bm'?'Tarikh & Masa:':'Date & Time:')+' '+new Date().toLocaleString(lang==='bm'?'ms-MY':'en-MY',{weekday:'long',day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    html+='</div>';
-  }
+  // Overall remarks
+  html+=`<div class="form-group" style="margin-bottom:16px">
+    <label class="form-label">${lang==='bm'?'Catatan Umum (Keseluruhan)':'General Remarks (Overall)'}</label>
+    <textarea class="form-input" id="insp-overall-remark" style="min-height:70px" placeholder="${lang==='bm'?'Catatan keseluruhan inspection peringkat ini...':'Overall remarks for this inspection stage...'}" ${isSubmitted?'disabled':''}>${stageData.overallRemark||''}</textarea>
+  </div>`;
 
-  html+='<div class="form-group" style="margin-bottom:16px">';
-  html+='<label class="form-label">'+(lang==='bm'?'Catatan Umum (Keseluruhan)':'General Remarks (Overall)')+'</label>';
-  html+='<textarea class="form-input" id="insp-overall-remark" style="min-height:70px" placeholder="'+(lang==='bm'?'Catatan keseluruhan inspection peringkat ini...':'Overall remarks for this inspection stage...')+'" '+(isSubmitted?'disabled':'')+'>'+(existingData.overallRemark||'')+'</textarea>';
-  html+='</div>';
+  html+=`<div style="display:flex;flex-direction:column;gap:10px">`;
 
-  html+='<div style="display:flex;flex-direction:column;gap:10px">';
-
-  items.forEach(function(item){
-    const existing=(existingData.items&&existingData.items[item.id])||{};
+  items.forEach(item=>{
+    const existing=stageData.items?.[item.id]||{};
     const resultVal=existing.result||'';
     const remarkVal=existing.remark||'';
 
-    html+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px" id="item-wrap-'+item.id+'">';
-    html+='<div style="font-size:13px;font-weight:500;margin-bottom:4px;color:var(--text)">'+(lang==='bm'?item.itemBM:item.item);
-    if(item.optional) html+='<span style="font-size:10px;color:var(--text3);margin-left:6px">('+( lang==='bm'?'Pilihan':'Optional')+')</span>';
-    html+='</div>';
-    html+='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+(lang==='bm'?item.item:item.itemBM)+'</div>';
+    html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px" id="item-wrap-${item.id}">
+      <div style="font-size:13px;font-weight:500;margin-bottom:4px;color:var(--text)">
+        ${lang==='bm'?item.itemBM:item.item}
+        ${item.optional?`<span style="font-size:10px;color:var(--text3);margin-left:6px">(${lang==='bm'?'Pilihan':'Optional'})</span>`:''}
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">${lang==='bm'?item.item:item.itemBM}</div>`;
 
     if(item.type==='select'){
-      html+='<select class="form-input" id="res-'+item.id+'" style="height:36px;font-size:12px" '+(isSubmitted?'disabled':'')+'>';
-      html+='<option value="">-- '+(lang==='bm'?'Pilih':'Select')+' --</option>';
-      item.options.forEach(function(o){ html+='<option value="'+o+'" '+(resultVal===o?'selected':'')+'>'+o+'</option>'; });
-      html+='</select>';
-    } else {
-      var opts=item.type==='yn'
+      html+=`<select class="form-input" id="res-${item.id}" style="height:36px;font-size:12px" ${isSubmitted?'disabled':''}>
+        <option value="">-- ${lang==='bm'?'Pilih':'Select'} --</option>
+        ${item.options.map(o=>`<option value="${o}" ${resultVal===o?'selected':''}>${o}</option>`).join('')}
+      </select>`;
+    } else if(item.type==='yn'||item.type==='status'){
+      const opts=item.type==='yn'
         ?[{v:'ok',label:'OK ✓',c:'#34d399',bg:'rgba(16,185,129,.15)'},{v:'nc',label:lang==='bm'?'Tidak ✕':'No ✕',c:'#f87171',bg:'rgba(239,68,68,.15)'},{v:'attention',label:'⚠',c:'#fbbf24',bg:'rgba(245,158,11,.15)'},{v:'na',label:'N/A',c:'#64748b',bg:'rgba(148,163,184,.1)'}]
         :[{v:'ok',label:item.options?.[0]||'OK',c:'#34d399',bg:'rgba(16,185,129,.15)'},{v:'nc',label:item.options?.[1]||'Tidak',c:'#f87171',bg:'rgba(239,68,68,.15)'},{v:'attention',label:'⚠',c:'#fbbf24',bg:'rgba(245,158,11,.15)'},{v:'na',label:'N/A',c:'#64748b',bg:'rgba(148,163,184,.1)'}];
-      html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">';
-      opts.forEach(function(opt){
-        var sel=resultVal===opt.v;
-        html+='<button '+(isSubmitted?'disabled':'')+' onclick="selectResult(\''+item.id+'\',\''+opt.v+'\',this)" data-val="'+opt.v+'"'
-          +' style="padding:5px 12px;border-radius:6px;border:2px solid '+(sel?opt.c:'var(--border)')+';background:'+(sel?opt.bg:'transparent')+';color:'+(sel?opt.c:'var(--text2)')+';font-size:12px;font-weight:500;cursor:pointer;transition:all .2s"'
-          +' id="btn-res-'+item.id+'-'+opt.v+'">'+opt.label+'</button>';
+      html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">`;
+      opts.forEach(opt=>{
+        const sel=resultVal===opt.v;
+        html+=`<button ${isSubmitted?'disabled':''} onclick="selectResult('${item.id}','${opt.v}',this)" data-val="${opt.v}"
+          style="padding:5px 12px;border-radius:6px;border:2px solid ${sel?opt.c:'var(--border)'};background:${sel?opt.bg:'transparent'};color:${sel?opt.c:'var(--text2)'};font-size:12px;font-weight:500;cursor:pointer;transition:all .2s"
+          id="btn-res-${item.id}-${opt.v}">${opt.label}</button>`;
       });
-      html+='</div>';
+      html+=`</div>`;
     }
 
-    var showRemark=resultVal==='nc'||resultVal==='attention';
-    html+='<div id="remark-wrap-'+item.id+'" style="margin-top:6px;display:'+(showRemark?'block':'none')+'">';
-    html+='<input class="form-input" id="remark-'+item.id+'" placeholder="'+(lang==='bm'?'Nyatakan pemerhatian / tindakan yang diperlukan...':'State observation / action required...')+'" style="height:36px;font-size:12px" value="'+remarkVal+'" '+(isSubmitted?'disabled':'')+'>';
-    html+='</div>';
-    html+='</div>';
+    // Remark field — show when nc or attention
+    const showRemark=resultVal==='nc'||resultVal==='attention';
+    html+=`<div id="remark-wrap-${item.id}" style="margin-top:6px;display:${showRemark?'block':'none'}">
+      <input class="form-input" id="remark-${item.id}" placeholder="${lang==='bm'?'Nyatakan pemerhatian / tindakan yang diperlukan...':'State observation / action required...'}" style="height:36px;font-size:12px" value="${remarkVal}" ${isSubmitted?'disabled':''}/>
+    </div>`;
+
+    html+=`</div>`;
   });
 
-  html+='</div>';
+  html+=`</div>`;
 
   if(!isSubmitted){
-    var submitLabel=isDuring
-      ?(lang==='bm'?'✓ Submit Rondaan #'+roundNum:'✓ Submit Round #'+roundNum)
-      :(lang==='bm'?'✓ Submit Peringkat Ini':'✓ Submit This Stage');
-    html+='<div style="margin-top:20px;display:flex;gap:10px">'
-      +'<button onclick="document.getElementById(\'insp-overlay\').remove()" style="flex:1;height:40px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">'+(lang==='bm'?'Batal':'Cancel')+'</button>'
-      +'<button onclick="submitInspStage(\''+permitId+'\',\''+inspKey+'\',\''+stage+'\')" style="flex:2;height:40px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600" id="btn-submit-stage">'+submitLabel+'</button>'
-      +'</div>';
+    html+=`<div style="margin-top:20px;display:flex;gap:10px">
+      <button onclick="document.getElementById('insp-overlay').remove()" style="flex:1;height:40px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">${lang==='bm'?'Simpan & Tutup':'Save & Close'}</button>
+      <button onclick="submitInspStage('${permitId}','${inspKey}','${stage}')" style="flex:2;height:40px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600" id="btn-submit-stage">
+        ✓ ${lang==='bm'?'Submit Peringkat Ini':'Submit This Stage'}
+      </button>
+    </div>`;
   }
 
   content.innerHTML=html;
 };
 
 window.selectResult=function(itemId,val,btn){
-  document.querySelectorAll('[id^="btn-res-'+itemId+'-"]').forEach(function(b){
-    b.style.borderColor='var(--border)';b.style.background='transparent';b.style.color='var(--text2)';
-    delete b.dataset.selected;
+  // Deselect all buttons for this item
+  document.querySelectorAll(`[id^="btn-res-${itemId}-"]`).forEach(b=>{
+    const bVal=b.dataset.val;
+    const colors={ok:'#34d399',nc:'#f87171',attention:'#fbbf24',na:'#64748b'};
+    const bgs={ok:'rgba(16,185,129,.15)',nc:'rgba(239,68,68,.15)',attention:'rgba(245,158,11,.15)',na:'rgba(148,163,184,.1)'};
+    b.style.borderColor='var(--border)';
+    b.style.background='transparent';
+    b.style.color='var(--text2)';
   });
-  var colors={ok:'#34d399',nc:'#f87171',attention:'#fbbf24',na:'#64748b'};
-  var bgs={ok:'rgba(16,185,129,.15)',nc:'rgba(239,68,68,.15)',attention:'rgba(245,158,11,.15)',na:'rgba(148,163,184,.1)'};
-  btn.style.borderColor=colors[val];btn.style.background=bgs[val];btn.style.color=colors[val];btn.dataset.selected='true';
-  var remarkWrap=document.getElementById('remark-wrap-'+itemId);
-  if(remarkWrap)remarkWrap.style.display=(val==='nc'||val==='attention')?'block':'none';
+  // Select this button
+  const colors={ok:'#34d399',nc:'#f87171',attention:'#fbbf24',na:'#64748b'};
+  const bgs={ok:'rgba(16,185,129,.15)',nc:'rgba(239,68,68,.15)',attention:'rgba(245,158,11,.15)',na:'rgba(148,163,184,.1)'};
+  btn.style.borderColor=colors[val];
+  btn.style.background=bgs[val];
+  btn.style.color=colors[val];
+  btn.dataset.selected='true';
+  // Show/hide remark field
+  const remarkWrap=document.getElementById(`remark-wrap-${itemId}`);
+  if(remarkWrap) remarkWrap.style.display=(val==='nc'||val==='attention')?'block':'none';
 };
 
 window.submitInspStage=async function(permitId,inspKey,stage){
@@ -1087,899 +1722,68 @@ window.submitInspStage=async function(permitId,inspKey,stage){
   if(!p)return;
   const cl=getChecklistForPermit(p);
   const items=cl[stage]||[];
-  const isDuring=stage==='during';
   const btn=document.getElementById('btn-submit-stage');
   if(btn){btn.disabled=true;btn.textContent=lang==='bm'?'Menyimpan...':'Saving...';}
 
-  var itemResults={};
-  var hasNcOrAttention=false;
-  items.forEach(function(item){
-    var result='';
-    document.querySelectorAll('[id^="btn-res-'+item.id+'-"]').forEach(function(b){
-      if(b.dataset.selected==='true') result=b.dataset.val;
+  // Collect results
+  const itemResults={};
+  let hasNcOrAttention=false;
+  items.forEach(item=>{
+    const el=document.getElementById(`res-${item.id}`);
+    // For yn/status type, find selected button
+    const selBtn=document.querySelector(`[id^="btn-res-${item.id}-"][style*="border-color: rgb"]`)||
+                 document.querySelector(`[id^="btn-res-${item.id}-"][style*="${'rgba'}"]`);
+    // Get result from button selected state
+    let result='';
+    document.querySelectorAll(`[id^="btn-res-${item.id}-"]`).forEach(b=>{
+      if(b.dataset.selected==='true'||b.style.background.includes('rgba(16,185,129')||b.style.background.includes('rgba(239,68,68')||b.style.background.includes('rgba(245,158,11')||b.style.background.includes('rgba(148,163,184')){
+        // check which one has contrast
+        if(b.style.color&&b.style.color!=='var(--text2)') result=b.dataset.val;
+      }
     });
-    var selEl=document.getElementById('res-'+item.id);
-    if(!result&&selEl) result=selEl.value;
-    var remark=document.getElementById('remark-'+item.id)?.value||'';
+    if(!result&&el) result=el.value;
+    const remark=document.getElementById(`remark-${item.id}`)?.value||'';
     itemResults[item.id]={result,remark};
     if(result==='nc'||result==='attention') hasNcOrAttention=true;
   });
 
-  var overallRemark=document.getElementById('insp-overall-remark')?.value||'';
-  var now=new Date().toISOString();
-  var myInsp=(p.inspections||{})[inspKey]||{};
-  var rounds=Array.isArray(myInsp.during)?[...myInsp.during]:[];
+  const overallRemark=document.getElementById('insp-overall-remark')?.value||'';
 
-  var stageData={
+  const stageData={
     items:itemResults,
     overallRemark,
     hasIssues:hasNcOrAttention,
-    submittedAt:now,
+    submittedAt:new Date().toISOString(),
     submittedBy:currentData.name,
     submittedByRole:currentData.role
   };
 
-  var tlLabel='';
-  if(isDuring){
-    var roundNum=rounds.length+1;
-    stageData.round=roundNum;
-    stageData.roundDate=now;
-    rounds.push(stageData);
-    tlLabel=INSP_STAGE_LABELS[lang].during+' inspection '+(lang==='bm'?'Rondaan':'Round')+' #'+roundNum+(hasNcOrAttention?' [🚩 '+(lang==='bm'?'Ada Isu':'Issues Found')+']':'');
-  } else {
-    tlLabel=INSP_STAGE_LABELS[lang][stage]+' inspection '+(lang==='bm'?'selesai oleh':'completed by')+' '+rl(currentData.role)+(hasNcOrAttention?' [🚩 '+(lang==='bm'?'Ada Isu':'Issues Found')+']':'');
-  }
-
-  var tl={
-    type:'inspection',
-    label:tlLabel,
-    by:currentData.name,
-    role:currentData.role,
-    at:now,
-    remark:overallRemark+(hasNcOrAttention?' — '+(lang==='bm'?'Ada isu ditemui':'Issues found'):'')
-  };
-
   try{
-    var updateData={};
-    if(isDuring){
-      updateData['inspections.'+inspKey+'.during']=rounds;
-    } else {
-      updateData['inspections.'+inspKey+'.'+stage]=stageData;
-    }
+    const inspPath=`inspections.${inspKey}.${stage}`;
+    const updateData={};
+    updateData[inspPath]=stageData;
+    // Add timeline entry
+    const tl={
+      type:'inspection',
+      label:`${INSP_STAGE_LABELS[lang][stage]} inspection ${lang==='bm'?'selesai oleh':'completed by'} ${rl(currentData.role)}`,
+      by:currentData.name,
+      role:currentData.role,
+      at:new Date().toISOString(),
+      remark:overallRemark||''+(hasNcOrAttention?` [${lang==='bm'?'Ada isu':'Issues found'}]`:'')
+    };
     updateData.timeline=[...(p.timeline||[]),tl];
     await updateDoc(doc(db,'permits',permitId),updateData);
-
-    // If issues found, notify HSE & admin
-    if(hasNcOrAttention&&currentData.role!=='hse'){
-      try{
-        var hses=allUsers.filter(function(u){return u.role==='hse'&&u.status==='active'});
-        await Promise.all(hses.map(function(u){
-          return sendNotif(u.uid,'🚩 '+(lang==='bm'?'Inspection — Ada Isu Ditemui':'Inspection — Issues Found'),
-            p.permitNo+' — '+tlLabel);
-        }));
-      }catch(ne){}
-    }
-
-    showToast(lang==='bm'?'✓ Inspection disimpan.':'✓ Inspection saved.','success');
+    showToast(lang==='bm'?`✓ ${INSP_STAGE_LABELS['bm'][stage]} inspection disimpan.`:`✓ ${INSP_STAGE_LABELS['en'][stage]} inspection saved.`,'success');
     document.getElementById('insp-overlay')?.remove();
     renderInspectionPage();
   }catch(e){
     console.error(e);
     showToast(lang==='bm'?'Ralat menyimpan inspection.':'Error saving inspection.','error');
-    if(btn){btn.disabled=false;btn.textContent=lang==='bm'?'Cuba Lagi':'Try Again';}
+    if(btn){btn.disabled=false;btn.textContent=`✓ ${lang==='bm'?'Submit Peringkat Ini':'Submit This Stage'}`;}
   }
 };
 
 
-
-window.openInspectionReport=function(permitId){
-  const p=allPermits.find(x=>x.id===permitId);
-  if(!p)return;
-  const insp=p.inspections||{};
-  const cl=getChecklistForPermit(p);
-
-  const buildStageReport=function(stageData,stageName,items){
-    if(!stageData||!stageData.submittedAt) return '<div style="font-size:12px;color:var(--text3);padding:8px 0">'+(lang==='bm'?'Belum dibuat':'Not completed yet')+'</div>';
-    let h='<div style="margin-bottom:8px;font-size:11px;color:var(--text3)">'
-      +stageData.submittedBy+' · '+new Date(stageData.submittedAt).toLocaleString(lang==='bm'?'ms-MY':'en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
-      +(stageData.hasIssues?' <span style="color:var(--danger)">🚩 '+(lang==='bm'?'Ada Isu':'Issues Found')+'</span>':'')+'</div>';
-    if(stageData.overallRemark) h+='<div style="background:rgba(37,99,235,.08);border-left:3px solid var(--accent);border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text2)">📝 '+stageData.overallRemark+'</div>';
-    h+='<div style="display:flex;flex-direction:column;gap:6px">';
-    items.forEach(function(item){
-      const res=(stageData.items&&stageData.items[item.id])||{};
-      const col=res.result==='ok'?'#34d399':res.result==='nc'?'#f87171':res.result==='attention'?'#fbbf24':'#64748b';
-      const bg=res.result==='nc'?'rgba(239,68,68,.06)':res.result==='attention'?'rgba(245,158,11,.06)':res.result==='ok'?'rgba(16,185,129,.04)':'var(--bg2)';
-      h+='<div style="background:'+bg+';border:1px solid var(--border);border-radius:6px;padding:8px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">';
-      h+='<div style="flex:1"><div style="font-size:12px;color:var(--text)">'+(lang==='bm'?item.itemBM:item.item)+'</div>';
-      if(res.remark) h+='<div style="font-size:11px;color:var(--warning);margin-top:3px;font-style:italic">⚠ '+res.remark+'</div>';
-      h+='</div>';
-      if(res.result) h+='<span style="color:'+col+';font-size:10px;font-weight:600;font-family:var(--mono);white-space:nowrap;flex-shrink:0">'+res.result.toUpperCase()+'</span>';
-      h+='</div>';
-    });
-    h+='</div>';
-    return h;
-  }
-
-  const buildInspectorReport=function(inspData,label){
-    if(!inspData)return'<div style="font-size:12px;color:var(--text3);padding:10px">'+(lang==='bm'?'Tiada data inspection':'No inspection data')+'</div>';
-    const rounds=Array.isArray(inspData.during)?inspData.during:[];
-    let h='';
-
-    // Pre-Work
-    h+='<div style="margin-bottom:14px">';
-    h+='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">';
-    h+=INSP_STAGE_LABELS[lang].pre+(inspData.pre?.submittedAt?'<span class="status s-approved" style="font-size:10px">✓</span>':'<span style="font-size:10px;color:var(--text3)">'+(lang==='bm'?'Belum':'Pending')+'</span>')+'</div>';
-    h+=buildStageReport(inspData.pre,'pre',cl.pre||[]);
-    h+='</div>';
-
-    // During — all rounds
-    h+='<div style="margin-bottom:14px">';
-    h+='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">'+INSP_STAGE_LABELS[lang].during+' ('+rounds.length+' '+(lang==='bm'?'rondaan':'rounds')+')</div>';
-    if(rounds.length){
-      rounds.forEach(function(rd,i){
-        const hasIssue=rd.hasIssues;
-        h+='<div style="border:1px solid '+(hasIssue?'rgba(239,68,68,.3)':'var(--border)')+';border-radius:8px;margin-bottom:10px;overflow:hidden">';
-        h+='<div style="padding:8px 12px;background:'+(hasIssue?'rgba(239,68,68,.06)':'var(--bg3)')+';display:flex;align-items:center;justify-content:space-between">';
-        h+='<div style="font-size:12px;font-weight:600">'+(lang==='bm'?'Rondaan':'Round')+' '+(i+1)+(hasIssue?' 🚩':'')+'</div>';
-        h+='<div style="font-size:11px;color:var(--text3)">'+(rd.submittedBy||'')+' · '+(rd.submittedAt?new Date(rd.submittedAt).toLocaleString(lang==='bm'?'ms-MY':'en-MY',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'')+'</div>';
-        h+='</div>';
-        h+='<div style="padding:10px 12px">'+buildStageReport(rd,'during',cl.during||[])+'</div>';
-        h+='</div>';
-      });
-    } else {
-      h+='<div style="font-size:12px;color:var(--text3);padding:8px 0">'+(lang==='bm'?'Belum ada rondaan':'No rounds yet')+'</div>';
-    }
-    h+='</div>';
-
-    // Post-Work
-    h+='<div style="margin-bottom:14px">';
-    h+='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">';
-    h+=INSP_STAGE_LABELS[lang].post+(inspData.post?.submittedAt?'<span class="status s-approved" style="font-size:10px">✓</span>':'<span style="font-size:10px;color:var(--text3)">'+(lang==='bm'?'Belum':'Pending')+'</span>')+'</div>';
-    h+=buildStageReport(inspData.post,'post',cl.post||[]);
-    h+='</div>';
-    return h;
-  }
-
-  // Build full report overlay
-  const overlay=document.createElement('div');
-  overlay.id='insp-report-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
-
-  let body='';
-
-  // Inspector 1
-  const i1Label=p.track==='A'?(lang==='bm'?'Inspector 1 — Supervisor':'Inspector 1 — Supervisor'):(lang==='bm'?'Inspector 1 — Wakil Operasi':'Inspector 1 — Operations Rep');
-  body+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
-  body+='<div style="font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">'+i1Label+'</div>';
-  body+=buildInspectorReport(insp.inspector1||null,'inspector1');
-  body+='</div>';
-
-  // Inspector 2 — HSE
-  body+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">';
-  body+='<div style="font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">Inspector 2 — HSE Officer</div>';
-  body+=buildInspectorReport(insp.inspector2||null,'inspector2');
-  body+='</div>';
-
-  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:700px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
-    +'<div><div style="font-size:15px;font-weight:600">&#128203; Inspection Report &#8212; '+(p.permitNo||'&#8212;')+'</div>'
-    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.projectName||p.vesselName||'&#8212;')+' &#183; '+(p.location||'&#8212;')+'</div></div>'
-    +'<button id="btn-close-report" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">&#10005;</button>'
-    +'</div>'
-    +'<div style="padding:12px 20px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
-    +'<div style="font-size:12px;color:var(--text3)">'+(lang==='bm'?'Laporan Inspection Permit':'Permit Inspection Report')+' — '+(new Date().toLocaleDateString(lang==='bm'?'ms-MY':'en-MY',{day:'2-digit',month:'long',year:'numeric'}))+'</div>'
-    +'<button id="btn-pdf-report" style="height:32px;padding:0 14px;background:var(--danger);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px">&#128196; '+(lang==='bm'?'Muat Turun PDF':'Download PDF')+'</button>'
-    +'</div>'
-    +'<div style="padding:20px" id="insp-report-body">'+body+'</div>'
-    +'</div>';
-
-  document.body.appendChild(overlay);
-  var closeBtn=document.getElementById('btn-close-report');
-  if(closeBtn) closeBtn.onclick=function(){var o=document.getElementById('insp-report-overlay');if(o)o.remove();};
-  // Add PDF download button
-  var pdfBtn=document.getElementById('btn-pdf-report');
-  if(pdfBtn) pdfBtn.onclick=function(){downloadInspectionPDF(permitId);};
-};
-
-
-window.downloadInspectionPDF=function(permitId){
-  const p=allPermits.find(x=>x.id===permitId);
-  if(!p)return;
-  const insp=p.inspections||{};
-  const cl=getChecklistForPermit(p);
-
-  function resultBadge(r){
-    const map={ok:'background:#d1fae5;color:#065f46;',nc:'background:#fee2e2;color:#991b1b;',attention:'background:#fef3c7;color:#92400e;',na:'background:#f1f5f9;color:#475569;'};
-    const labels={ok:'OK &#10003;',nc:'Tidak Patuh &#10007;',attention:'Perlu Perhatian &#9888;',na:'N/A'};
-    if(!r)return'';
-    return '<span style="'+( map[r]||'')+';padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600">'+( labels[r]||r.toUpperCase())+'</span>';
-  }
-
-  function stageHTML(stageData,items,title){
-    if(!stageData||!stageData.submittedAt) return '<tr><td colspan="3" style="padding:8px 12px;color:#64748b;font-style:italic">Belum dibuat</td></tr>';
-    let rows='';
-    if(stageData.overallRemark){
-      rows+='<tr><td colspan="3" style="padding:6px 12px;background:#eff6ff;border-left:3px solid #2563eb;font-size:12px;color:#1e40af">&#128221; '+stageData.overallRemark+'</td></tr>';
-    }
-    items.forEach(function(item){
-      const res=(stageData.items&&stageData.items[item.id])||{};
-      const rowBg=res.result==='nc'?'#fff5f5':res.result==='attention'?'#fffbeb':'';
-      rows+='<tr style="background:'+rowBg+';border-bottom:1px solid #e2e8f0">'
-        +'<td style="padding:7px 12px;font-size:12px;color:#1e293b">'+item.itemBM+'</td>'
-        +'<td style="padding:7px 12px;font-size:11px;color:#64748b;font-style:italic">'+item.item+'</td>'
-        +'<td style="padding:7px 12px;text-align:center;white-space:nowrap">'+resultBadge(res.result)+(res.remark?'<div style="font-size:10px;color:#d97706;margin-top:2px">&#9888; '+res.remark+'</div>':'')+'</td>'
-        +'</tr>';
-    });
-    return rows;
-  }
-
-  function inspectorSection(inspData,label){
-    if(!inspData) return '<p style="color:#64748b;font-style:italic;font-size:12px">Tiada data inspection</p>';
-    const rounds=Array.isArray(inspData.during)?inspData.during:[];
-    let html='';
-
-    // Pre-Work
-    html+='<h4 style="margin:12px 0 6px;font-size:13px;color:#0f172a;border-left:3px solid #2563eb;padding-left:8px">'+INSP_STAGE_LABELS['bm'].pre+'</h4>';
-    html+='<table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-family:Arial,sans-serif">'
-      +'<thead><tr style="background:#f8fafc"><th style="padding:7px 12px;text-align:left;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0">Item (BM)</th><th style="padding:7px 12px;text-align:left;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0">Item (EN)</th><th style="padding:7px 12px;text-align:center;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0;width:120px">Keputusan</th></tr></thead>'
-      +'<tbody>'+stageHTML(inspData.pre,cl.pre||[],INSP_STAGE_LABELS['bm'].pre)+'</tbody></table>';
-
-    // During rounds
-    if(rounds.length){
-      rounds.forEach(function(rd,i){
-        const hasIssue=rd.hasIssues;
-        html+='<h4 style="margin:12px 0 6px;font-size:13px;color:'+(hasIssue?'#dc2626':'#0f172a')+';border-left:3px solid '+(hasIssue?'#dc2626':'#10b981')+';padding-left:8px">'
-          +INSP_STAGE_LABELS['bm'].during+' — Rondaan '+(i+1)+(hasIssue?' &#128681; Ada Isu':'')
-          +'<span style="font-size:10px;font-weight:400;color:#64748b;margin-left:8px">'+(rd.submittedBy||'')+' · '+(rd.submittedAt?new Date(rd.submittedAt).toLocaleString('ms-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+'</span></h4>';
-        html+='<table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-family:Arial,sans-serif">'
-          +'<thead><tr style="background:#f8fafc"><th style="padding:7px 12px;text-align:left;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0">Item (BM)</th><th style="padding:7px 12px;text-align:left;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0">Item (EN)</th><th style="padding:7px 12px;text-align:center;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0;width:120px">Keputusan</th></tr></thead>'
-          +'<tbody>'+stageHTML(rd,cl.during||[],INSP_STAGE_LABELS['bm'].during)+'</tbody></table>';
-      });
-    } else {
-      html+='<p style="color:#64748b;font-style:italic;font-size:12px;margin:4px 0 12px">Tiada rondaan During Work</p>';
-    }
-
-    // Post-Work
-    html+='<h4 style="margin:12px 0 6px;font-size:13px;color:#0f172a;border-left:3px solid #2563eb;padding-left:8px">'+INSP_STAGE_LABELS['bm'].post+'</h4>';
-    html+='<table style="width:100%;border-collapse:collapse;margin-bottom:12px;font-family:Arial,sans-serif">'
-      +'<thead><tr style="background:#f8fafc"><th style="padding:7px 12px;text-align:left;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0">Item (BM)</th><th style="padding:7px 12px;text-align:left;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0">Item (EN)</th><th style="padding:7px 12px;text-align:center;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0;width:120px">Keputusan</th></tr></thead>'
-      +'<tbody>'+stageHTML(inspData.post,cl.post||[],INSP_STAGE_LABELS['bm'].post)+'</tbody></table>';
-
-    return html;
-  }
-
-  // Count totals
-  var totalRounds=0,totalFlags=0;
-  ['inspector1','inspector2'].forEach(function(ik){
-    var rd=Array.isArray((insp[ik]||{}).during)?(insp[ik]||{}).during:[];
-    totalRounds+=rd.length;
-    rd.forEach(function(r){if(r.hasIssues)totalFlags++;});
-  });
-
-  var i1Label=p.track==='A'?'Inspector 1 — Supervisor (Process Owner)':'Inspector 1 — Wakil Operasi';
-  var printDate=new Date().toLocaleDateString('ms-MY',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    +'<title>Inspection Report — '+(p.permitNo||'')+'</title>'
-    +'<style>body{font-family:Arial,sans-serif;color:#1e293b;margin:0;padding:0;font-size:13px}'
-    +'.header{background:#1e3a5f;color:#fff;padding:20px 30px}'
-    +'.header h1{margin:0 0 4px;font-size:18px;font-weight:700}'
-    +'.header p{margin:0;font-size:12px;opacity:.8}'
-    +'.meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid #e2e8f0;margin:20px 30px}'
-    +'.meta-item{padding:10px 14px;border-right:1px solid #e2e8f0}'
-    +'.meta-item:last-child{border-right:none}'
-    +'.meta-label{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}'
-    +'.meta-value{font-size:13px;font-weight:600;color:#0f172a}'
-    +'.summary{margin:0 30px 20px;padding:12px 16px;border-radius:6px;display:flex;gap:24px}'
-    +'.sum-ok{background:#f0fdf4;border:1px solid #bbf7d0}'
-    +'.sum-warn{background:#fff7ed;border:1px solid #fed7aa}'
-    +'.sum-bad{background:#fff5f5;border:1px solid #fecaca}'
-    +'.inspector-section{margin:20px 30px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}'
-    +'.insp-header{background:#f8fafc;padding:12px 16px;border-bottom:1px solid #e2e8f0;font-weight:600;font-size:13px}'
-    +'.insp-body{padding:16px}'
-    +'.footer{margin-top:30px;padding:16px 30px;border-top:2px solid #e2e8f0;font-size:11px;color:#64748b;display:flex;justify-content:space-between}'
-    +'@media print{.no-print{display:none}@page{margin:15mm}}'
-    +'</style></head><body>'
-
-    // Header
-    +'<div class="header">'
-    +'<h1>&#128203; Laporan Inspection — '+(p.permitNo||'—')+'</h1>'
-    +'<p>Kuantan Port Sdn Bhd &nbsp;·&nbsp; KP Work Registry &nbsp;·&nbsp; Dijana: '+printDate+'</p>'
-    +'</div>'
-
-    // Meta info
-    +'<div class="meta">'
-    +'<div class="meta-item"><div class="meta-label">No. Permit</div><div class="meta-value">'+(p.permitNo||'—')+'</div></div>'
-    +'<div class="meta-item"><div class="meta-label">Track</div><div class="meta-value">Track '+(p.track||'A')+'</div></div>'
-    +'<div class="meta-item"><div class="meta-label">Projek / Kapal</div><div class="meta-value">'+(p.projectName||p.vesselName||'—')+'</div></div>'
-    +'<div class="meta-item"><div class="meta-label">Lokasi</div><div class="meta-value">'+(p.location||'—')+'</div></div>'
-    +'<div class="meta-item"><div class="meta-label">PIC Kontraktor</div><div class="meta-value">'+(p.pic||'—')+'</div></div>'
-    +'<div class="meta-item"><div class="meta-label">Tarikh Mula</div><div class="meta-value">'+(p.startDate||'—')+'</div></div>'
-    +'</div>'
-
-    // Summary
-    +'<div class="summary '+(totalFlags>0?'sum-bad':'sum-ok')+'">'
-    +'<div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Total Rondaan</div><div style="font-size:22px;font-weight:700">'+(totalRounds)+'</div></div>'
-    +'<div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Red Flag</div><div style="font-size:22px;font-weight:700;color:'+(totalFlags>0?'#dc2626':'#16a34a')+'">'+(totalFlags>0?'&#128681; '+totalFlags:'&#10003; 0')+'</div></div>'
-    +'<div><div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em">Status Permit</div><div style="font-size:14px;font-weight:600">'+(p.status||'—').toUpperCase()+'</div></div>'
-    +'</div>'
-
-    // Inspector 1
-    +'<div class="inspector-section">'
-    +'<div class="insp-header">'+i1Label+'</div>'
-    +'<div class="insp-body">'+inspectorSection(insp.inspector1,'inspector1')+'</div>'
-    +'</div>'
-
-    // Inspector 2
-    +'<div class="inspector-section">'
-    +'<div class="insp-header">Inspector 2 — HSE Officer</div>'
-    +'<div class="insp-body">'+inspectorSection(insp.inspector2,'inspector2')+'</div>'
-    +'</div>'
-
-    // Footer
-    +'<div class="footer">'
-    +'<span>KP Work Registry &nbsp;·&nbsp; Kuantan Port Sdn Bhd</span>'
-    +'<span>Dijana oleh: '+currentData.name+' ('+rl(currentData.role)+') &nbsp;·&nbsp; '+printDate+'</span>'
-    +'</div>'
-
-    +'</body></html>';
-
-  // Generate PDF using html2canvas + jsPDF
-  generatePDFFromHTML(html, 'Inspection_Report_'+(p.permitNo||'permit').replace(/\//g,'-')+'.pdf');
-};
-
-
-window.submitReply=async function(permitId,timelineIdx,inputId){
-  const text=document.getElementById(inputId)?.value.trim();
-  if(!text){showToast(lang==='bm'?'Sila taip balasan.':'Please type a reply.','error');return;}
-
-  const p=allPermits.find(x=>x.id===permitId);
-  if(!p)return;
-
-  const btn=document.querySelector('[onclick*="submitReply(\''+permitId+'\','+timelineIdx+'"]');
-
-  const reply={
-    by:currentData.name,
-    role:rl(currentData.role),
-    uid:currentData.uid,
-    text,
-    at:new Date().toISOString()
-  };
-
-  try{
-    // Update the specific timeline entry's replies array
-    const timeline=[...(p.timeline||[])];
-    if(!timeline[timelineIdx]) return;
-    if(!timeline[timelineIdx].replies) timeline[timelineIdx].replies=[];
-    timeline[timelineIdx].replies.push(reply);
-
-    await updateDoc(doc(db,'permits',permitId),{timeline});
-
-    // Notify relevant parties
-    const notifyUids=new Set();
-    // Notify original entry author
-    const tl=p.timeline[timelineIdx];
-    if(tl.uid&&tl.uid!==currentData.uid) notifyUids.add(tl.uid);
-    // Notify permit submitter
-    if(p.submittedBy&&p.submittedBy!==currentData.uid) notifyUids.add(p.submittedBy);
-    // Notify previous repliers
-    (tl.replies||[]).forEach(function(r){if(r.uid&&r.uid!==currentData.uid)notifyUids.add(r.uid)});
-
-    await Promise.all([...notifyUids].map(function(uid){
-      return sendNotif(uid,
-        '↩ '+(lang==='bm'?'Balasan Baru — ':'New Reply — ')+p.permitNo,
-        currentData.name+': '+text.substring(0,80)+(text.length>80?'...':'')
-      );
-    }));
-
-    // Hide reply box and clear input
-    const replyBox=document.getElementById('reply-box-'+timelineIdx);
-    if(replyBox) replyBox.style.display='none';
-    document.getElementById(inputId).value='';
-
-    // Refresh the detail modal
-    viewPermit(permitId);
-    showToast(lang==='bm'?'✓ Balasan dihantar.':'✓ Reply sent.','success');
-  }catch(e){
-    console.error(e);
-    showToast(lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.','error');
-  }
-};
-
-
-
-// ── PERMIT CLOSURE FLOW ────────────────────────────────
-const SITE_CLEARANCE_CHECKLIST = [
-  {id:'sc1', bm:'Kerja telah diselesaikan mengikut skop yang diluluskan', en:'Work completed as per approved scope'},
-  {id:'sc2', bm:'Tapak kerja telah dibersihkan sepenuhnya', en:'Work site has been fully cleaned'},
-  {id:'sc3', bm:'Tiada sisa sampah, bahan buangan, atau bahan berbahaya ditinggalkan', en:'No waste, debris, or hazardous materials left behind'},
-  {id:'sc4', bm:'Semua peralatan, mesin, dan bahan telah dikeluarkan dari tapak', en:'All equipment, machinery, and materials removed from site'},
-  {id:'sc5', bm:'Laluan masuk dan keluar tapak dalam keadaan selamat', en:'Site access and egress routes are safe'},
-  {id:'sc6', bm:'Kemudahan sedia ada tidak rosak / kerosakan telah dilaporkan', en:'Existing facilities undamaged / damages reported'},
-  {id:'sc7', bm:'Semua pekerja telah meninggalkan tapak kerja', en:'All workers have left the work site'},
-];
-
-const HOD_CLOSURE_CHECKLIST = [
-  {id:'hc1', bm:'Kerja telah disahkan selesai mengikut skop', en:'Work verified complete as per scope'},
-  {id:'hc2', bm:'Tapak kerja telah diperiksa dan dalam keadaan bersih', en:'Work site inspected and found clean'},
-  {id:'hc3', bm:'Tiada bahaya berbaki di tapak kerja', en:'No residual hazards at work site'},
-  {id:'hc4', bm:'Semua permit dan dokumen berkaitan telah dikemaskini', en:'All permits and related documents updated'},
-  {id:'hc5', bm:'Peralatan dan aset jabatan telah disahkan selamat', en:'Department equipment and assets confirmed safe'},
-];
-
-const HSE_CLOSURE_CHECKLIST = [
-  {id:'hse1', bm:'Self-declaration kontraktor telah disemak dan lengkap', en:'Contractor self-declaration reviewed and complete'},
-  {id:'hse2', bm:'Post inspection HOD/Process Owner telah diterima', en:'HOD/Process Owner post inspection acknowledged'},
-  {id:'hse3', bm:'Tiada insiden, hampir celaka, atau isu keselamatan berbaki', en:'No incidents, near misses, or outstanding safety issues'},
-  {id:'hse4', bm:'Semua dokumen HSE (HIRARC, MS, checklist) telah difailkan', en:'All HSE documents (HIRARC, MS, checklists) filed'},
-  {id:'hse5', bm:'Permit boleh ditutup secara rasmi', en:'Permit may be officially closed'},
-];
-
-window.openClosureFlow=function(permitId){
-  const p=allPermits.find(x=>x.id===permitId);
-  if(!p)return;
-  const r=currentData?.role;
-
-  // Determine which closure step this user is doing
-  let step, checklist, title, btnLabel, nextStatus;
-  if(p.status==='approved'&&(p.submittedBy===currentData?.uid||r==='contractor'||r==='stevedore')){
-    step='contractor';
-    checklist=SITE_CLEARANCE_CHECKLIST;
-    title=lang==='bm'?'Perisytiharan Kerja Selesai (Site Clearance)':'Work Completion Declaration (Site Clearance)';
-    btnLabel=lang==='bm'?'✓ Hantar Perisytiharan':'✓ Submit Declaration';
-    nextStatus='pending_closure_hod';
-  } else if(p.status==='pending_closure_hod'&&(r==='hod'||r==='admin')){
-    step='hod';
-    checklist=HOD_CLOSURE_CHECKLIST;
-    title=lang==='bm'?'Post Inspection — HOD/Process Owner':'Post Inspection — HOD/Process Owner';
-    btnLabel=lang==='bm'?'✓ Acknowledge & Hantar ke HSE':'✓ Acknowledge & Forward to HSE';
-    nextStatus='pending_closure_hse';
-  } else if(p.status==='pending_closure_hse'&&(r==='hse'||r==='admin')){
-    step='hse';
-    checklist=HSE_CLOSURE_CHECKLIST;
-    title=lang==='bm'?'Final Acknowledgement — HSE Officer':'Final Acknowledgement — HSE Officer';
-    btnLabel=lang==='bm'?'🔒 Tutup Permit Secara Rasmi':'🔒 Officially Close Permit';
-    nextStatus='closed';
-  } else return;
-
-  const overlay=document.createElement('div');
-  overlay.id='closure-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
-
-  // Previous closure entries for context
-  const prevClosure=p.closure||{};
-  let contextHtml='';
-  if(step==='hod'&&prevClosure.contractor){
-    contextHtml+='<div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:12px 14px;margin-bottom:16px">'
-      +'<div style="font-size:11px;color:var(--success);font-family:var(--mono);margin-bottom:6px">✓ PERISYTIHARAN KONTRAKTOR — '+(prevClosure.contractor.submittedBy||'')+' · '+fmtDate(prevClosure.contractor.at)+'</div>'
-      +SITE_CLEARANCE_CHECKLIST.map(function(item){
-        const ans=(prevClosure.contractor.items||{})[item.id];
-        return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px"><span style="color:var(--text2)">'+(lang==='bm'?item.bm:item.en)+'</span><span style="color:'+(ans?'var(--success)':'var(--danger)')+';font-weight:600">'+(ans?'✓ Ya':'✗ Tidak')+'</span></div>';
-      }).join('')
-      +(prevClosure.contractor.remarks?'<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">Remarks: '+prevClosure.contractor.remarks+'</div>':'')
-      +'</div>';
-  }
-  if(step==='hse'&&prevClosure.hod){
-    contextHtml+='<div style="background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:12px 14px;margin-bottom:16px">'
-      +'<div style="font-size:11px;color:var(--accent2);font-family:var(--mono);margin-bottom:6px">✓ POST INSPECTION HOD — '+(prevClosure.hod.submittedBy||'')+' · '+fmtDate(prevClosure.hod.at)+'</div>'
-      +HOD_CLOSURE_CHECKLIST.map(function(item){
-        const ans=(prevClosure.hod.items||{})[item.id];
-        return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px"><span style="color:var(--text2)">'+(lang==='bm'?item.bm:item.en)+'</span><span style="color:'+(ans?'var(--success)':'var(--danger)')+';font-weight:600">'+(ans?'✓ Ya':'✗ Tidak')+'</span></div>';
-      }).join('')
-      +(prevClosure.hod.remarks?'<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">Remarks: '+prevClosure.hod.remarks+'</div>':'')
-      +'</div>';
-  }
-
-  // Build checklist
-  const checklistHtml=checklist.map(function(item){
-    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
-      +'<div style="display:flex;gap:6px;margin-top:2px">'
-      +'<button class="cls-yes" data-iid="'+item.id+'" id="cls-yes-'+item.id+'" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">Ya</button>'
-      +'<button class="cls-no" data-iid="'+item.id+'" id="cls-no-'+item.id+'" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">Tidak</button>'
-      +'</div>'
-      +'<div><div style="font-size:13px;color:var(--text)">'+(lang==='bm'?item.bm:item.en)+'</div>'
-      +'<div style="font-size:11px;color:var(--text3)">'+(lang==='bm'?item.en:item.bm)+'</div></div>'
-      +'</div>';
-  }).join('');
-
-  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:600px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
-    +'<div><div style="font-size:15px;font-weight:600">'+title+'</div>'
-    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.permitNo||'—')+' — '+(p.projectName||p.vesselName||'—')+'</div></div>'
-    +'<button id="btn-close-closure" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">✕</button>'
-    +'</div>'
-    +'<div style="padding:20px">'
-    +contextHtml
-    +(step!=='contractor'?'':'<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#fbbf24">⚠ '+(lang==='bm'?'Pastikan semua kerja pembersihan dan pemulihan tapak telah selesai sebelum menghantar perisytiharan ini.':'Ensure all site cleanup and restoration work is complete before submitting this declaration.')+'</div>')
-    +'<div id="closure-checklist">'+checklistHtml+'</div>'
-    +'<div class="form-group" style="margin-top:16px">'
-    +'<label class="form-label">'+(lang==='bm'?'Remarks / Catatan':'Remarks / Notes')+' <span style="color:var(--text3);font-weight:400">('+( lang==='bm'?'pilihan':'optional')+')</span></label>'
-    +'<textarea class="form-input" id="closure-remarks" style="min-height:80px" placeholder="'+(lang==='bm'?'Tambah catatan jika perlu...':'Add notes if needed...')+'"></textarea>'
-    +'</div>'
-    +'<div id="closure-err" class="alert alert-error" style="display:none;margin-top:8px"></div>'
-    +'</div>'
-    +'<div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end">'
-    +'<button id="btn-cancel-closure" style="height:38px;padding:0 16px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">'+(lang==='bm'?'Batal':'Cancel')+'</button>'
-    +'<button id="btn-submit-closure" style="height:38px;padding:0 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">'+btnLabel+'</button>'
-    +'</div>'
-    +'</div>';
-
-  document.body.appendChild(overlay);
-
-  // Wire buttons
-  document.getElementById('btn-close-closure').onclick=function(){overlay.remove();};
-  document.getElementById('btn-cancel-closure').onclick=function(){overlay.remove();};
-  document.getElementById('btn-submit-closure').onclick=function(){submitClosure(permitId,step,checklist,nextStatus,overlay);};
-};
-
-// Track closure checkbox state
-var _closureState={};
-// Use event delegation for closure buttons
-document.addEventListener('click',function(e){
-  if(e.target.classList.contains('cls-yes')){
-    var iid=e.target.dataset.iid;
-    if(iid) window.setClosure(iid,true,e.target);
-  } else if(e.target.classList.contains('cls-no')){
-    var iid=e.target.dataset.iid;
-    if(iid) window.setClosure(iid,false,e.target);
-  }
-});
-
-window.setClosure=function(itemId,val,btn){
-  _closureState[itemId]=val;
-  var yes=document.getElementById('cls-yes-'+itemId);
-  var no=document.getElementById('cls-no-'+itemId);
-  if(yes&&no){
-    if(val){
-      yes.style.background='rgba(16,185,129,.15)';yes.style.borderColor='var(--success)';yes.style.color='var(--success)';
-      no.style.background='transparent';no.style.borderColor='var(--border)';no.style.color='var(--text2)';
-    } else {
-      no.style.background='rgba(239,68,68,.1)';no.style.borderColor='var(--danger)';no.style.color='var(--danger)';
-      yes.style.background='transparent';yes.style.borderColor='var(--border)';yes.style.color='var(--text2)';
-    }
-  }
-};
-
-async function submitClosure(permitId,step,checklist,nextStatus,overlay){
-  const p=allPermits.find(x=>x.id===permitId);
-  if(!p)return;
-
-  // Validate all items answered
-  var unanswered=checklist.filter(function(item){return _closureState[item.id]===undefined;});
-  if(unanswered.length){
-    var err=document.getElementById('closure-err');
-    if(err){err.textContent=(lang==='bm'?'Sila jawab semua item checklist sebelum hantar. ('+unanswered.length+' belum dijawab)':'Please answer all checklist items. ('+unanswered.length+' unanswered)');err.style.display='flex';}
-    return;
-  }
-
-  const btn=document.getElementById('btn-submit-closure');
-  if(btn){btn.disabled=true;btn.textContent=lang==='bm'?'Menyimpan...':'Saving...';}
-
-  const remarks=document.getElementById('closure-remarks')?.value.trim()||'';
-  const items={};
-  checklist.forEach(function(item){items[item.id]=_closureState[item.id];});
-  _closureState={};
-
-  const closureEntry={
-    items,remarks,
-    submittedBy:currentData.name,
-    role:rl(currentData.role),
-    at:new Date().toISOString()
-  };
-
-  const tlLabels={
-    contractor:{bm:'Perisytiharan Kerja Selesai oleh Kontraktor',en:'Work Completion Declaration by Contractor'},
-    hod:{bm:'Post Inspection & Acknowledge oleh HOD/Process Owner',en:'Post Inspection & Acknowledgement by HOD/Process Owner'},
-    hse:{bm:'Final Acknowledge & Permit Ditutup oleh HSE Officer',en:'Final Acknowledgement & Permit Closed by HSE Officer'}
-  };
-
-  const tl={
-    type:nextStatus==='closed'?'closed':'closure_step',
-    label:tlLabels[step][lang],
-    by:currentData.name,
-    role:currentData.role,
-    at:new Date().toISOString(),
-    remark:remarks
-  };
-
-  try{
-    const updateData={
-      status:nextStatus,
-      timeline:[...(p.timeline||[]),tl],
-    };
-    updateData['closure.'+step]=closureEntry;
-    if(nextStatus==='closed') updateData.closedAt=new Date().toISOString();
-    await updateDoc(doc(db,'permits',permitId),updateData);
-
-    // Notify relevant parties
-    var notifyMsg='';
-    if(step==='contractor'){
-      notifyMsg=p.permitNo+' — '+(lang==='bm'?'Kontraktor telah nyatakan kerja selesai. Sila buat Post Inspection.':'Contractor declared work complete. Please conduct Post Inspection.');
-      var hods=allUsers.filter(function(u){return u.role==='hod'&&u.status==='active';});
-      await Promise.all(hods.map(function(u){return sendNotif(u.uid,'📋 '+(lang==='bm'?'Kerja Selesai — Post Inspection Diperlukan':'Work Complete — Post Inspection Required'),notifyMsg);}));
-    } else if(step==='hod'){
-      notifyMsg=p.permitNo+' — '+(lang==='bm'?'HOD telah buat Post Inspection. Sila buat Final Acknowledge.':'HOD Post Inspection done. Please do Final Acknowledgement.');
-      var hses=allUsers.filter(function(u){return u.role==='hse'&&u.status==='active';});
-      await Promise.all(hses.map(function(u){return sendNotif(u.uid,'🔒 '+(lang==='bm'?'Permit Sedia untuk Ditutup':'Permit Ready to Close'),notifyMsg);}));
-    } else if(step==='hse'){
-      notifyMsg=p.permitNo+' — '+(lang==='bm'?'Permit telah ditutup secara rasmi.':'Permit has been officially closed.');
-      await sendNotif(p.submittedBy,'🔒 '+(lang==='bm'?'Permit Ditutup':'Permit Closed'),notifyMsg);
-    }
-
-    overlay.remove();
-    closeModal('modal-detail');
-    const msgs={contractor:lang==='bm'?'✓ Perisytiharan dihantar. HOD akan buat post inspection.':'✓ Declaration submitted. HOD will conduct post inspection.',hod:lang==='bm'?'✓ Post inspection dihantar ke HSE untuk final acknowledge.':'✓ Post inspection forwarded to HSE.',hse:lang==='bm'?'🔒 Permit telah ditutup secara rasmi.':'🔒 Permit officially closed.'};
-    showToast(msgs[step]||'Done','success');
-  }catch(e){
-    console.error(e);
-    showToast(lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.','error');
-    if(btn){btn.disabled=false;btn.textContent=lang==='bm'?'Cuba Lagi':'Try Again';}
-  }
-}
-
-window.forceClosePermit=async function(permitId){
-  if(!confirm(lang==='bm'?'Force close permit ini? (Admin only)':'Force close this permit? (Admin only)'))return;
-  const p=allPermits.find(x=>x.id===permitId);
-  if(!p)return;
-  const tl={type:'closed',label:lang==='bm'?'Permit ditutup oleh Admin (Force Close)':'Permit force closed by Admin',by:currentData.name,at:new Date().toISOString(),remark:'Force closed by Admin'};
-  await updateDoc(doc(db,'permits',permitId),{status:'closed',closedAt:new Date().toISOString(),timeline:[...(p.timeline||[]),tl]});
-  closeModal('modal-detail');
-  showToast(lang==='bm'?'Permit telah ditutup.':'Permit closed.','info');
-};
-
-
-
-// ── PDF DOWNLOAD UTILITIES ─────────────────────────────
-window.generatePDFFromHTML=function(htmlContent, filename){
-  // Create hidden iframe to render HTML
-  var iframe=document.createElement('iframe');
-  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:794px;height:1123px;border:none;';
-  document.body.appendChild(iframe);
-
-  showToast(lang==='bm'?'⏳ Menjana PDF...':'⏳ Generating PDF...','info');
-
-  iframe.onload=function(){
-    try{
-      var iDoc=iframe.contentDocument||iframe.contentWindow.document;
-      var iBody=iDoc.body;
-      iBody.style.margin='0';iBody.style.padding='0';
-
-      // Wait for fonts/images to load
-      setTimeout(function(){
-        html2canvas(iBody,{
-          scale:2,
-          useCORS:true,
-          logging:false,
-          width:794,
-          windowWidth:794
-        }).then(function(canvas){
-          try{
-            var imgData=canvas.toDataURL('image/jpeg',0.95);
-            var pdf=new window.jspdf.jsPDF({
-              orientation:'portrait',
-              unit:'mm',
-              format:'a4'
-            });
-
-            var pageW=pdf.internal.pageSize.getWidth();
-            var pageH=pdf.internal.pageSize.getHeight();
-            var imgH=(canvas.height*pageW)/canvas.width;
-            var heightLeft=imgH;
-            var position=0;
-
-            pdf.addImage(imgData,'JPEG',0,position,pageW,imgH);
-            heightLeft-=pageH;
-
-            while(heightLeft>0){
-              position=heightLeft-imgH;
-              pdf.addPage();
-              pdf.addImage(imgData,'JPEG',0,position,pageW,imgH);
-              heightLeft-=pageH;
-            }
-
-            pdf.save(filename);
-            showToast(lang==='bm'?'✓ PDF berjaya dimuat turun.':'✓ PDF downloaded successfully.','success');
-          }catch(e){
-            console.error('PDF gen error:',e);
-            showToast(lang==='bm'?'Gagal jana PDF. Cuba lagi.':'Failed to generate PDF. Try again.','error');
-          }
-          document.body.removeChild(iframe);
-        }).catch(function(e){
-          console.error('html2canvas error:',e);
-          showToast('Error generating PDF','error');
-          document.body.removeChild(iframe);
-        });
-      },800);
-    }catch(e){
-      console.error(e);
-      document.body.removeChild(iframe);
-    }
-  };
-
-  var iDoc=iframe.contentDocument||iframe.contentWindow.document;
-  iDoc.open();iDoc.write(htmlContent);iDoc.close();
-};
-
-window.downloadClosureReport=function(permitId){
-  const p=allPermits.find(x=>x.id===permitId);
-  if(!p)return;
-  const closure=p.closure||{};
-  const printDate=new Date().toLocaleDateString('ms-MY',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
-
-  function closureSection(data,checklist,title,color){
-    if(!data) return '<div style="padding:12px;color:#64748b;font-style:italic;font-size:12px">Belum selesai</div>';
-    let rows='';
-    checklist.forEach(function(item){
-      const ans=(data.items||{})[item.id];
-      rows+='<tr style="border-bottom:1px solid #e2e8f0;background:'+(ans===false?'#fff5f5':'')+'">'
-        +'<td style="padding:7px 12px;font-size:12px;color:#1e293b">'+item.bm+'</td>'
-        +'<td style="padding:7px 12px;font-size:11px;color:#64748b;font-style:italic">'+item.en+'</td>'
-        +'<td style="padding:7px 12px;text-align:center;font-weight:700;color:'+(ans===true?'#16a34a':'#dc2626')+'">'+( ans===true?'✓ Ya':ans===false?'✗ Tidak':'—')+'</td>'
-        +'</tr>';
-    });
-    return '<table style="width:100%;border-collapse:collapse;font-family:Arial">'
-      +'<thead><tr style="background:#f8fafc"><th style="padding:7px 12px;text-align:left;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0">Item (BM)</th><th style="padding:7px 12px;text-align:left;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0">Item (EN)</th><th style="padding:7px 12px;text-align:center;font-size:11px;color:#64748b;border-bottom:2px solid #e2e8f0;width:80px">Jawapan</th></tr></thead>'
-      +'<tbody>'+rows+'</tbody></table>'
-      +(data.remarks?'<div style="margin-top:8px;padding:8px 12px;background:#f0f9ff;border-left:3px solid #0ea5e9;font-size:12px;color:#0369a1;font-style:italic">Remarks: '+data.remarks+'</div>':'')
-      +'<div style="margin-top:6px;font-size:11px;color:#64748b">Oleh: '+( data.submittedBy||'—')+' ('+( data.role||'—')+') · '+fmtDate(data.at)+'</div>';
-  }
-
-  var html='<!DOCTYPE html><html><head><meta charset="UTF-8">'
-    +'<title>Closure Report — '+(p.permitNo||'')+'</title>'
-    +'<style>body{font-family:Arial,sans-serif;color:#1e293b;margin:0;padding:0}'
-    +'.header{background:#1e3a5f;color:#fff;padding:20px 30px}'
-    +'.header h1{margin:0 0 4px;font-size:18px;font-weight:700}'
-    +'.header p{margin:0;font-size:12px;opacity:.8}'
-    +'.section{margin:20px 30px;border:1px solid #e2e8f0;border-radius:8px;overflow:hidden}'
-    +'.sec-head{padding:12px 16px;font-weight:600;font-size:13px;border-bottom:1px solid #e2e8f0}'
-    +'.sec-body{padding:16px}'
-    +'.meta{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #e2e8f0;margin:20px 30px}'
-    +'.meta-item{padding:10px 14px;border-right:1px solid #e2e8f0}'
-    +'.meta-label{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}'
-    +'.meta-value{font-size:13px;font-weight:600}'
-    +'.status-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}'
-    +'.footer{margin:20px 30px;padding:12px 0;border-top:2px solid #e2e8f0;font-size:11px;color:#64748b;display:flex;justify-content:space-between}'
-    +'</style></head><body>'
-
-    // Header
-    +'<div class="header">'
-    +'<h1>&#128274; Closure Report — '+(p.permitNo||'—')+'</h1>'
-    +'<p>Kuantan Port Sdn Bhd &nbsp;·&nbsp; KP Work Registry &nbsp;·&nbsp; Dijana: '+printDate+'</p>'
-    +'</div>'
-
-    // Meta
-    +'<div class="meta">'
-    +'<div class="meta-item"><div class="meta-label">No. Permit</div><div class="meta-value">'+(p.permitNo||'—')+'</div></div>'
-    +'<div class="meta-item"><div class="meta-label">Projek / Kapal</div><div class="meta-value">'+(p.projectName||p.vesselName||'—')+'</div></div>'
-    +'<div class="meta-item"><div class="meta-label">Status Akhir</div><div class="meta-value">&#128274; DITUTUP</div></div>'
-    +'<div class="meta-item"><div class="meta-label">Lokasi</div><div class="meta-value">'+(p.location||'—')+'</div></div>'
-    +'<div class="meta-item"><div class="meta-label">PIC Kontraktor</div><div class="meta-value">'+(p.pic||'—')+'</div></div>'
-    +'<div class="meta-item"><div class="meta-label">Tarikh Tutup</div><div class="meta-value">'+fmtDate(p.closedAt)+'</div></div>'
-    +'</div>'
-
-    // Section 1: Contractor
-    +'<div class="section">'
-    +'<div class="sec-head" style="background:#f0fdf4;color:#166534">&#10003; Peringkat 1 — Perisytiharan Kerja Selesai (Kontraktor)</div>'
-    +'<div class="sec-body">'+closureSection(closure.contractor,SITE_CLEARANCE_CHECKLIST,'Kontraktor','#166534')+'</div>'
-    +'</div>'
-
-    // Section 2: HOD
-    +'<div class="section">'
-    +'<div class="sec-head" style="background:#eff6ff;color:#1e40af">&#128203; Peringkat 2 — Post Inspection (HOD/Process Owner)</div>'
-    +'<div class="sec-body">'+closureSection(closure.hod,HOD_CLOSURE_CHECKLIST,'HOD','#1e40af')+'</div>'
-    +'</div>'
-
-    // Section 3: HSE
-    +'<div class="section">'
-    +'<div class="sec-head" style="background:#fff7ed;color:#9a3412">&#128274; Peringkat 3 — Final Acknowledgement (HSE Officer)</div>'
-    +'<div class="sec-body">'+closureSection(closure.hse,HSE_CLOSURE_CHECKLIST,'HSE','#9a3412')+'</div>'
-    +'</div>'
-
-    +'<div class="footer">'
-    +'<span>KP Work Registry &nbsp;·&nbsp; Kuantan Port Sdn Bhd</span>'
-    +'<span>Dijana oleh: '+currentData.name+' · '+printDate+'</span>'
-    +'</div>'
-    +'</body></html>';
-
-  generatePDFFromHTML(html,'Closure_Report_'+(p.permitNo||'permit').replace(/\//g,'-')+'.pdf');
-};
-
-
-window.toggleProfileCard=function(){
-  const card=document.getElementById('profile-card');
-  if(!card)return;
-  if(card.classList.contains('show')){card.classList.remove('show');return;}
-  const d=currentData;
-  if(!d)return;
-  const initials=d.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
-  card.innerHTML='<div id="profile-card-body">'
-    // Avatar + name header
-    +'<div style="padding:16px 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)">'
-    +'<div style="width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0">'+initials+'</div>'
-    +'<div style="overflow:hidden">'
-    +'<div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+d.name+'</div>'
-    +'<span class="rbadge '+d.role+'" style="margin-top:3px;display:inline-flex">'+rl(d.role)+'</span>'
-    +'</div></div>'
-    // Info rows
-    +'<div style="padding:10px 16px 6px">'
-    +(d.company?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
-      +'<span style="font-size:13px">🏢</span>'
-      +'<div><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">'+(lang==='bm'?'Syarikat':'Company')+'</div>'
-      +'<div style="font-size:13px;color:var(--text)">'+d.company+'</div></div></div>':'')
-    +(d.dept?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
-      +'<span style="font-size:13px">🏛</span>'
-      +'<div><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">'+(lang==='bm'?'Jabatan':'Department')+'</div>'
-      +'<div style="font-size:13px;color:var(--text)">'+d.dept+'</div></div></div>':'')
-    +(d.email?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
-      +'<span style="font-size:13px">📧</span>'
-      +'<div style="overflow:hidden"><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">Emel</div>'
-      +'<div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+d.email+'</div></div></div>':'')
-    +(d.phone?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
-      +'<span style="font-size:13px">📱</span>'
-      +'<div><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">'+(lang==='bm'?'Telefon':'Phone')+'</div>'
-      +'<div style="font-size:13px;color:var(--text)">'+d.phone+'</div></div></div>':'')
-    +'</div>'
-    // Action buttons
-    +'<div style="padding:10px 16px 14px;display:flex;gap:8px">'
-    +'<button id="btn-profile-chgpass" style="flex:1;height:34px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:12px;transition:all .2s">&#128274; '+(lang==='bm'?'Tukar Password':'Change Password')+'</button>'
-    +'<button onclick="doLogout()" style="height:34px;padding:0 12px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:#f87171;border-radius:8px;cursor:pointer;font-size:12px;transition:all .2s">↩ '+(lang==='bm'?'Log Keluar':'Sign Out')+'</button>'
-    +'</div>'
-    +'</div>';
-  card.classList.add('show');
-  setTimeout(function(){
-    var cpBtn=document.getElementById('btn-profile-chgpass');
-    if(cpBtn) cpBtn.onclick=function(){openChangePass();card.classList.remove('show');};
-  },50);
-};
-
-// Close profile card when clicking outside
-document.addEventListener('click',function(e){
-  const card=document.getElementById('profile-card');
-  const chip=document.querySelector('.user-chip');
-  if(card&&chip&&card.classList.contains('show')&&!card.contains(e.target)&&!chip.contains(e.target)){
-    card.classList.remove('show');
-  }
-});
-
-
-// ── SHIFT & LOCATION CONFIG FUNCTIONS ────────────────
-function buildShiftTable(p){
-  const shifts=p.shiftSchedule||[];
-  if(!shifts.length) return '';
-  const completed=shifts.filter(s=>s.status==='completed').length;
-  const canManage=(p.submittedBy===currentData?.uid||['admin','hse'].includes(currentData?.role));
-
-  let html='<div class="detail-item detail-full">'
-    +'<div class="detail-label" style="margin-bottom:8px">'
-    +(lang==='bm'?'Jadual Shift Operasi':'Operation Shift Schedule')
-    +' <span style="font-size:10px;color:var(--text3)">('+completed+'/'+shifts.length+' '+(lang==='bm'?'selesai':'completed')+')</span>'
-    +'</div>'
-    +'<div style="display:flex;flex-direction:column;gap:4px">';
-
-  shifts.forEach(function(s,i){
-    const isDone=s.status==='completed';
-    const isCancelled=s.status==='cancelled';
-    const bg=isDone?'rgba(16,185,129,.06)':isCancelled?'rgba(148,163,184,.05)':'var(--bg3)';
-    const border=isDone?'rgba(16,185,129,.2)':isCancelled?'var(--border)':'var(--border)';
-    html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:'+bg+';border:1px solid '+border+';border-radius:6px">'
-      +'<span style="font-size:11px;font-family:var(--mono);color:var(--text3);width:16px">'+s.shiftNum+'</span>'
-      +'<span style="font-size:11px;font-weight:500;color:var(--text);flex:1">'+s.shiftLabel+' <span style="color:var(--text3)">'+s.shiftTime+'</span></span>'
-      +'<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">'+s.date+'</span>'
-      +'<span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;'
-        +(isDone?'background:rgba(16,185,129,.15);color:var(--success)':isCancelled?'background:rgba(148,163,184,.1);color:var(--text3)':'background:rgba(37,99,235,.1);color:var(--accent2)')+'">'+
-        (isDone?(lang==='bm'?'Selesai':'Done'):isCancelled?(lang==='bm'?'Dibatal':'Cancelled'):(lang==='bm'?'Dijadualkan':'Scheduled'))+'</span>'
-      +(canManage&&!isDone&&!isCancelled?'<button class="shift-done-btn" data-pid="'+p.id+'" data-sidx="'+i+'" style="height:22px;padding:0 8px;border:none;background:rgba(16,185,129,.15);color:var(--success);border-radius:4px;cursor:pointer;font-size:10px">✓</button>':'')
-      +(canManage&&!isCancelled?'<button class="shift-cancel-btn" data-pid="'+p.id+'" data-sidx="'+i+'" style="height:22px;padding:0 8px;border:none;background:rgba(239,68,68,.1);color:var(--danger);border-radius:4px;cursor:pointer;font-size:10px">✕</button>':'')
-      +'</div>';
-  });
-
-  // Add shift button
-  if(canManage){
-    html+='<button class="add-shift-btn" data-pid="'+p.id+'" style="margin-top:6px;width:100%;height:32px;border:1px dashed var(--border2);background:transparent;color:var(--accent2);border-radius:6px;cursor:pointer;font-size:12px">+ '+(lang==='bm'?'Tambah Shift':'Add Shift')+'</button>';
-  }
-  html+='</div></div>';
-  return html;
-}
 
 window.markShiftDone=async function(permitId,shiftIdx){
   const p=allPermits.find(x=>x.id===permitId);if(!p)return;
@@ -2022,7 +1826,6 @@ window.addShiftToPermit=async function(permitId){
   showToast(lang==='bm'?'✓ Shift baru ditambah.':'✓ Shift added.','success');
 };
 
-// ── Shift-based inspection for stevedoring ──
 window.openShiftInspection=function(permitId,shiftIdx){
   const p=allPermits.find(x=>x.id===permitId);if(!p)return;
   const shift=(p.shiftSchedule||[])[shiftIdx];if(!shift)return;
@@ -2155,92 +1958,6 @@ window.submitShiftInspection=async function(permitId,inspKey,shiftIdx){
   }
 };
 
-// ── ADMIN LOCATION CONFIG ──────────────────────────────
-window.openLocationConfig=function(){
-  const overlay=document.createElement('div');
-  overlay.id='loc-config-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
-
-  const listHtml=LOCS.map(function(loc,i){
-    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px">'
-      +'<span style="flex:1;font-size:13px;color:var(--text)">'+loc+'</span>'
-      +'<button data-loc-idx="'+i+'" class="loc-del-btn" style="height:24px;padding:0 8px;border:none;background:rgba(239,68,68,.1);color:#f87171;border-radius:4px;cursor:pointer;font-size:11px">✕</button>'
-      +'</div>';
-  }).join('');
-
-  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.5)">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">'
-    +'<span style="font-size:15px;font-weight:600">📍 '+(lang==='bm'?'Konfigurasi Lokasi':'Location Configuration')+'</span>'
-    +'<button id="btn-close-loc" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer">✕</button>'
-    +'</div>'
-    +'<div style="padding:16px 20px;max-height:400px;overflow-y:auto">'
-    +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+(lang==='bm'?'Senarai lokasi yang tersedia dalam borang permit:':'List of locations available in permit forms:')+'</div>'
-    +'<div id="loc-list">'+listHtml+'</div>'
-    +'<div style="display:flex;gap:8px;margin-top:12px">'
-    +'<input class="form-input" id="loc-new-input" placeholder="'+(lang==='bm'?'Nama lokasi baru...':'New location name...')+'" style="height:36px;font-size:13px">'
-    +'<button id="btn-add-loc" style="height:36px;padding:0 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap">+ '+(lang==='bm'?'Tambah':'Add')+'</button>'
-    +'</div>'
-    +'</div>'
-    +'<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">'
-    +'<button id="btn-reset-loc" style="height:36px;padding:0 14px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:12px">'+(lang==='bm'?'Reset Default':'Reset Default')+'</button>'
-    +'<button id="btn-save-loc" style="height:36px;padding:0 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">✓ '+(lang==='bm'?'Simpan':'Save')+'</button>'
-    +'</div>'
-    +'</div>';
-
-  document.body.appendChild(overlay);
-
-  // Wire buttons
-  document.getElementById('btn-close-loc').onclick=function(){overlay.remove();};
-
-  document.getElementById('btn-add-loc').onclick=function(){
-    const input=document.getElementById('loc-new-input');
-    const val=input.value.trim();
-    if(!val)return;
-    LOCS.push(val);
-    refreshLocList();
-    input.value='';
-  };
-
-  document.getElementById('btn-reset-loc').onclick=function(){
-    if(confirm(lang==='bm'?'Reset kepada senarai lokasi default?':'Reset to default location list?')){
-      LOCS=[...DEFAULT_LOCS];
-      refreshLocList();
-    }
-  };
-
-  document.getElementById('btn-save-loc').onclick=async function(){
-    const btn=document.getElementById('btn-save-loc');
-    btn.disabled=true;btn.textContent=lang==='bm'?'Menyimpan...':'Saving...';
-    try{
-      await setDoc(doc(db,'config','locations'),{list:LOCS,updatedBy:currentData.name,updatedAt:new Date().toISOString()});
-      overlay.remove();
-      showToast(lang==='bm'?'✓ Senarai lokasi disimpan.':'✓ Location list saved.','success');
-    }catch(e){
-      btn.disabled=false;btn.textContent='✓ '+(lang==='bm'?'Simpan':'Save');
-      showToast('Error saving','error');
-    }
-  };
-
-  // Event delegation for delete buttons
-  document.getElementById('loc-list').addEventListener('click',function(e){
-    if(e.target.classList.contains('loc-del-btn')){
-      const idx=parseInt(e.target.dataset.locIdx);
-      LOCS.splice(idx,1);
-      refreshLocList();
-    }
-  });
-
-  function refreshLocList(){
-    document.getElementById('loc-list').innerHTML=LOCS.map(function(loc,i){
-      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px">'
-        +'<span style="flex:1;font-size:13px;color:var(--text)">'+loc+'</span>'
-        +'<button data-loc-idx="'+i+'" class="loc-del-btn" style="height:24px;padding:0 8px;border:none;background:rgba(239,68,68,.1);color:#f87171;border-radius:4px;cursor:pointer;font-size:11px">✕</button>'
-        +'</div>';
-    }).join('');
-  }
-};
-
-
 window.openShiftInspectionSelector=function(permitId){
   const p=allPermits.find(x=>x.id===permitId);if(!p)return;
   const r=currentData?.role;
@@ -2293,6 +2010,291 @@ window.openShiftInspectionSelector=function(permitId){
   },50);
 };
 
+window.generatePDFFromHTML=function(htmlContent, filename){
+  // Create hidden iframe to render HTML
+  var iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;left:-9999px;top:-9999px;width:794px;height:1123px;border:none;';
+  document.body.appendChild(iframe);
+
+  showToast(lang==='bm'?'⏳ Menjana PDF...':'⏳ Generating PDF...','info');
+
+  iframe.onload=function(){
+    try{
+      var iDoc=iframe.contentDocument||iframe.contentWindow.document;
+      var iBody=iDoc.body;
+      iBody.style.margin='0';iBody.style.padding='0';
+
+      // Wait for fonts/images to load
+      setTimeout(function(){
+        html2canvas(iBody,{
+          scale:2,
+          useCORS:true,
+          logging:false,
+          width:794,
+          windowWidth:794
+        }).then(function(canvas){
+          try{
+            var imgData=canvas.toDataURL('image/jpeg',0.95);
+            var pdf=new window.jspdf.jsPDF({
+              orientation:'portrait',
+              unit:'mm',
+              format:'a4'
+            });
+
+            var pageW=pdf.internal.pageSize.getWidth();
+            var pageH=pdf.internal.pageSize.getHeight();
+            var imgH=(canvas.height*pageW)/canvas.width;
+            var heightLeft=imgH;
+            var position=0;
+
+            pdf.addImage(imgData,'JPEG',0,position,pageW,imgH);
+            heightLeft-=pageH;
+
+            while(heightLeft>0){
+              position=heightLeft-imgH;
+              pdf.addPage();
+              pdf.addImage(imgData,'JPEG',0,position,pageW,imgH);
+              heightLeft-=pageH;
+            }
+
+            pdf.save(filename);
+            showToast(lang==='bm'?'✓ PDF berjaya dimuat turun.':'✓ PDF downloaded successfully.','success');
+          }catch(e){
+            console.error('PDF gen error:',e);
+            showToast(lang==='bm'?'Gagal jana PDF. Cuba lagi.':'Failed to generate PDF. Try again.','error');
+          }
+          document.body.removeChild(iframe);
+        }).catch(function(e){
+          console.error('html2canvas error:',e);
+          showToast('Error generating PDF','error');
+          document.body.removeChild(iframe);
+        });
+      },800);
+    }catch(e){
+      console.error(e);
+      document.body.removeChild(iframe);
+    }
+  };
+
+  var iDoc=iframe.contentDocument||iframe.contentWindow.document;
+  iDoc.open();iDoc.write(htmlContent);iDoc.close();
+};
+
+window.setClosure=function(itemId,val,btn){
+  _closureState[itemId]=val;
+  var yes=document.getElementById('cls-yes-'+itemId);
+  var no=document.getElementById('cls-no-'+itemId);
+  if(yes&&no){
+    if(val){
+      yes.style.background='rgba(16,185,129,.15)';yes.style.borderColor='var(--success)';yes.style.color='var(--success)';
+      no.style.background='transparent';no.style.borderColor='var(--border)';no.style.color='var(--text2)';
+    } else {
+      no.style.background='rgba(239,68,68,.1)';no.style.borderColor='var(--danger)';no.style.color='var(--danger)';
+      yes.style.background='transparent';yes.style.borderColor='var(--border)';yes.style.color='var(--text2)';
+    }
+  }
+};
+
+async function submitClosure(permitId,step,checklist,nextStatus,overlay){
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+
+  // Validate all items answered
+  var unanswered=checklist.filter(function(item){return _closureState[item.id]===undefined;});
+  if(unanswered.length){
+    var err=document.getElementById('closure-err');
+    if(err){err.textContent=(lang==='bm'?'Sila jawab semua item checklist sebelum hantar. ('+unanswered.length+' belum dijawab)':'Please answer all checklist items. ('+unanswered.length+' unanswered)');err.style.display='flex';}
+    return;
+  }
+
+  const btn=document.getElementById('btn-submit-closure');
+  if(btn){btn.disabled=true;btn.textContent=lang==='bm'?'Menyimpan...':'Saving...';}
+
+  const remarks=document.getElementById('closure-remarks')?.value.trim()||'';
+  const items={};
+  checklist.forEach(function(item){items[item.id]=_closureState[item.id];});
+  _closureState={};
+
+  const closureEntry={
+    items,remarks,
+    submittedBy:currentData.name,
+    role:rl(currentData.role),
+    at:new Date().toISOString()
+  };
+
+  const tlLabels={
+    contractor:{bm:'Perisytiharan Kerja Selesai oleh Kontraktor',en:'Work Completion Declaration by Contractor'},
+    hod:{bm:'Post Inspection & Acknowledge oleh HOD/Process Owner',en:'Post Inspection & Acknowledgement by HOD/Process Owner'},
+    hse:{bm:'Final Acknowledge & Permit Ditutup oleh HSE Officer',en:'Final Acknowledgement & Permit Closed by HSE Officer'}
+  };
+
+  const tl={
+    type:nextStatus==='closed'?'closed':'closure_step',
+    label:tlLabels[step][lang],
+    by:currentData.name,
+    role:currentData.role,
+    at:new Date().toISOString(),
+    remark:remarks
+  };
+
+  try{
+    const updateData={
+      status:nextStatus,
+      timeline:[...(p.timeline||[]),tl],
+    };
+    updateData['closure.'+step]=closureEntry;
+    if(nextStatus==='closed') updateData.closedAt=new Date().toISOString();
+    await updateDoc(doc(db,'permits',permitId),updateData);
+
+    // Notify relevant parties
+    var notifyMsg='';
+    if(step==='contractor'){
+      notifyMsg=p.permitNo+' — '+(lang==='bm'?'Kontraktor telah nyatakan kerja selesai. Sila buat Post Inspection.':'Contractor declared work complete. Please conduct Post Inspection.');
+      var hods=allUsers.filter(function(u){return u.role==='hod'&&u.status==='active';});
+      await Promise.all(hods.map(function(u){return sendNotif(u.uid,'📋 '+(lang==='bm'?'Kerja Selesai — Post Inspection Diperlukan':'Work Complete — Post Inspection Required'),notifyMsg);}));
+    } else if(step==='hod'){
+      notifyMsg=p.permitNo+' — '+(lang==='bm'?'HOD telah buat Post Inspection. Sila buat Final Acknowledge.':'HOD Post Inspection done. Please do Final Acknowledgement.');
+      var hses=allUsers.filter(function(u){return u.role==='hse'&&u.status==='active';});
+      await Promise.all(hses.map(function(u){return sendNotif(u.uid,'🔒 '+(lang==='bm'?'Permit Sedia untuk Ditutup':'Permit Ready to Close'),notifyMsg);}));
+    } else if(step==='hse'){
+      notifyMsg=p.permitNo+' — '+(lang==='bm'?'Permit telah ditutup secara rasmi.':'Permit has been officially closed.');
+      await sendNotif(p.submittedBy,'🔒 '+(lang==='bm'?'Permit Ditutup':'Permit Closed'),notifyMsg);
+    }
+
+    overlay.remove();
+    closeModal('modal-detail');
+    const msgs={contractor:lang==='bm'?'✓ Perisytiharan dihantar. HOD akan buat post inspection.':'✓ Declaration submitted. HOD will conduct post inspection.',hod:lang==='bm'?'✓ Post inspection dihantar ke HSE untuk final acknowledge.':'✓ Post inspection forwarded to HSE.',hse:lang==='bm'?'🔒 Permit telah ditutup secara rasmi.':'🔒 Permit officially closed.'};
+    showToast(msgs[step]||'Done','success');
+  }catch(e){
+    console.error(e);
+    showToast(lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.','error');
+    if(btn){btn.disabled=false;btn.textContent=lang==='bm'?'Cuba Lagi':'Try Again';}
+  }
+}
+
+
+window.toggleProfileCard=function(){
+  const card=document.getElementById('profile-card');
+  if(!card)return;
+  if(card.classList.contains('show')){card.classList.remove('show');return;}
+  const d=currentData;
+  if(!d)return;
+  const initials=d.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  card.innerHTML='<div id="profile-card-body">'
+    // Avatar + name header
+    +'<div style="padding:16px 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)">'
+    +'<div style="width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0">'+initials+'</div>'
+    +'<div style="overflow:hidden">'
+    +'<div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+d.name+'</div>'
+    +'<span class="rbadge '+d.role+'" style="margin-top:3px;display:inline-flex">'+rl(d.role)+'</span>'
+    +'</div></div>'
+    // Info rows
+    +'<div style="padding:10px 16px 6px">'
+    +(d.company?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="font-size:13px">🏢</span>'
+      +'<div><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">'+(lang==='bm'?'Syarikat':'Company')+'</div>'
+      +'<div style="font-size:13px;color:var(--text)">'+d.company+'</div></div></div>':'')
+    +(d.dept?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="font-size:13px">🏛</span>'
+      +'<div><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">'+(lang==='bm'?'Jabatan':'Department')+'</div>'
+      +'<div style="font-size:13px;color:var(--text)">'+d.dept+'</div></div></div>':'')
+    +(d.email?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="font-size:13px">📧</span>'
+      +'<div style="overflow:hidden"><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">Emel</div>'
+      +'<div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+d.email+'</div></div></div>':'')
+    +(d.phone?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="font-size:13px">📱</span>'
+      +'<div><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">'+(lang==='bm'?'Telefon':'Phone')+'</div>'
+      +'<div style="font-size:13px;color:var(--text)">'+d.phone+'</div></div></div>':'')
+    +'</div>'
+    // Action buttons
+    +'<div style="padding:10px 16px 14px;display:flex;gap:8px">'
+    +'<button id="btn-profile-chgpass" style="flex:1;height:34px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:12px;transition:all .2s">&#128274; '+(lang==='bm'?'Tukar Password':'Change Password')+'</button>'
+    +'<button onclick="doLogout()" style="height:34px;padding:0 12px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:#f87171;border-radius:8px;cursor:pointer;font-size:12px;transition:all .2s">↩ '+(lang==='bm'?'Log Keluar':'Sign Out')+'</button>'
+    +'</div>'
+    +'</div>';
+  card.classList.add('show');
+  setTimeout(function(){
+    var cpBtn=document.getElementById('btn-profile-chgpass');
+    if(cpBtn) cpBtn.onclick=function(){openChangePass();card.classList.remove('show');};
+  },50);
+};
+
+window.submitReply=async function(permitId,timelineIdx,inputId){
+  const text=document.getElementById(inputId)?.value.trim();
+  if(!text){showToast(lang==='bm'?'Sila taip balasan.':'Please type a reply.','error');return;}
+
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+
+  const btn=document.querySelector('[onclick*="submitReply(\''+permitId+'\','+timelineIdx+'"]');
+
+  const reply={
+    by:currentData.name,
+    role:rl(currentData.role),
+    uid:currentData.uid,
+    text,
+    at:new Date().toISOString()
+  };
+
+  try{
+    // Update the specific timeline entry's replies array
+    const timeline=[...(p.timeline||[])];
+    if(!timeline[timelineIdx]) return;
+    if(!timeline[timelineIdx].replies) timeline[timelineIdx].replies=[];
+    timeline[timelineIdx].replies.push(reply);
+
+    await updateDoc(doc(db,'permits',permitId),{timeline});
+
+    // Notify relevant parties
+    const notifyUids=new Set();
+    // Notify original entry author
+    const tl=p.timeline[timelineIdx];
+    if(tl.uid&&tl.uid!==currentData.uid) notifyUids.add(tl.uid);
+    // Notify permit submitter
+    if(p.submittedBy&&p.submittedBy!==currentData.uid) notifyUids.add(p.submittedBy);
+    // Notify previous repliers
+    (tl.replies||[]).forEach(function(r){if(r.uid&&r.uid!==currentData.uid)notifyUids.add(r.uid)});
+
+    await Promise.all([...notifyUids].map(function(uid){
+      return sendNotif(uid,
+        '↩ '+(lang==='bm'?'Balasan Baru — ':'New Reply — ')+p.permitNo,
+        currentData.name+': '+text.substring(0,80)+(text.length>80?'...':'')
+      );
+    }));
+
+    // Hide reply box and clear input
+    const replyBox=document.getElementById('reply-box-'+timelineIdx);
+    if(replyBox) replyBox.style.display='none';
+    document.getElementById(inputId).value='';
+
+    // Refresh the detail modal
+    viewPermit(permitId);
+    showToast(lang==='bm'?'✓ Balasan dihantar.':'✓ Reply sent.','success');
+  }catch(e){
+    console.error(e);
+    showToast(lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.','error');
+  }
+};
+
+function loadUsers(data){
+  if(data.role!=='admin')return;
+  // Realtime listener for pending users — updates badge live
+  const q=query(collection(db,'users'),where('status','==','pending'));
+  onSnapshot(q,function(snap){
+    const pendingCount=snap.docs.length;
+    const nb=document.getElementById('nb-users');
+    if(nb){nb.textContent=pendingCount||'';nb.classList.toggle('show',pendingCount>0);}
+    // Also update allUsers pending count
+    const pendingUsers=snap.docs.map(d=>d.data());
+    // Merge into allUsers (update pending entries)
+    pendingUsers.forEach(function(pu){
+      const idx=allUsers.findIndex(u=>u.uid===pu.uid);
+      if(idx===-1) allUsers.push(pu);
+      else allUsers[idx]=pu;
+    });
+  });
+}
 
 // Event delegation for shift done/cancel buttons
 document.addEventListener('click',function(e){
@@ -2315,28 +2317,31 @@ document.addEventListener('click',function(e){
 });
 
 
-// Close insp-overlay button delegation
-document.addEventListener('click',function(e){
-  if(e.target.id==='btn-close-insp-overlay'){
-    var ov=document.getElementById('insp-overlay');if(ov)ov.remove();
-  }
-});
-
-// Wire overlay close buttons via event delegation
-document.addEventListener('click',function(e){
-  var id=e.target.id;
-  if(id==='btn-close-lupa'){var o=document.getElementById('lupa-overlay');if(o)o.remove();}
-  else if(id==='btn-close-insp'){var o=document.getElementById('insp-overlay');if(o)o.remove();}
-  else if(id==='btn-close-shift-sel'){var o=document.getElementById('insp-overlay');if(o)o.remove();}
-});
-
-
+const SITE_CLEARANCE_CHECKLIST = [
+  {id:'sc1', bm:'Kerja telah diselesaikan mengikut skop yang diluluskan', en:'Work completed as per approved scope'},
+  {id:'sc2', bm:'Tapak kerja telah dibersihkan sepenuhnya', en:'Work site has been fully cleaned'},
+  {id:'sc3', bm:'Tiada sisa sampah, bahan buangan, atau bahan berbahaya ditinggalkan', en:'No waste, debris, or hazardous materials left behind'},
+  {id:'sc4', bm:'Semua peralatan, mesin, dan bahan telah dikeluarkan dari tapak', en:'All equipment, machinery, and materials removed from site'},
+  {id:'sc5', bm:'Laluan masuk dan keluar tapak dalam keadaan selamat', en:'Site access and egress routes are safe'},
+  {id:'sc6', bm:'Kemudahan sedia ada tidak rosak / kerosakan telah dilaporkan', en:'Existing facilities undamaged / damages reported'},
+  {id:'sc7', bm:'Semua pekerja telah meninggalkan tapak kerja', en:'All workers have left the work site'},
+];
+const HOD_CLOSURE_CHECKLIST=[
+  {id:'hc1',bm:'Kerja telah disahkan selesai mengikut skop',en:'Work verified complete as per scope'},
+  {id:'hc2',bm:'Tapak kerja telah diperiksa dan dalam keadaan bersih',en:'Work site inspected and found clean'},
+  {id:'hc3',bm:'Tiada bahaya berbaki di tapak kerja',en:'No residual hazards at work site'},
+  {id:'hc4',bm:'Semua permit dan dokumen berkaitan telah dikemaskini',en:'All permits and related documents updated'},
+  {id:'hc5',bm:'Peralatan dan aset jabatan telah disahkan selamat',en:'Department equipment and assets confirmed safe'},
+];
+const HSE_CLOSURE_CHECKLIST=[
+  {id:'hse1',bm:'Self-declaration kontraktor telah disemak dan lengkap',en:'Contractor self-declaration reviewed and complete'},
+  {id:'hse2',bm:'Post inspection HOD/Process Owner telah diterima',en:'HOD/Process Owner post inspection acknowledged'},
+  {id:'hse3',bm:'Tiada insiden, hampir celaka, atau isu keselamatan berbaki',en:'No incidents, near misses, or outstanding safety issues'},
+  {id:'hse4',bm:'Semua dokumen HSE (HIRARC, MS, checklist) telah difailkan',en:'All HSE documents filed'},
+  {id:'hse5',bm:'Permit boleh ditutup secara rasmi',en:'Permit may be officially closed'},
+];
 onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data());renderApp(data)}}}});
 </script>
-
-<div class="profile-card" id="profile-card">
-  <div id="profile-card-body"></div>
-</div>
 
 <div class="modal-overlay" id="modal-create-user">
   <div class="modal" style="max-width:500px">
