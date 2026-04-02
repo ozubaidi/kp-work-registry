@@ -197,6 +197,8 @@ select.form-input option{background:var(--bg2)}
 .step{flex:1;height:3px;background:var(--border);border-radius:2px;transition:background .3s}
 .step.done{background:var(--accent)}
 .step.active{background:var(--accent2)}
+.profile-card{position:fixed;top:60px;right:16px;width:260px;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);z-index:250;display:none;overflow:hidden;animation:modalIn .2s ease}
+.profile-card.show{display:block}
 .toast{position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-size:13px;color:var(--text);box-shadow:var(--shadow);z-index:400;transform:translateY(80px);opacity:0;transition:all .3s;max-width:320px;display:flex;align-items:center;gap:10px}
 .toast.show{transform:translateY(0);opacity:1}
 .toast.success{border-color:rgba(16,185,129,.3)}
@@ -291,7 +293,7 @@ select.form-input option{background:var(--bg2)}
       <button class="ctrl-btn" onclick="toggleLang()"><span id="dlang-lbl">EN</span></button>
       <button class="ctrl-btn" onclick="toggleTheme()"><span id="dtheme-ic">☀</span></button>
       <button class="ctrl-btn notif-btn" onclick="toggleNotif()" id="notif-btn">🔔<span class="notif-dot" id="notif-dot"></span></button>
-      <div class="user-chip"><div class="user-av" id="user-av">?</div><div class="user-nm" id="user-nm">—</div></div>
+      <div class="user-chip" onclick="toggleProfileCard()" style="cursor:pointer" title="Profil"><div class="user-av" id="user-av">?</div><div class="user-nm" id="user-nm">—</div></div>
       <button class="ctrl-btn" onclick="openChangePass()" title="Tukar Kata Laluan" style="font-size:14px">🔒</button><button class="btn-logout" onclick="doLogout()" id="btn-lo-txt">Log Keluar</button>
     </div>
   </header>
@@ -2530,8 +2532,69 @@ window.downloadClosureReport=function(permitId){
 };
 
 
+window.toggleProfileCard=function(){
+  const card=document.getElementById('profile-card');
+  if(!card)return;
+  if(card.classList.contains('show')){card.classList.remove('show');return;}
+  const d=currentData;
+  if(!d)return;
+  const initials=d.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  card.innerHTML='<div id="profile-card-body">'
+    // Avatar + name header
+    +'<div style="padding:16px 16px 12px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)">'
+    +'<div style="width:44px;height:44px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0">'+initials+'</div>'
+    +'<div style="overflow:hidden">'
+    +'<div style="font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+d.name+'</div>'
+    +'<span class="rbadge '+d.role+'" style="margin-top:3px;display:inline-flex">'+rl(d.role)+'</span>'
+    +'</div></div>'
+    // Info rows
+    +'<div style="padding:10px 16px 6px">'
+    +(d.company?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="font-size:13px">🏢</span>'
+      +'<div><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">'+(lang==='bm'?'Syarikat':'Company')+'</div>'
+      +'<div style="font-size:13px;color:var(--text)">'+d.company+'</div></div></div>':'')
+    +(d.dept?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="font-size:13px">🏛</span>'
+      +'<div><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">'+(lang==='bm'?'Jabatan':'Department')+'</div>'
+      +'<div style="font-size:13px;color:var(--text)">'+d.dept+'</div></div></div>':'')
+    +(d.email?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="font-size:13px">📧</span>'
+      +'<div style="overflow:hidden"><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">Emel</div>'
+      +'<div style="font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+d.email+'</div></div></div>':'')
+    +(d.phone?'<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+      +'<span style="font-size:13px">📱</span>'
+      +'<div><div style="font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em">'+(lang==='bm'?'Telefon':'Phone')+'</div>'
+      +'<div style="font-size:13px;color:var(--text)">'+d.phone+'</div></div></div>':'')
+    +'</div>'
+    // Action buttons
+    +'<div style="padding:10px 16px 14px;display:flex;gap:8px">'
+    +'<button id="btn-profile-chgpass" style="flex:1;height:34px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:12px;transition:all .2s">&#128274; '+(lang==='bm'?'Tukar Password':'Change Password')+'</button>'
+    +'<button onclick="doLogout()" style="height:34px;padding:0 12px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:#f87171;border-radius:8px;cursor:pointer;font-size:12px;transition:all .2s">↩ '+(lang==='bm'?'Log Keluar':'Sign Out')+'</button>'
+    +'</div>'
+    +'</div>';
+  card.classList.add('show');
+  setTimeout(function(){
+    var cpBtn=document.getElementById('btn-profile-chgpass');
+    if(cpBtn) cpBtn.onclick=function(){openChangePass();card.classList.remove('show');};
+  },50);
+};
+
+// Close profile card when clicking outside
+document.addEventListener('click',function(e){
+  const card=document.getElementById('profile-card');
+  const chip=document.querySelector('.user-chip');
+  if(card&&chip&&card.classList.contains('show')&&!card.contains(e.target)&&!chip.contains(e.target)){
+    card.classList.remove('show');
+  }
+});
+
+
 onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data());renderApp(data)}}}});
 </script>
+
+<div class="profile-card" id="profile-card">
+  <div id="profile-card-body"></div>
+</div>
 
 <div class="modal-overlay" id="modal-create-user">
   <div class="modal" style="max-width:500px">
