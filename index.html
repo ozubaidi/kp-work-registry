@@ -107,6 +107,7 @@ select.form-input option{background:var(--bg2)}
 .s-extended{background:rgba(139,92,246,.15);color:#a78bfa}.s-extended::before{background:#a78bfa}
 .s-closed{background:rgba(148,163,184,.1);color:#64748b}.s-closed::before{background:#64748b}
 .s-expired{background:rgba(239,68,68,.08);color:#ef4444}.s-expired::before{background:#ef4444}
+.s-onhold{background:rgba(245,158,11,.1);color:#d97706}.s-onhold::before{background:#d97706}
 .track-a{background:rgba(37,99,235,.15);color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:10px;font-family:var(--mono);font-weight:500}
 .track-b{background:rgba(16,185,129,.15);color:#34d399;padding:2px 8px;border-radius:4px;font-size:10px;font-family:var(--mono);font-weight:500}
 .track-c{background:rgba(245,158,11,.15);color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:10px;font-family:var(--mono);font-weight:500}
@@ -197,6 +198,11 @@ select.form-input option{background:var(--bg2)}
 .toast.success{border-color:rgba(16,185,129,.3)}
 .toast.error{border-color:rgba(239,68,68,.3)}
 .toast.info{border-color:rgba(37,99,235,.3)}
+.appr-choice{background:var(--bg2);border:2px solid var(--border);border-radius:10px;padding:12px 8px;text-align:center;cursor:pointer;transition:all .2s}
+.appr-choice:hover{border-color:var(--border2);background:var(--bg3)}
+.appr-choice.selected-approve{border-color:#10b981;background:rgba(16,185,129,.08)}
+.appr-choice.selected-onhold{border-color:#f59e0b;background:rgba(245,158,11,.08)}
+.appr-choice.selected-reject{border-color:#ef4444;background:rgba(239,68,68,.08)}
 .footer{text-align:center;padding:16px;font-size:11px;color:var(--text3);font-family:var(--mono);position:relative;z-index:1}
 @media(max-width:768px){.sidebar{transform:translateX(-220px)}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.form-row{grid-template-columns:1fr}.detail-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr 1fr}.check-grid{grid-template-columns:1fr}}
 </style>
@@ -230,6 +236,9 @@ select.form-input option{background:var(--bg2)}
         <div class="form-group"><label class="form-label">Emel</label><input class="form-input" type="email" id="li-email" placeholder="nama@email.com"></div>
         <div class="form-group"><label class="form-label">Kata Laluan</label><input class="form-input" type="password" id="li-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
         <button class="btn btn-primary" id="btn-li" onclick="doLogin()"><span id="btn-li-txt">Log Masuk</span></button>
+      <div style="text-align:center;margin-top:10px">
+        <span id="lupa-link" onclick="showLupaPassword()" style="font-size:12px;color:var(--accent2);cursor:pointer;text-decoration:underline">Lupa Kata Laluan?</span>
+      </div>
       </div>
       <div class="panel" id="panel-register">
         <div class="alert alert-error" id="re-err"></div>
@@ -324,16 +333,46 @@ select.form-input option{background:var(--bg2)}
 </div>
 
 <div class="modal-overlay" id="modal-approval">
-  <div class="modal" style="max-width:480px">
-    <div class="modal-head"><span class="modal-title" id="appr-title">Kelulusan Permit</span><button class="modal-close" onclick="closeModal('modal-approval')">✕</button></div>
+  <div class="modal" style="max-width:520px">
+    <div class="modal-head">
+      <span class="modal-title" id="appr-title">Kelulusan Permit</span>
+      <button class="modal-close" onclick="closeModal('modal-approval')">✕</button>
+    </div>
     <div class="modal-body">
-      <div id="appr-info" style="margin-bottom:14px"></div>
-      <div class="form-group"><label class="form-label">Remark / Catatan</label><textarea class="form-input" id="appr-remark" placeholder="Tambah catatan..." style="min-height:90px"></textarea></div>
+      <div id="appr-info" style="margin-bottom:16px"></div>
+      <div class="form-group">
+        <label class="form-label">Tindakan <span class="req">*</span></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:4px">
+          <div class="appr-choice" id="ac-approve" onclick="selectApprAction('approve')">
+            <div style="font-size:18px;margin-bottom:4px">✅</div>
+            <div style="font-size:12px;font-weight:600;color:#34d399" id="ac-lbl-approve">Lulus</div>
+            <div style="font-size:10px;color:var(--text3)" id="ac-sub-approve">Permit diluluskan</div>
+          </div>
+          <div class="appr-choice" id="ac-onhold" onclick="selectApprAction('onhold')">
+            <div style="font-size:18px;margin-bottom:4px">⏸</div>
+            <div style="font-size:12px;font-weight:600;color:#fbbf24" id="ac-lbl-onhold">On Hold</div>
+            <div style="font-size:10px;color:var(--text3)" id="ac-sub-onhold">Tangguhkan sementara</div>
+          </div>
+          <div class="appr-choice" id="ac-reject" onclick="selectApprAction('reject')">
+            <div style="font-size:18px;margin-bottom:4px">❌</div>
+            <div style="font-size:12px;font-weight:600;color:#f87171" id="ac-lbl-reject">Tolak</div>
+            <div style="font-size:10px;color:var(--text3)" id="ac-sub-reject">Permit ditolak</div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group" style="margin-top:14px">
+        <label class="form-label" id="appr-remark-lbl">Remarks / Catatan <span class="req" id="appr-remark-req">*</span></label>
+        <textarea class="form-input" id="appr-remark" style="min-height:100px" placeholder="Nyatakan sebab, syarat kelulusan, atau perkara yang perlu dilakukan oleh kontraktor..."></textarea>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="appr-remark-hint">Remarks ini akan dipaparkan kepada kontraktor dalam timeline permit.</div>
+      </div>
       <div class="alert alert-error" id="appr-err"></div>
+      <div class="alert alert-warn" id="appr-warn" style="display:none"></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-reject" style="width:auto;padding:0 16px;height:36px;margin:0;border-radius:6px" onclick="doApproval('reject')" id="btn-appr-rej">✕ Tolak</button>
-      <button class="btn btn-approve" style="width:auto;padding:0 16px;height:36px;margin:0;border-radius:6px" onclick="doApproval('approve')" id="btn-appr-app">✓ Lulus</button>
+      <button class="btn btn-outline" style="width:auto;padding:0 16px;height:36px;margin:0" onclick="closeModal('modal-approval')">Batal</button>
+      <button class="btn btn-primary" style="width:auto;padding:0 24px;height:36px;margin:0" onclick="submitApproval()" id="btn-appr-submit" disabled>
+        <span id="btn-appr-txt">Pilih Tindakan</span>
+      </button>
     </div>
   </div>
 </div>
@@ -374,6 +413,62 @@ window.doRegister=async function(){clearAlerts();const name=document.getElementB
 
 window.doLogin=async function(){clearAlerts();const email=document.getElementById('li-email').value.trim(),pass=document.getElementById('li-pass').value;if(!email)return showAlert('li-err','Sila masukkan emel.');if(!pass)return showAlert('li-err','Sila masukkan kata laluan.');const btn=document.getElementById('btn-li');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{const cred=await signInWithEmailAndPassword(auth,email,pass),snap=await getDoc(doc(db,'users',cred.user.uid));if(!snap.exists()){await signOut(auth);showAlert('li-err','Akaun tidak dijumpai dalam sistem.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>';return}const data=snap.data();if(data.status==='pending'){await signOut(auth);showAlert('li-info','Akaun anda belum diluluskan oleh Admin KP.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>';return}if(data.status==='suspended'||data.status==='rejected'){await signOut(auth);showAlert('li-err','Akaun anda tidak aktif. Hubungi Admin KP.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>';return}currentUser=cred.user;currentData=data;renderApp(data)}catch(e){showAlert('li-err','Emel atau kata laluan tidak sah.');btn.disabled=false;btn.innerHTML='<span id="btn-li-txt">Log Masuk</span>'}};
 
+window.showLupaPassword=function(){
+  const overlay=document.createElement('div');
+  overlay.id='lupa-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML=`
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="font-size:16px;font-weight:600;margin-bottom:6px">🔑 ${lang==='bm'?'Lupa Kata Laluan':'Forgot Password'}</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:18px;line-height:1.6">${lang==='bm'
+        ?'Masukkan emel anda. Firebase akan hantar link reset kata laluan ke emel tersebut.'
+        :'Enter your email. Firebase will send a password reset link to that email.'}</div>
+      <div class="alert alert-error" id="lupa-err" style="display:none;margin-bottom:10px"></div>
+      <div class="alert alert-success" id="lupa-ok" style="display:none;margin-bottom:10px"></div>
+      <div class="form-group">
+        <label class="form-label">${lang==='bm'?'Emel':'Email'}</label>
+        <input class="form-input" type="email" id="lupa-email" placeholder="nama@email.com" style="margin-bottom:0">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button onclick="document.getElementById('lupa-overlay').remove()" style="flex:1;height:38px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">${lang==='bm'?'Batal':'Cancel'}</button>
+        <button id="btn-lupa-send" onclick="sendLupaReset()" style="flex:2;height:38px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">${lang==='bm'?'Hantar Link Reset':'Send Reset Link'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  setTimeout(()=>document.getElementById('lupa-email')?.focus(),100);
+};
+
+window.sendLupaReset=async function(){
+  const email=document.getElementById('lupa-email')?.value.trim();
+  const err=document.getElementById('lupa-err');
+  const ok=document.getElementById('lupa-ok');
+  err.style.display='none'; ok.style.display='none';
+  if(!email||!email.includes('@')){
+    err.textContent=lang==='bm'?'Sila masukkan emel yang sah.':'Please enter a valid email.';
+    err.style.display='flex'; return;
+  }
+  const btn=document.getElementById('btn-lupa-send');
+  btn.disabled=true; btn.textContent=lang==='bm'?'Menghantar...':'Sending...';
+  try{
+    await sendPasswordResetEmail(auth, email);
+    ok.textContent=lang==='bm'
+      ?`✓ Link reset dihantar ke ${email}. Semak inbox (dan folder Spam).`
+      :`✓ Reset link sent to ${email}. Check your inbox (and Spam folder).`;
+    ok.style.display='flex';
+    btn.style.background='var(--success)';
+    btn.textContent='✓ Sent';
+    setTimeout(()=>document.getElementById('lupa-overlay')?.remove(), 3000);
+  }catch(e){
+    console.error(e);
+    let msg=lang==='bm'?'Ralat. Cuba lagi.':'Error. Please try again.';
+    if(e.code==='auth/user-not-found'||e.code==='auth/invalid-email')
+      msg=lang==='bm'?'Emel ini tidak berdaftar dalam sistem.':'This email is not registered in the system.';
+    err.textContent=msg; err.style.display='flex';
+    btn.disabled=false;
+    btn.textContent=lang==='bm'?'Hantar Link Reset':'Send Reset Link';
+  }
+};
+
 window.doLogout=async function(){if(permitUnsub){permitUnsub();permitUnsub=null}if(notifUnsub){notifUnsub();notifUnsub=null}await signOut(auth);currentUser=null;currentData=null;allPermits=[];document.getElementById('app').style.display='none';document.getElementById('login-page').style.display='flex';document.getElementById('li-email').value='';document.getElementById('li-pass').value='';document.getElementById('btn-li').disabled=false;document.getElementById('btn-li').innerHTML='<span id="btn-li-txt">Log Masuk</span>'};
 
 function renderApp(data){document.getElementById('login-page').style.display='none';document.getElementById('app').style.display='block';const ini=data.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();document.getElementById('user-av').textContent=ini;document.getElementById('user-nm').textContent=data.name.split(' ')[0];
@@ -407,7 +502,7 @@ document.getElementById('dash-body').innerHTML=`<div style="margin-bottom:20px">
 
 function renderPermitsPage(){const r=currentData?.role;document.getElementById('btn-new-permit').style.display=['contractor','stevedore','admin'].includes(r)?'flex':'none';const s=(document.getElementById('permit-search')?.value||'').toLowerCase();const f=allPermits.filter(p=>!s||`${p.permitNo||''} ${p.projectName||''} ${p.vesselName||''} ${p.location||''}`.toLowerCase().includes(s));document.getElementById('tbl-count').textContent=`${f.length} ${lang==='bm'?'rekod':'records'}`;document.getElementById('permit-thead').innerHTML=`<div>No. Permit</div><div>${lang==='bm'?'Projek/Kapal':'Project/Vessel'}</div><div>${lang==='bm'?'Lokasi':'Location'}</div><div>${lang==='bm'?'Tarikh':'Date'}</div><div>Status</div><div>Track</div>`;document.getElementById('permit-tbody').innerHTML=f.length?f.map(p=>`<div class="table-row" style="grid-template-columns:130px 1fr 120px 110px 90px 70px" onclick="viewPermit('${p.id}')"><div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">${p.permitNo||'—'}</div><div><div style="font-size:13px;font-weight:500">${p.projectName||p.vesselName||'—'}</div><div style="font-size:11px;color:var(--text3)">${p.submittedByName||''}</div></div><div style="font-size:12px;color:var(--text2)">${p.location||'—'}</div><div style="font-size:11px;color:var(--text3);font-family:var(--mono)">${fmtDate(p.createdAt)}</div><div><span class="status s-${(p.status||'draft').replace(/_/g,'-')}">${sl(p.status)}</span></div><div><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span></div></div>`).join(''):`<div class="table-empty"><span class="em-icon">📄</span>${lang==='bm'?'Tiada permit lagi':'No permits yet'}</div>`}
 
-window.viewPermit=function(id){const p=allPermits.find(x=>x.id===id);if(!p)return;const r=currentData?.role;const types=(p.activityTypes||[]).map(at=>`<span class="track-${(p.track||'a').toLowerCase()}" style="margin:2px;display:inline-block">${pt(at)}</span>`).join('');const tl=(p.timeline||[]).map(t=>`<div class="tl-item"><div class="tl-dot ${t.type==='approved'?'done':t.type==='rejected'?'rejected':''}">${t.type==='approved'?'✓':t.type==='rejected'?'✕':'○'}</div><div class="tl-content"><div class="tl-title">${t.label||t.type}</div><div class="tl-sub">${t.by||''} · ${fmtDate(t.at)}</div>${t.remark?`<div class="tl-remark">"${t.remark}"</div>`:''}</div></div>`).join('');document.getElementById('detail-title').textContent=`${lang==='bm'?'No. Permit':'Permit No.'}: ${p.permitNo||'—'}`;document.getElementById('detail-body').innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap"><span class="status s-${(p.status||'').replace(/_/g,'-')}">${sl(p.status)}</span><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span>${p.expiryAt?`<span style="font-size:11px;color:var(--warning);font-family:var(--mono)">⏱ ${lang==='bm'?'Tamat':'Expires'}: ${fmtDate(p.expiryAt)}</span>`:''}</div><div class="detail-grid"><div class="detail-item"><div class="detail-label">No. Permit</div><div class="detail-value" style="font-family:var(--mono);color:var(--accent2)">${p.permitNo||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Syarikat':'Company'}</div><div class="detail-value">${p.company||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Lokasi':'Location'}</div><div class="detail-value">${p.location||'—'}</div></div><div class="detail-item"><div class="detail-label">PIC</div><div class="detail-value">${p.pic||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Tarikh Mula':'Start Date'}</div><div class="detail-value">${p.startDate||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Tarikh Tamat':'End Date'}</div><div class="detail-value">${p.endDate||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Bil. Pekerja':'Workers'}</div><div class="detail-value">${p.workers||'—'}</div></div>${p.vesselName?`<div class="detail-item"><div class="detail-label">${lang==='bm'?'Nama Kapal':'Vessel'}</div><div class="detail-value">${p.vesselName}</div></div>`:''}<div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Jenis Aktiviti':'Activity Types'}</div><div style="margin-top:4px">${types}</div></div><div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Penerangan':'Description'}</div><div class="detail-value" style="font-weight:400;line-height:1.6">${p.description||'—'}</div></div>${p.docLink?`<div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Link Dokumen':'Document Link'}</div><div class="detail-value"><a href="${p.docLink}" target="_blank" style="color:var(--accent2)">${p.docLink}</a></div></div>`:''}</div><div class="sec-title">${lang==='bm'?'Sejarah & Status':'History & Status'}</div><div class="timeline">${tl||'—'}</div>`;
+window.viewPermit=function(id){const p=allPermits.find(x=>x.id===id);if(!p)return;const r=currentData?.role;const types=(p.activityTypes||[]).map(at=>`<span class="track-${(p.track||'a').toLowerCase()}" style="margin:2px;display:inline-block">${pt(at)}</span>`).join('');const tl=(p.timeline||[]).map(t=>`<div class="tl-item"><div class="tl-dot ${t.type==='approved'?'done':t.type==='rejected'?'rejected':t.type==='onhold'?'rejected':''}">${t.type==='approved'?'✓':t.type==='rejected'?'✕':t.type==='onhold'?'⏸':'○'}</div><div class="tl-content"><div class="tl-title">${t.label||t.type}</div><div class="tl-sub">${t.by||''} · ${fmtDate(t.at)}</div>${t.remark?`<div class="tl-remark">"${t.remark}"</div>`:''}</div></div>`).join('');document.getElementById('detail-title').textContent=`${lang==='bm'?'No. Permit':'Permit No.'}: ${p.permitNo||'—'}`;document.getElementById('detail-body').innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap"><span class="status s-${(p.status||'').replace(/_/g,'-')}">${sl(p.status)}</span><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span>${p.expiryAt?`<span style="font-size:11px;color:var(--warning);font-family:var(--mono)">⏱ ${lang==='bm'?'Tamat':'Expires'}: ${fmtDate(p.expiryAt)}</span>`:''}</div><div class="detail-grid"><div class="detail-item"><div class="detail-label">No. Permit</div><div class="detail-value" style="font-family:var(--mono);color:var(--accent2)">${p.permitNo||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Syarikat':'Company'}</div><div class="detail-value">${p.company||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Lokasi':'Location'}</div><div class="detail-value">${p.location||'—'}</div></div><div class="detail-item"><div class="detail-label">PIC</div><div class="detail-value">${p.pic||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Tarikh Mula':'Start Date'}</div><div class="detail-value">${p.startDate||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Tarikh Tamat':'End Date'}</div><div class="detail-value">${p.endDate||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Bil. Pekerja':'Workers'}</div><div class="detail-value">${p.workers||'—'}</div></div>${p.vesselName?`<div class="detail-item"><div class="detail-label">${lang==='bm'?'Nama Kapal':'Vessel'}</div><div class="detail-value">${p.vesselName}</div></div>`:''}<div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Jenis Aktiviti':'Activity Types'}</div><div style="margin-top:4px">${types}</div></div><div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Penerangan':'Description'}</div><div class="detail-value" style="font-weight:400;line-height:1.6">${p.description||'—'}</div></div>${p.docLink?`<div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Link Dokumen':'Document Link'}</div><div class="detail-value"><a href="${p.docLink}" target="_blank" style="color:var(--accent2)">${p.docLink}</a></div></div>`:''}</div><div class="sec-title">${lang==='bm'?'Sejarah & Status':'History & Status'}</div><div class="timeline">${tl||'—'}</div>`;
 const footer=document.getElementById('detail-footer');footer.innerHTML=`<button class="btn btn-outline" style="width:auto;padding:0 16px;height:36px;margin:0" onclick="closeModal('modal-detail')">${lang==='bm'?'Tutup':'Close'}</button>`;
 if(p.status==='pending_hod'&&r==='hod')footer.innerHTML+=`<button class="btn btn-approve" style="width:auto;padding:0 16px;height:36px;margin:0;border-radius:8px" onclick="openApproval('${id}','hod')">${lang==='bm'?'Lulus':'Approve'} (HOD)</button>`;
 if((p.status==='pending_hse')&&(r==='hse'||r==='admin'))footer.innerHTML+=`<button class="btn btn-approve" style="width:auto;padding:0 16px;height:36px;margin:0;border-radius:8px" onclick="openApproval('${id}','hse')">${lang==='bm'?'Lulus':'Approve'} (HSE)</button>`;
@@ -417,9 +512,157 @@ openModal('modal-detail')};
 
 function renderApprovalsPage(){const r=currentData?.role;let pending=[];if(r==='hod')pending=allPermits.filter(p=>p.status==='pending_hod');else if(r==='hse')pending=allPermits.filter(p=>p.status==='pending_hse');else if(r==='admin')pending=allPermits.filter(p=>['submitted','pending_hod','pending_hse','pending_op'].includes(p.status));document.getElementById('approvals-body').innerHTML=pending.length?pending.map(p=>`<div class="data-table" style="margin-bottom:14px"><div class="table-toolbar"><div><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${p.permitNo||'—'}</span> · <span style="font-size:13px;font-weight:500">${p.projectName||p.vesselName||'—'}</span></div><div style="display:flex;gap:8px"><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span><span class="status s-${p.status.replace(/_/g,'-')}">${sl(p.status)}</span></div></div><div style="padding:12px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:12px;border-bottom:1px solid var(--border)"><div><span style="color:var(--text3)">${lang==='bm'?'Syarikat':'Company'}:</span> ${p.company||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Lokasi':'Location'}:</span> ${p.location||'—'}</div><div><span style="color:var(--text3)">PIC:</span> ${p.pic||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Tarikh Mula':'Start'}:</span> ${p.startDate||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Pekerja':'Workers'}:</span> ${p.workers||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Dihantar':'Submitted'}:</span> ${fmtDate(p.createdAt)}</div></div><div style="padding:10px 16px;display:flex;gap:8px;justify-content:flex-end"><button class="btn-sm btn-info" onclick="viewPermit('${p.id}')">${lang==='bm'?'Lihat Detail':'View Detail'}</button><button class="btn-sm btn-reject" onclick="openApproval('${p.id}','reject')">${lang==='bm'?'Tolak':'Reject'}</button><button class="btn-sm btn-approve" onclick="openApproval('${p.id}','${r}')">${lang==='bm'?'Lulus':'Approve'}</button></div></div>`).join(''):`<div class="data-table"><div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permit menunggu kelulusan':'No permits awaiting approval'}</div></div>`}
 
-window.openApproval=function(id,type){currentApprId=id;const p=allPermits.find(x=>x.id===id);if(!p)return;document.getElementById('appr-title').textContent=`${lang==='bm'?'Kelulusan':'Approval'} — ${p.permitNo||'—'}`;document.getElementById('appr-info').innerHTML=`<div class="detail-item"><div class="detail-label">${lang==='bm'?'Projek':'Project'}</div><div class="detail-value">${p.projectName||p.vesselName||'—'}</div></div>`;document.getElementById('appr-remark').value='';document.getElementById('btn-appr-app').textContent=`✓ ${lang==='bm'?'Lulus':'Approve'}`;document.getElementById('btn-appr-rej').textContent=`✕ ${lang==='bm'?'Tolak':'Reject'}`;window._apprType=type;openModal('modal-approval')};
+window.openApproval=function(id,type){
+  currentApprId=id;
+  window._apprType=type;
+  const p=allPermits.find(x=>x.id===id);
+  if(!p)return;
+  // Reset state
+  ['approve','onhold','reject'].forEach(a=>{
+    const el=document.getElementById('ac-'+a);
+    if(el)el.className='appr-choice';
+  });
+  window._apprAction=null;
+  const remark=document.getElementById('appr-remark');
+  if(remark)remark.value='';
+  const err=document.getElementById('appr-err'),warn=document.getElementById('appr-warn');
+  if(err){err.classList.remove('show');err.textContent=''}
+  if(warn){warn.style.display='none';warn.textContent=''}
+  const submitBtn=document.getElementById('btn-appr-submit');
+  if(submitBtn){submitBtn.disabled=true;submitBtn.innerHTML='<span id="btn-appr-txt">'+(lang==='bm'?'Pilih Tindakan':'Select Action')+'</span>'}
+  // Set labels
+  document.getElementById('appr-title').textContent=`${lang==='bm'?'Tindakan Kelulusan':'Approval Action'} — ${p.permitNo||'—'}`;
+  document.getElementById('ac-lbl-approve').textContent=lang==='bm'?'Lulus':'Approve';
+  document.getElementById('ac-lbl-onhold').textContent='On Hold';
+  document.getElementById('ac-lbl-reject').textContent=lang==='bm'?'Tolak':'Reject';
+  document.getElementById('ac-sub-approve').textContent=lang==='bm'?'Permit diluluskan':'Permit approved';
+  document.getElementById('ac-sub-onhold').textContent=lang==='bm'?'Tangguhkan sementara':'Temporarily hold';
+  document.getElementById('ac-sub-reject').textContent=lang==='bm'?'Permit ditolak':'Permit rejected';
+  document.getElementById('appr-remark-lbl').textContent=lang==='bm'?'Remarks / Catatan':'Remarks / Notes';
+  document.getElementById('appr-remark-hint').textContent=lang==='bm'
+    ?'Remarks ini akan dipaparkan kepada kontraktor dalam timeline permit.'
+    :'These remarks will be visible to the contractor in the permit timeline.';
+  // Permit info summary
+  document.getElementById('appr-info').innerHTML=`
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${p.permitNo||'—'}</span>
+        <span class="status s-${(p.status||'').replace(/_/g,'-')}">${sl(p.status)}</span>
+      </div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:6px">${p.projectName||p.vesselName||'—'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:var(--text2)">
+        <div>📍 ${p.location||'—'}</div>
+        <div>👷 ${p.pic||'—'}</div>
+        <div>📅 ${p.startDate||'—'} → ${p.endDate||'—'}</div>
+        <div>👥 ${p.workers||'—'} ${lang==='bm'?'pekerja':'workers'}</div>
+      </div>
+      ${(p.activityTypes||[]).map(at=>`<span class="track-${(p.track||'a').toLowerCase()}" style="margin-top:6px;display:inline-block;margin-right:4px">${pt(at)}</span>`).join('')}
+    </div>`;
+  openModal('modal-approval');
+};
 
-window.doApproval=async function(action){const id=currentApprId,remark=document.getElementById('appr-remark').value.trim(),p=allPermits.find(x=>x.id===id);if(!p)return;const btn=action==='approve'?document.getElementById('btn-appr-app'):document.getElementById('btn-appr-rej');btn.disabled=true;const tl={type:action==='approve'?'approved':'rejected',label:action==='approve'?`${lang==='bm'?'Diluluskan oleh':'Approved by'} ${rl(currentData.role)}`:`${lang==='bm'?'Ditolak oleh':'Rejected by'} ${rl(currentData.role)}`,by:currentData.name,at:new Date().toISOString(),remark};let ns;if(action==='reject'){ns='rejected'}else{if(p.status==='pending_hod'||p.status==='submitted'){ns=p.track==='A'?'pending_hse':p.track==='C'?'pending_hse':'approved'}else if(p.status==='pending_hse'||p.status==='pending_op'){ns='approved'}else{ns='approved'}}try{await updateDoc(doc(db,'permits',id),{status:ns,timeline:[...(p.timeline||[]),tl],...(ns==='approved'?{approvedAt:new Date().toISOString()}:{}),...(ns==='rejected'?{rejectedAt:new Date().toISOString()}:{})});const nm=action==='approve'?`${lang==='bm'?'Permit':'Permit'} ${p.permitNo} ${lang==='bm'?'telah diluluskan':'has been approved'}`:`${lang==='bm'?'Permit':'Permit'} ${p.permitNo} ${lang==='bm'?'telah ditolak':'has been rejected'}`;await sendNotif(p.submittedBy,action==='approve'?`✓ Permit ${lang==='bm'?'Diluluskan':'Approved'}`:`✕ Permit ${lang==='bm'?'Ditolak':'Rejected'}`,nm);closeModal('modal-approval');closeModal('modal-detail');showToast(action==='approve'?`✓ ${lang==='bm'?'Permit telah diluluskan.':'Permit has been approved.'}`:`✕ ${lang==='bm'?'Permit telah ditolak.':'Permit has been rejected.'}`,action==='approve'?'success':'error')}catch(e){showAlert('appr-err','Ralat. Cuba lagi.');btn.disabled=false}};
+window.selectApprAction=function(action){
+  window._apprAction=action;
+  ['approve','onhold','reject'].forEach(a=>{
+    const el=document.getElementById('ac-'+a);
+    if(el)el.className='appr-choice'+(a===action?' selected-'+a:'');
+  });
+  const remark=document.getElementById('appr-remark');
+  const warn=document.getElementById('appr-warn');
+  const submitBtn=document.getElementById('btn-appr-submit');
+  const req=document.getElementById('appr-remark-req');
+  if(action==='approve'){
+    if(remark)remark.placeholder=lang==='bm'?'(Pilihan) Nyatakan syarat kelulusan, perkara yang perlu diberi perhatian oleh kontraktor...':'(Optional) State approval conditions or things contractor must note...';
+    if(req)req.style.display='none';
+    if(warn){warn.style.display='none'}
+    if(submitBtn){submitBtn.disabled=false;submitBtn.style.background='var(--success)';submitBtn.innerHTML='<span id="btn-appr-txt">✅ '+(lang==='bm'?'Lulus Permit':'Approve Permit')+'</span>'}
+  } else if(action==='onhold'){
+    if(remark)remark.placeholder=lang==='bm'?'Nyatakan sebab permit ditangguhkan dan apa yang perlu dilakukan sebelum boleh diteruskan...':'State reason for hold and what must be done before proceeding...';
+    if(req)req.style.display='inline';
+    if(warn){warn.style.display='flex';warn.textContent=lang==='bm'?'⏸ Kontraktor akan dimaklumkan bahawa permit mereka sedang ditangguhkan.':'⏸ Contractor will be notified their permit is on hold.';warn.classList.add('show')}
+    if(submitBtn){submitBtn.disabled=false;submitBtn.style.background='var(--warning)';submitBtn.innerHTML='<span id="btn-appr-txt">⏸ On Hold</span>'}
+  } else if(action==='reject'){
+    if(remark)remark.placeholder=lang==='bm'?'Nyatakan sebab permit ditolak. Kontraktor perlu memahami kenapa dan apa langkah seterusnya...':'State reason for rejection. Contractor needs to understand why and next steps...';
+    if(req)req.style.display='inline';
+    if(warn){warn.style.display='flex';warn.textContent=lang==='bm'?'❌ Kontraktor akan dimaklumkan bahawa permit mereka telah ditolak.':'❌ Contractor will be notified their permit has been rejected.';warn.classList.add('show')}
+    if(submitBtn){submitBtn.disabled=false;submitBtn.style.background='var(--danger)';submitBtn.innerHTML='<span id="btn-appr-txt">❌ '+(lang==='bm'?'Tolak Permit':'Reject Permit')+'</span>'}
+  }
+};
+
+window.submitApproval=async function(){
+  const id=currentApprId;
+  const action=window._apprAction;
+  const remark=document.getElementById('appr-remark').value.trim();
+  const p=allPermits.find(x=>x.id===id);
+  if(!p||!action)return;
+  const err=document.getElementById('appr-err');
+  err.classList.remove('show');
+  // Remarks required for onhold and reject
+  if((action==='onhold'||action==='reject')&&!remark){
+    err.textContent=lang==='bm'?'Sila masukkan sebab / remarks untuk tindakan ini.':'Please enter remarks for this action.';
+    err.classList.add('show');return;
+  }
+  const btn=document.getElementById('btn-appr-submit');
+  btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+  // Build timeline entry
+  const actionLabels={
+    approve:{bm:`Diluluskan oleh ${rl(currentData.role)}`,en:`Approved by ${rl(currentData.role)}`},
+    onhold:{bm:`Ditangguhkan oleh ${rl(currentData.role)}`,en:`Put On Hold by ${rl(currentData.role)}`},
+    reject:{bm:`Ditolak oleh ${rl(currentData.role)}`,en:`Rejected by ${rl(currentData.role)}`},
+  };
+  const tl={
+    type:action==='approve'?'approved':action==='onhold'?'onhold':'rejected',
+    label:actionLabels[action][lang]||actionLabels[action].bm,
+    by:currentData.name,
+    role:currentData.role,
+    at:new Date().toISOString(),
+    remark:remark||''
+  };
+  // Determine next status
+  let newStatus;
+  if(action==='reject') newStatus='rejected';
+  else if(action==='onhold') newStatus='onhold';
+  else {
+    if(p.status==='pending_hod') newStatus='pending_hse';
+    else if(p.status==='pending_op') newStatus='pending_hse';
+    else if(p.status==='pending_hse') newStatus='approved';
+    else newStatus='approved';
+  }
+  try{
+    await updateDoc(doc(db,'permits',id),{
+      status:newStatus,
+      timeline:[...(p.timeline||[]),tl],
+      ...(newStatus==='approved'?{approvedAt:new Date().toISOString()}:{}),
+      ...(newStatus==='rejected'?{rejectedAt:new Date().toISOString()}:{}),
+      ...(newStatus==='onhold'?{onholdAt:new Date().toISOString()}:{}),
+    });
+    // Notify contractor
+    const notifMap={
+      approve:{title:`✅ Permit ${lang==='bm'?'Diluluskan':'Approved'}`,msg:`${p.permitNo} ${lang==='bm'?'telah diluluskan oleh':'approved by'} ${rl(currentData.role)}`},
+      onhold:{title:`⏸ Permit On Hold`,msg:`${p.permitNo} ${lang==='bm'?'ditangguhkan oleh':'put on hold by'} ${rl(currentData.role)}. ${remark?lang==='bm'?'Catatan: ':'Note: ':''}${remark||''}`},
+      reject:{title:`❌ Permit ${lang==='bm'?'Ditolak':'Rejected'}`,msg:`${p.permitNo} ${lang==='bm'?'ditolak oleh':'rejected by'} ${rl(currentData.role)}. ${remark?lang==='bm'?'Sebab: ':'Reason: ':''}${remark||''}`},
+    };
+    await sendNotif(p.submittedBy, notifMap[action].title, notifMap[action].msg);
+    // If HOD approved → notify HSE
+    if(action==='approve'&&newStatus==='pending_hse'){
+      try{
+        const hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');
+        await Promise.all(hses.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Menunggu Kelulusan HSE':'Permit Awaiting HSE Approval'}`,`${p.permitNo} — ${p.projectName||p.vesselName||''}`)));
+      }catch(ne){}
+    }
+    closeModal('modal-approval');
+    closeModal('modal-detail');
+    const toastMap={approve:lang==='bm'?'✅ Permit telah diluluskan.':'✅ Permit approved.',onhold:lang==='bm'?'⏸ Permit ditangguhkan.':'⏸ Permit on hold.',reject:lang==='bm'?'❌ Permit telah ditolak.':'❌ Permit rejected.'};
+    showToast(toastMap[action],action==='approve'?'success':action==='onhold'?'warn':'error');
+  }catch(e){
+    console.error(e);
+    err.textContent='Ralat. Cuba lagi.';err.classList.add('show');
+    btn.disabled=false;
+    btn.innerHTML=`<span id="btn-appr-txt">${action==='approve'?'✅ '+(lang==='bm'?'Lulus':'Approve'):action==='onhold'?'⏸ On Hold':'❌ '+(lang==='bm'?'Tolak':'Reject')}</span>`;
+  }
+};
+
 
 window.closePermit=async function(id){const p=allPermits.find(x=>x.id===id);if(!p)return;const tl={type:'closed',label:lang==='bm'?'Permit ditutup':'Permit closed',by:currentData.name,at:new Date().toISOString(),remark:''};await updateDoc(doc(db,'permits',id),{status:'closed',closedAt:new Date().toISOString(),timeline:[...(p.timeline||[]),tl]});closeModal('modal-detail');showToast(lang==='bm'?'Permit telah ditutup.':'Permit has been closed.','info')};
 
@@ -461,7 +704,7 @@ async function renderUsersPage(){
       <div><div style="font-weight:500">${u.name}${u.mustChangePass?'<span style="font-size:9px;color:var(--warning);margin-left:6px;background:rgba(245,158,11,.15);padding:1px 5px;border-radius:4px">TUKAR PASS</span>':''}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div>
       <div><span class="rbadge ${u.role}">${rl(u.role)}</span></div>
       <div style="font-size:12px;color:var(--text2)">${u.dept||u.company||'—'}</div>
-      <div style="display:flex;gap:5px">${isSelf?'<span style="font-size:11px;color:var(--text3)">(anda)</span>':`<button class="btn-sm btn-warn" onclick="resetUserPassword('${u.email}','${u.name}')">🔑</button><button class="btn-sm btn-reject" onclick="suspendUser('${u.uid}','${u.name}')">⊘</button>`}</div>
+      <div style="display:flex;gap:5px">${isSelf?'<span style="font-size:11px;color:var(--text3)">(anda)</span>':`<button class="btn-sm btn-warn" onclick="resetUserPassword('${u.uid}','${u.email}','${u.name}')">🔑</button><button class="btn-sm btn-reject" onclick="suspendUser('${u.uid}','${u.name}')">⊘</button>`}</div>
     </div>`;
   });
   html+='</div>';
@@ -503,7 +746,7 @@ window.submitCreateUser=async function(){
   const btn=document.getElementById('btn-cu-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
   try{
     const cred=await createUserWithEmailAndPassword(auth2,email,pass);
-    await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name,phone,email,role,company:company||'Kuantan Port Sdn Bhd',dept:dept||'',status:'active',mustChangePass:true,createdAt:new Date().toISOString(),createdBy:currentData.uid,createdByName:currentData.name});
+    await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name,phone,email,role,company:company||'Kuantan Port Sdn Bhd',dept:dept||'',status:'active',mustChangePass:true,lastPass:pass,createdAt:new Date().toISOString(),createdBy:currentData.uid,createdByName:currentData.name});
     await signOut(auth2);
     ok.textContent=lang==='bm'?`✓ Akaun ${name} berjaya dicipta. Credentials: ${email} / ${pass}`:`✓ Account created for ${name}. Credentials: ${email} / ${pass}`;
     ok.classList.add('show');
@@ -537,7 +780,7 @@ window.submitChangePass=async function(){
     const cred=EmailAuthProvider.credential(currentUser.email,oldP);
     await reauthenticateWithCredential(currentUser,cred);
     await updatePassword(currentUser,newP);
-    await updateDoc(doc(db,'users',currentUser.uid),{mustChangePass:false});
+    await updateDoc(doc(db,'users',currentUser.uid),{mustChangePass:false,lastPass:''});
     ok.textContent=lang==='bm'?'✓ Kata laluan berjaya ditukar.':'✓ Password changed successfully.';
     ok.classList.add('show');
     setTimeout(()=>closeModal('modal-change-pass'),2000);
@@ -548,10 +791,72 @@ window.submitChangePass=async function(){
   }finally{btn.disabled=false;btn.innerHTML=`<span id="btn-cp-txt">${lang==='bm'?'Tukar Password':'Change Password'}</span>`}
 };
 
-window.resetUserPassword=async function(email,name){
-  if(!confirm(lang==='bm'?`Hantar email reset password kepada ${name}?`:`Send password reset to ${name}?`))return;
-  try{await sendPasswordResetEmail(auth,email);showToast(lang==='bm'?`✓ Email reset dihantar ke ${email}`:`✓ Reset email sent to ${email}`,'success')}
-  catch(e){showToast(lang==='bm'?'Gagal hantar email reset.':'Failed to send reset email.','error')}
+window.resetUserPassword=async function(uid,email,name){
+  const defPass='Abc@1234';
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+  overlay.innerHTML=`
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px">🔑 Reset Password</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">${name} &nbsp;·&nbsp; <span style="font-family:var(--mono);font-size:11px">${email}</span></div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;text-align:center">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">${lang==='bm'?'Password baru':'New password'}</div>
+        <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--accent2);letter-spacing:.15em">${defPass}</div>
+      </div>
+      <div id="reset-status" style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:14px;min-height:16px"></div>
+      <div style="display:flex;gap:8px">
+        <button id="btn-rc" style="flex:1;height:38px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">${lang==='bm'?'Batal':'Cancel'}</button>
+        <button id="btn-rk" style="flex:2;height:38px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">✓ Reset</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('btn-rc').onclick=()=>overlay.remove();
+  document.getElementById('btn-rk').onclick=async()=>{
+    const btn=document.getElementById('btn-rk');
+    const status=document.getElementById('reset-status');
+    btn.disabled=true;btn.textContent=lang==='bm'?'Memproses...':'Processing...';
+    status.textContent=lang==='bm'?'Mencuba reset password...':'Attempting reset...';
+    // Try to get stored password from Firestore
+    let success=false;
+    try{
+      const usnap=await getDoc(doc(db,'users',uid));
+      const udata=usnap.data();
+      const storedPass=udata?.lastPass||null;
+      if(storedPass){
+        // Use secondary app to sign in with stored pass then change to defPass
+        status.textContent=lang==='bm'?'Menukar password...':'Changing password...';
+        const cred2=await signInWithEmailAndPassword(auth2,email,storedPass);
+        await updatePassword(cred2.user,defPass);
+        await signOut(auth2);
+        // Update stored pass and flag
+        await updateDoc(doc(db,'users',uid),{lastPass:defPass,mustChangePass:true,resetBy:currentData.name,resetAt:new Date().toISOString()});
+        success=true;
+        status.style.color='#34d399';
+        status.textContent='✓ '+(lang==='bm'?'Password berjaya ditukar kepada Abc@1234':'Password successfully changed to Abc@1234');
+        btn.style.background='var(--success)';btn.textContent='✓ Done';
+        setTimeout(()=>{overlay.remove();showToast(lang==='bm'?`✓ Password ${name} berjaya direset kepada "${defPass}"`:`✓ ${name}'s password reset to "${defPass}"`,'success');renderUsersPage()},1500);
+      } else {
+        throw new Error('no_stored_pass');
+      }
+    }catch(e){
+      console.log('Reset attempt:',e.code||e.message);
+      // Can't reset Firebase Auth password — show manual instruction
+      status.style.color='var(--warning)';
+      status.textContent='';
+      overlay.querySelector('div > div:last-child').insertAdjacentHTML('beforebegin',`
+        <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#fbbf24">
+          ⚠ ${lang==='bm'
+            ?'Password tidak dapat ditukar secara automatik. Sila maklumkan kepada <strong>'+name+'</strong> untuk log masuk dengan password asal mereka, kemudian guna butang 🔒 untuk tukar kepada <strong>'+defPass+'</strong>.'
+            :'Password cannot be changed automatically. Please inform <strong>'+name+'</strong> to login with their current password, then use the 🔒 button to change it to <strong>'+defPass+'</strong>.'}
+          <br><br>
+          ${lang==='bm'?'Atau, Admin boleh <strong>delete dan recreate</strong> akaun mereka.':'Or, Admin can <strong>delete and recreate</strong> their account.'}
+        </div>`);
+      await updateDoc(doc(db,'users',uid),{mustChangePass:true,resetBy:currentData.name,resetAt:new Date().toISOString()}).catch(()=>{});
+      btn.disabled=false;btn.style.background='var(--bg3)';btn.style.color='var(--text2)';btn.textContent=lang==='bm'?'Tutup':'Close';
+      btn.onclick=()=>overlay.remove();
+      document.getElementById('btn-rc').style.display='none';
+    }
+  };
 };
 
 window.suspendUser=async function(uid,name){
