@@ -417,7 +417,21 @@ const db=getFirestore(app);
 let lang='bm',currentUser=null,currentData=null,allPermits=[],allUsers=[],notifications=[],draft={},currentApprId=null,permitUnsub=null,notifUnsub=null,formStep=1;
 
 const PTYPES={hot_work:{bm:'Hot Work (Kimpalan)',en:'Hot Work (Welding)',expiry_hours:12,track:'A',hr:true},confined_space:{bm:'Confined Space',en:'Confined Space',expiry_hours:8,track:'A',hr:true},working_height:{bm:'Working at Height',en:'Working at Height',track:'A',hr:true},electrical:{bm:'Electrical Isolation',en:'Electrical Isolation',track:'A',hr:true},civil:{bm:'General Maintenance/Civil',en:'General Maintenance/Civil',track:'A',hr:false},mechanical:{bm:'Mechanical Work',en:'Mechanical Work',track:'A',hr:false},lifting:{bm:'Lifting Operation',en:'Lifting Operation',track:'A',hr:true},diving:{bm:'Diving Operation',en:'Diving Operation',track:'A',hr:true},bunkering:{bm:'Bunkering',en:'Bunkering',track:'A',hr:true},chandelling:{bm:'Ship Chandelling',en:'Ship Chandelling',track:'A',hr:false},drybulk_r:{bm:'Drybulk (Rutin)',en:'Drybulk (Routine)',track:'B',hr:false},breakbulk_r:{bm:'Breakbulk (Rutin)',en:'Breakbulk (Routine)',track:'B',hr:false},drybulk_nr:{bm:'Drybulk (Non-Rutin)',en:'Drybulk (Non-Routine)',track:'C',hr:false},breakbulk_nr:{bm:'Breakbulk (Non-Rutin)',en:'Breakbulk (Non-Routine)',track:'C',hr:false}};
-const LOCS=['Berth 1','Berth 2','Berth 3','Berth 4','Workshop','Yard A','Yard B','Warehouse','Admin Building','Substation','RTG Area','Marine Area'];
+const DEFAULT_LOCS=['Berth 1','Berth 2','Berth 3','Berth 4','Workshop','Yard A','Yard B','Warehouse','Admin Building','Substation','RTG Area','Marine Area'];
+let LOCS=[...DEFAULT_LOCS]; // Will be updated from Firestore config
+const SHIFTS=[
+  {id:'shift1',label:'Shift 1',time:'7:00 pagi – 4:00 petang',start:'07:00',end:'16:00'},
+  {id:'shift2',label:'Shift 2',time:'4:00 petang – 12:00 malam',start:'16:00',end:'00:00'},
+  {id:'shift3',label:'Shift 3',time:'12:00 malam – 7:00 pagi',start:'00:00',end:'07:00'},
+];
+async function loadSystemConfig(){
+  try{
+    const snap=await getDoc(doc(db,'config','locations'));
+    if(snap.exists()&&snap.data().list&&snap.data().list.length){
+      LOCS=snap.data().list;
+    }
+  }catch(e){console.log('Config load:',e.code);}
+}
 const SL={bm:{draft:'Draf',submitted:'Dihantar',approved:'Diluluskan',rejected:'Ditolak',pending_hod:'Pending HOD',pending_hse:'Pending HSE',pending_op:'Pending Operasi',onhold:'Ditangguhkan',closed:'Ditutup',expired:'Tamat Tempoh',extended:'Dilanjutkan',pending_closure_hod:'Pending Closure — HOD',pending_closure_hse:'Pending Closure — HSE'},en:{draft:'Draft',submitted:'Submitted',approved:'Approved',rejected:'Rejected',pending_hod:'Pending HOD',pending_hse:'Pending HSE',pending_op:'Pending Ops',onhold:'On Hold',closed:'Closed',expired:'Expired',extended:'Extended',pending_closure_hod:'Pending Closure — HOD',pending_closure_hse:'Pending Closure — HSE'}};
 const RL={admin:'Admin KP',hse:'HSE Officer',hod:'HOD/Executive',contractor:'Kontraktor',stevedore:'Stevedore Rep',management:'Management',supervisor:'Supervisor'};
 function sl(s){return(SL[lang]||SL.bm)[s]||s}
@@ -453,7 +467,7 @@ window.showLupaPassword=function(){
         <input class="form-input" type="email" id="lupa-email" placeholder="nama@email.com" style="margin-bottom:0">
       </div>
       <div style="display:flex;gap:8px;margin-top:14px">
-        <button onclick="document.getElementById('lupa-overlay').remove()" style="flex:1;height:38px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">${lang==='bm'?'Batal':'Cancel'}</button>
+        <button id="btn-close-lupa" style="flex:1;height:38px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">${lang==='bm'?'Batal':'Cancel'}</button>
         <button id="btn-lupa-send" onclick="sendLupaReset()" style="flex:2;height:38px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">${lang==='bm'?'Hantar Link Reset':'Send Reset Link'}</button>
       </div>
     </div>`;
@@ -495,12 +509,53 @@ window.sendLupaReset=async function(){
 window.doLogout=async function(){if(permitUnsub){permitUnsub();permitUnsub=null}if(notifUnsub){notifUnsub();notifUnsub=null}await signOut(auth);currentUser=null;currentData=null;allPermits=[];document.getElementById('app').style.display='none';document.getElementById('login-page').style.display='flex';document.getElementById('li-email').value='';document.getElementById('li-pass').value='';document.getElementById('btn-li').disabled=false;document.getElementById('btn-li').innerHTML='<span id="btn-li-txt">Log Masuk</span>'};
 
 function renderApp(data){document.getElementById('login-page').style.display='none';document.getElementById('app').style.display='block';const ini=data.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();document.getElementById('user-av').textContent=ini;document.getElementById('user-nm').textContent=data.name.split(' ')[0];
-  if(data.mustChangePass){setTimeout(()=>{showToast(lang==='bm'?'⚠ Sila tukar kata laluan sementara anda.':'⚠ Please change your temporary password.','warn');setTimeout(()=>openChangePass(),1800)},1000)}buildSidebar(data);loadPermits(data);loadNotifs(data);showPage('dashboard');renderDash(data)}
+  if(data.mustChangePass){setTimeout(()=>{showToast(lang==='bm'?'⚠ Sila tukar kata laluan sementara anda.':'⚠ Please change your temporary password.','warn');setTimeout(()=>openChangePass(),1800)},1000)}buildSidebar(data);loadPermits(data);loadNotifs(data);loadUsers(data);loadSystemConfig();showPage('dashboard');renderDash(data)}
 
-function buildSidebar(data){const r=data.role;let h=`<div class="nav-label">${lang==='bm'?'Menu':''}</div><div class="nav-item active" id="nav-dashboard" onclick="showPage('dashboard')"><span class="nav-icon">📊</span>${lang==='bm'?'Dashboard':'Dashboard'}</div>`;if(['admin','hse','hod','contractor','stevedore','supervisor','management'].includes(r)){h+=`<div class="nav-item" id="nav-permits" onclick="showPage('permits')"><span class="nav-icon">📋</span>${lang==='bm'?'Permit & Aktiviti':'Permits'}<span class="nav-badge" id="nb-permits"></span></div>`}if(['hse','hod','admin'].includes(r)){h+=`<div class="nav-item" id="nav-approvals" onclick="showPage('approvals')"><span class="nav-icon">✅</span>${lang==='bm'?'Kelulusan':'Approvals'}<span class="nav-badge" id="nb-approvals"></span></div>`}if(['hse','supervisor','hod'].includes(r)){h+=`<div class="nav-item" id="nav-inspection" onclick="showPage('inspection')"><span class="nav-icon">📝</span>${lang==='bm'?'Inspection':'Inspection'}<span class="nav-badge" id="nb-inspection"></span></div>`}
-  if(r==='admin'){h+=`<div class="nav-label" style="margin-top:8px">Admin</div><div class="nav-item" id="nav-users" onclick="showPage('users')"><span class="nav-icon">👥</span>${lang==='bm'?'Pengguna':'Users'}<span class="nav-badge" id="nb-inspection-admin"></span></div><div class="nav-item" id="nav-inspection" onclick="showPage('inspection')"><span class="nav-icon">📝</span>Inspection<span class="nav-badge" id="nb-inspection"></span></div>`}document.getElementById('nav-items').innerHTML=h}
-
+function buildSidebar(data){
+  var r=data.role;
+  var nav=lang==='bm'?'Menu':'';
+  function ni(id,pg,icon,label,badge){
+    return '<div class="nav-item" id="'+id+'" onclick="showPage(&quot;'+pg+'&quot;)"><span class="nav-icon">'+icon+'</span>'+label+(badge?'<span class="nav-badge" id="'+badge+'"></span>':'')+'</div>';
+  }
+  var h='<div class="nav-label">'+nav+'</div>'
+    +'<div class="nav-item active" id="nav-dashboard" onclick="showPage(&quot;dashboard&quot;)"><span class="nav-icon">&#128202;</span>'+(lang==='bm'?'Dashboard':'Dashboard')+'</div>';
+  if(['admin','hse','hod','contractor','stevedore','supervisor','management'].includes(r)){
+    h+=ni('nav-permits','permits','&#128203;',lang==='bm'?'Permit & Aktiviti':'Permits','nb-permits');
+  }
+  if(['hse','hod','admin'].includes(r)){
+    h+=ni('nav-approvals','approvals','&#9989;',lang==='bm'?'Kelulusan':'Approvals','nb-approvals');
+  }
+  if(['hse','supervisor','hod'].includes(r)){
+    h+=ni('nav-inspection','inspection','&#128221;','Inspection','nb-inspection');
+  }
+  if(r==='admin'){
+    h+='<div class="nav-label" style="margin-top:8px">Admin</div>';
+    h+=ni('nav-users','users','&#128101;',lang==='bm'?'Pengguna':'Users','nb-users');
+    h+=ni('nav-inspection-admin','inspection','&#128221;','Inspection','nb-inspection');
+    h+='<div class="nav-item" onclick="openLocationConfig()"><span class="nav-icon">&#128205;</span>'+(lang==='bm'?'Konfigurasi Lokasi':'Location Config')+'</div>';
+  }
+  document.getElementById('nav-items').innerHTML=h;
+}
 window.showPage=function(pg){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const page=document.getElementById(`pg-${pg}`);if(page)page.classList.add('active');const nav=document.getElementById(`nav-${pg}`);if(nav)nav.classList.add('active');document.getElementById('app-sub').textContent={dashboard:'Dashboard',permits:lang==='bm'?'Permit & Aktiviti':'Permits',approvals:lang==='bm'?'Kelulusan':'Approvals',users:lang==='bm'?'Pengguna':'Users',inspection:'Inspection'}[pg]||pg;if(pg==='permits')renderPermitsPage();if(pg==='approvals')renderApprovalsPage();if(pg==='users')renderUsersPage();if(pg==='inspection')renderInspectionPage()};
+
+function loadUsers(data){
+  if(data.role!=='admin')return;
+  // Realtime listener for pending users — updates badge live
+  const q=query(collection(db,'users'),where('status','==','pending'));
+  onSnapshot(q,function(snap){
+    const pendingCount=snap.docs.length;
+    const nb=document.getElementById('nb-users');
+    if(nb){nb.textContent=pendingCount||'';nb.classList.toggle('show',pendingCount>0);}
+    // Also update allUsers pending count
+    const pendingUsers=snap.docs.map(d=>d.data());
+    // Merge into allUsers (update pending entries)
+    pendingUsers.forEach(function(pu){
+      const idx=allUsers.findIndex(u=>u.uid===pu.uid);
+      if(idx===-1) allUsers.push(pu);
+      else allUsers[idx]=pu;
+    });
+  });
+}
 
 function loadPermits(data){
   if(permitUnsub){permitUnsub();permitUnsub=null}
@@ -744,849 +799,147 @@ function buildSelfDeclHTML(sd){
   return html;
 }
 
-window.viewPermit=function(id){const p=allPermits.find(x=>x.id===id);if(!p)return;const r=currentData?.role;const types=(p.activityTypes||[]).map(at=>`<span class="track-${(p.track||'a').toLowerCase()}" style="margin:2px;display:inline-block">${pt(at)}</span>`).join('');const tl=(p.timeline||[]).map((t,tIdx)=>{
-  const isInsp=t.type==='inspection';
-  const hasRemark=!!(t.remark&&t.remark.trim());
-  const canViewReport=['hse','hod','admin','management','supervisor'].includes(currentData?.role);
-  const dotClass=t.type==='approved'?'done':t.type==='rejected'||t.type==='onhold'?'rejected':'';
-  const dotIcon=t.type==='approved'?'✓':t.type==='rejected'?'✕':t.type==='onhold'?'⏸':isInsp?'📋':'○';
-  const clickAttr=(isInsp&&canViewReport)?' onclick="openInspectionReport(\''+id+'\')" style="cursor:pointer"':' ';
+window.viewPermit=function(id){
+  const p=allPermits.find(x=>x.id===id);if(!p)return;
+  const r=currentData?.role;
+  const types=(p.activityTypes||[]).map(function(at){
+    return '<span class="track-'+(p.track||'a').toLowerCase()+'" style="margin:2px;display:inline-block">'+pt(at)+'</span>';
+  }).join('');
 
-  // Build replies HTML
-  const replies=(t.replies||[]).map(function(rep,ri){
-    return '<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">'
-      +'<div style="width:20px;height:20px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text3)">↩</div>'
-      +'<div style="flex:1">'
-      +'<div style="font-size:12px;font-weight:500;color:var(--text)">'+rep.by+'</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-bottom:3px">'+rep.role+' · '+fmtDate(rep.at)+'</div>'
-      +'<div style="font-size:12px;color:var(--text2);background:var(--bg3);border-radius:6px;padding:6px 10px;border-left:2px solid var(--border2)">'+rep.text+'</div>'
+  const tl=(p.timeline||[]).map(function(t,tIdx){
+    const isInsp=t.type==='inspection';
+    const hasRemark=!!(t.remark&&t.remark.trim());
+    const canViewReport=['hse','hod','admin','management','supervisor'].includes(currentData?.role);
+    const dotClass=t.type==='approved'?'done':t.type==='rejected'||t.type==='onhold'?'rejected':'';
+    const dotIcon=t.type==='approved'?'&#10003;':t.type==='rejected'?'&#10007;':t.type==='onhold'?'&#9646;':isInsp?'&#128203;':'&#9675;';
+
+    // Replies
+    const replies=(t.replies||[]).map(function(rep){
+      return '<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">'
+        +'<div style="width:20px;height:20px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text3)">&#8617;</div>'
+        +'<div style="flex:1">'
+        +'<div style="font-size:12px;font-weight:500;color:var(--text)">'+rep.by+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-bottom:3px">'+rep.role+' &#183; '+fmtDate(rep.at)+'</div>'
+        +'<div style="font-size:12px;color:var(--text2);background:var(--bg3);border-radius:6px;padding:6px 10px;border-left:2px solid var(--border2)">'+rep.text+'</div>'
+        +'</div></div>';
+    }).join('');
+
+    // Reply box
+    const replyBoxId='reply-box-'+tIdx;
+    const replyBox='<div id="'+replyBoxId+'" style="display:none;margin-top:8px">'
+      +'<textarea class="form-input" id="reply-txt-'+tIdx+'" placeholder="'+(lang==='bm'?'Taip balasan anda...':'Type your reply...')+'" style="min-height:60px;font-size:12px"></textarea>'
+      +'<div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">'
+      +'<button class="reply-cancel-btn" data-box-id="'+replyBoxId+'" style="height:28px;padding:0 12px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:6px;cursor:pointer;font-size:11px">'+(lang==='bm'?'Batal':'Cancel')+'</button>'
+      +'<button class="reply-submit-btn" data-permit-id="'+id+'" data-tidx="'+tIdx+'" data-input-id="reply-txt-'+tIdx+'" style="height:28px;padding:0 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">&#8617; '+(lang==='bm'?'Hantar Balasan':'Send Reply')+'</button>'
+      +'</div></div>';
+
+    // Reply button
+    const canReply=(hasRemark||isInsp)&&['hse','hod','admin','contractor','stevedore','supervisor'].includes(currentData?.role);
+    const replyCount=t.replies&&t.replies.length?' ('+t.replies.length+')':'';
+    const replyBtn=canReply
+      ?'<button class="reply-toggle-btn" data-box-id="'+replyBoxId+'" style="margin-top:6px;height:24px;padding:0 10px;border:1px solid var(--border2);background:transparent;color:var(--text3);border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--mono)">&#8617; '+(lang==='bm'?'Balas':'Reply')+replyCount+'</button>'
+      :'';
+
+    const viewReportLink=isInsp&&canViewReport
+      ?' <span class="tl-insp-link" data-permit-id="'+id+'" style="font-size:10px;color:var(--accent2);text-decoration:underline;font-family:var(--mono);cursor:pointer">'+(lang==='bm'?'[Lihat Laporan]':'[View Report]')+'</span>'
+      :'';
+
+    return '<div class="tl-item">'
+      +'<div class="tl-dot '+dotClass+'">'+dotIcon+'</div>'
+      +'<div class="tl-content">'
+      +'<div class="tl-title">'+(t.label||t.type)+viewReportLink+'</div>'
+      +'<div class="tl-sub">'+(t.by||'')+' &#183; '+fmtDate(t.at)+'</div>'
+      +(t.remark?'<div class="tl-remark">"'+t.remark+'"</div>':'')
+      +replies
+      +replyBtn
+      +replyBox
       +'</div></div>';
   }).join('');
 
-  // Reply box (shown when reply button clicked)
-  const replyBoxId='reply-box-'+tIdx;
-  const replyBox='<div id="'+replyBoxId+'" style="display:none;margin-top:8px">'
-    +'<textarea class="form-input" id="reply-txt-'+tIdx+'" placeholder="'+(lang==='bm'?'Taip balasan anda...':'Type your reply...')+'" style="min-height:60px;font-size:12px"></textarea>'
-    +'<div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">'
-    +'<button onclick="document.getElementById(\''+replyBoxId+'\').style.display=\'none\'" style="height:28px;padding:0 12px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:6px;cursor:pointer;font-size:11px">'+(lang==='bm'?'Batal':'Cancel')+'</button>'
-    +'<button onclick="submitReply(\''+id+'\','+tIdx+',\'reply-txt-'+tIdx+'\')" style="height:28px;padding:0 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">↩ '+(lang==='bm'?'Hantar Balasan':'Send Reply')+'</button>'
-    +'</div></div>';
+  // Build permit detail modal
+  const selfDecl=p.selfDecl?buildSelfDeclHTML(p.selfDecl):'';
+  const shiftSched=(p.shiftSchedule&&p.shiftSchedule.length)?buildShiftTable(p):'';
+  let footerBtns='<button class="btn btn-outline" onclick="closeModal(\'modal-detail\')" style="width:auto;padding:0 16px;height:36px">'+(lang==='bm'?'Tutup':'Close')+'</button> ';
 
-  // Show reply button for entries with remarks or inspection entries
-  const canReply=(hasRemark||isInsp)&&['hse','hod','admin','contractor','stevedore','supervisor'].includes(currentData?.role);
-  const replyBtn=canReply
-    ?'<button onclick="document.getElementById(\''+replyBoxId+'\').style.display=document.getElementById(\''+replyBoxId+'\').style.display===\'none\'?\'block\':\'none\'" style="margin-top:6px;height:24px;padding:0 10px;border:1px solid var(--border2);background:transparent;color:var(--text3);border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--mono)">↩ '+(lang==='bm'?'Balas':'Reply')+(t.replies&&t.replies.length?' ('+t.replies.length+')':'')+'</button>'
-    :'';
-
-  return '<div class="tl-item">'
-    +'<div class="tl-dot '+dotClass+'">'+dotIcon+'</div>'
-    +'<div class="tl-content"'+clickAttr+'>'
-    +'<div class="tl-title">'+(t.label||t.type)+(isInsp&&canViewReport?' <span style="font-size:10px;color:var(--accent2);text-decoration:underline;font-family:var(--mono)">'+(lang==='bm'?'[Lihat Laporan]':'[View Report]')+'</span>':'')+'</div>'
-    +'<div class="tl-sub">'+(t.by||'')+' · '+fmtDate(t.at)+'</div>'
-    +(t.remark?'<div class="tl-remark">"'+t.remark+'"</div>':'')
-    +replies
-    +replyBtn
-    +replyBox
-    +'</div></div>';
-}).join('');document.getElementById('detail-title').textContent=`${lang==='bm'?'No. Permit':'Permit No.'}: ${p.permitNo||'—'}`;document.getElementById('detail-body').innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap"><span class="status s-${(p.status||'').replace(/_/g,'-')}">${sl(p.status)}</span><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span>${p.expiryAt?`<span style="font-size:11px;color:var(--warning);font-family:var(--mono)">⏱ ${lang==='bm'?'Tamat':'Expires'}: ${fmtDate(p.expiryAt)}</span>`:''}</div><div class="detail-grid"><div class="detail-item"><div class="detail-label">No. Permit</div><div class="detail-value" style="font-family:var(--mono);color:var(--accent2)">${p.permitNo||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Syarikat':'Company'}</div><div class="detail-value">${p.company||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Lokasi':'Location'}</div><div class="detail-value">${p.location||'—'}</div></div><div class="detail-item"><div class="detail-label">PIC</div><div class="detail-value">${p.pic||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Tarikh Mula':'Start Date'}</div><div class="detail-value">${p.startDate||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Tarikh Tamat':'End Date'}</div><div class="detail-value">${p.endDate||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Bil. Pekerja':'Workers'}</div><div class="detail-value">${p.workers||'—'}</div></div>${p.vesselName?`<div class="detail-item"><div class="detail-label">${lang==='bm'?'Nama Kapal':'Vessel'}</div><div class="detail-value">${p.vesselName}</div></div>`:''}<div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Jenis Aktiviti':'Activity Types'}</div><div style="margin-top:4px">${types}</div></div><div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Penerangan':'Description'}</div><div class="detail-value" style="font-weight:400;line-height:1.6">${p.description||'—'}</div></div>${p.docLink?`<div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Link Dokumen':'Document Link'}</div><div class="detail-value"><a href="${p.docLink}" target="_blank" style="color:var(--accent2)">${p.docLink}</a></div></div>`:''}
-      ${p.selfDecl?buildSelfDeclHTML(p.selfDecl):''}</div><div class="sec-title">${lang==='bm'?'Sejarah & Status':'History & Status'}</div><div class="timeline">${tl||'—'}</div>`;
-const footer=document.getElementById('detail-footer');
-  // Base: Close button
-  let footerBtns=`<button class="btn btn-outline" style="width:auto;padding:0 16px;height:36px;margin:0" onclick="closeModal('modal-detail')">${lang==='bm'?'Tutup':'Close'}</button>`;
-
-  // Approvers: show "Semak & Tindakan" button that opens approval modal
+  // Approval buttons
   const canApprove=(p.status==='pending_hod'&&r==='hod')||(p.status==='pending_hse'&&(r==='hse'||r==='admin'))||(p.status==='pending_op'&&(r==='hse'||r==='admin'));
   const canReview=p.status==='onhold'&&(r==='hse'||r==='hod'||r==='admin');
   if(canApprove){
-    footerBtns+=`<button class="btn btn-primary" style="width:auto;padding:0 20px;height:36px;margin:0" onclick="closeModal('modal-detail');openApproval('${id}','${r}')">
-      ${lang==='bm'?'Seterusnya: Lulus / Tolak / On Hold →':'Next: Approve / Reject / On Hold →'}
-    </button>`;
+    footerBtns+='<button class="btn btn-primary" style="width:auto;padding:0 20px;height:36px;margin:0" onclick="closeModal(\'modal-detail\');openApproval(\''+id+'\',\''+r+'\')">'
+      +(lang==='bm'?'Seterusnya: Lulus / Tolak / On Hold':'Next: Approve / Reject / On Hold')+'</button>';
   }
   if(canReview){
-    footerBtns+=`<button class="btn btn-primary" style="width:auto;padding:0 20px;height:36px;margin:0;background:var(--warning)" onclick="closeModal('modal-detail');openApproval('${id}','${r}')">
-      ✏️ ${lang==='bm'?'Semak Semula & Tindakan':'Review & Take Action'}
-    </button>`;
+    footerBtns+='<button class="btn btn-primary" style="width:auto;padding:0 20px;height:36px;margin:0;background:var(--warning)" onclick="closeModal(\'modal-detail\');openApproval(\''+id+'\',\''+r+'\')">&#9998; '
+      +(lang==='bm'?'Semak Semula & Tindakan':'Review & Take Action')+'</button>';
   }
-
-  // Contractor/HSE: close permit button
-  // Closure flow buttons based on role & status
+  // Closure flow buttons
   if(p.status==='approved'&&(p.submittedBy===currentData?.uid||r==='contractor'||r==='stevedore')){
-    footerBtns+='<button class="btn btn-primary" style="width:auto;padding:0 16px;height:36px;margin:0;background:var(--success)" onclick="openClosureFlow(\''+id+'\')">✓ '+(lang==='bm'?'Kerja Selesai':'Work Complete')+'</button>';
+    footerBtns+='<button class="btn btn-primary" style="width:auto;padding:0 16px;height:36px;margin:0;background:var(--success)" onclick="openClosureFlow(\''+id+'\')">&#10003; '+(lang==='bm'?'Kerja Selesai':'Work Complete')+'</button>';
   }
   if(p.status==='pending_closure_hod'&&(r==='hod'||r==='admin')){
-    footerBtns+='<button class="btn btn-primary" style="width:auto;padding:0 16px;height:36px;margin:0" onclick="openClosureFlow(\''+id+'\')">📋 '+(lang==='bm'?'Post Inspection & Acknowledge':'Post Inspection & Ack')+'</button>';
+    footerBtns+='<button class="btn btn-primary" style="width:auto;padding:0 16px;height:36px;margin:0" onclick="openClosureFlow(\''+id+'\')">&#128203; '+(lang==='bm'?'Post Inspection & Acknowledge':'Post Inspection & Ack')+'</button>';
   }
   if(p.status==='pending_closure_hse'&&(r==='hse'||r==='admin')){
-    footerBtns+='<button class="btn btn-primary" style="width:auto;padding:0 16px;height:36px;margin:0;background:var(--danger)" onclick="openClosureFlow(\''+id+'\')">🔒 '+(lang==='bm'?'Final Acknowledge & Tutup':'Final Acknowledge & Close')+'</button>';
+    footerBtns+='<button class="btn btn-primary" style="width:auto;padding:0 16px;height:36px;margin:0;background:var(--danger)" onclick="openClosureFlow(\''+id+'\')">&#128274; '+(lang==='bm'?'Final Acknowledge & Tutup':'Final Acknowledge & Close')+'</button>';
   }
   if(r==='admin'&&['approved','pending_closure_hod','pending_closure_hse'].includes(p.status)){
     footerBtns+='<button class="btn btn-outline" style="width:auto;padding:0 12px;height:36px;margin:0;font-size:11px;color:var(--danger)" onclick="forceClosePermit(\''+id+'\')">Force Close</button>';
   }
-  // Download reports for closed permits
   if(p.status==='closed'){
-    footerBtns+='<button class="btn btn-info" style="width:auto;padding:0 14px;height:36px;margin:0;border-radius:8px" onclick="downloadClosureReport(\''+id+'\')">'
-      +'&#128274; '+(lang==='bm'?'Muat Turun Closure Report':'Download Closure Report')+'</button>';
-    footerBtns+='<button class="btn btn-info" style="width:auto;padding:0 14px;height:36px;margin:0;border-radius:8px" onclick="downloadInspectionPDF(\''+id+'\')">'
-      +'&#128203; '+(lang==='bm'?'Muat Turun Inspection Report':'Download Inspection Report')+'</button>';
-  }
-  footer.innerHTML=footerBtns;
-openModal('modal-detail')};
-
-function renderApprovalsPage(){const r=currentData?.role;let pending=[];
-  if(r==='hod')pending=allPermits.filter(p=>p.status==='pending_hod'||(p.status==='onhold'&&p.timeline&&p.timeline.some(t=>t.role==='hod')));
-  else if(r==='hse')pending=allPermits.filter(p=>p.status==='pending_hse'||p.status==='onhold');
-  else if(r==='admin')pending=allPermits.filter(p=>['submitted','pending_hod','pending_hse','pending_op','onhold'].includes(p.status));document.getElementById('approvals-body').innerHTML=pending.length?pending.map(p=>`<div class="data-table" style="margin-bottom:14px"><div class="table-toolbar"><div><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${p.permitNo||'—'}</span> · <span style="font-size:13px;font-weight:500">${p.projectName||p.vesselName||'—'}</span></div><div style="display:flex;gap:8px"><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span><span class="status s-${p.status.replace(/_/g,'-')}">${sl(p.status)}</span>${p.status==='onhold'?`<span style="font-size:11px;color:var(--warning);font-family:var(--mono)">⚠ ${lang==='bm'?'Menunggu Rectification':'Awaiting Rectification'}</span>`:''}</div></div><div style="padding:12px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:12px;border-bottom:1px solid var(--border)"><div><span style="color:var(--text3)">${lang==='bm'?'Syarikat':'Company'}:</span> ${p.company||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Lokasi':'Location'}:</span> ${p.location||'—'}</div><div><span style="color:var(--text3)">PIC:</span> ${p.pic||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Tarikh Mula':'Start'}:</span> ${p.startDate||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Pekerja':'Workers'}:</span> ${p.workers||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Dihantar':'Submitted'}:</span> ${fmtDate(p.createdAt)}</div></div><div style="padding:10px 16px;display:flex;gap:8px;justify-content:flex-end"><button class="btn-sm btn-info" onclick="viewPermit('${p.id}')">${lang==='bm'?'Lihat Detail':'View Detail'}</button><button class="btn-sm btn-reject" onclick="openApproval('${p.id}','${r}')">${lang==='bm'?'Tolak':'Reject'}</button><button class="btn-sm ${p.status==='onhold'?'btn-warn':'btn-approve'}" onclick="openApproval('${p.id}','${r}')">${lang==='bm'?'Lulus':'Approve'}</button></div></div>`).join(''):`<div class="data-table"><div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permit menunggu kelulusan':'No permits awaiting approval'}</div></div>`}
-
-window.openApproval=function(id,type){
-  currentApprId=id;
-  window._apprType=type;
-  const p=allPermits.find(x=>x.id===id);
-  if(!p)return;
-  // Reset state
-  ['approve','onhold','reject'].forEach(a=>{
-    const el=document.getElementById('ac-'+a);
-    if(el)el.className='appr-choice';
-  });
-  window._apprAction=null;
-  const remark=document.getElementById('appr-remark');
-  if(remark)remark.value='';
-  const err=document.getElementById('appr-err'),warn=document.getElementById('appr-warn');
-  if(err){err.classList.remove('show');err.textContent=''}
-  if(warn){warn.style.display='none';warn.textContent=''}
-  const submitBtn=document.getElementById('btn-appr-submit');
-  if(submitBtn){submitBtn.disabled=true;submitBtn.innerHTML='<span id="btn-appr-txt">'+(lang==='bm'?'Pilih Tindakan':'Select Action')+'</span>'}
-  // Set labels
-  document.getElementById('appr-title').textContent=`${lang==='bm'?'Tindakan Kelulusan':'Approval Action'} — ${p.permitNo||'—'}`;
-  document.getElementById('ac-lbl-approve').textContent=lang==='bm'?'Lulus':'Approve';
-  document.getElementById('ac-lbl-onhold').textContent='On Hold';
-  document.getElementById('ac-lbl-reject').textContent=lang==='bm'?'Tolak':'Reject';
-  document.getElementById('ac-sub-approve').textContent=lang==='bm'?'Permit diluluskan':'Permit approved';
-  document.getElementById('ac-sub-onhold').textContent=lang==='bm'?'Tangguhkan sementara':'Temporarily hold';
-  document.getElementById('ac-sub-reject').textContent=lang==='bm'?'Permit ditolak':'Permit rejected';
-  document.getElementById('appr-remark-lbl').textContent=lang==='bm'?'Remarks / Catatan':'Remarks / Notes';
-  document.getElementById('appr-remark-hint').textContent=lang==='bm'
-    ?'Remarks ini akan dipaparkan kepada kontraktor dalam timeline permit.'
-    :'These remarks will be visible to the contractor in the permit timeline.';
-  // Permit info summary
-  document.getElementById('appr-info').innerHTML=`
-    ${p.status==='onhold'?`<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#fbbf24">
-      ⏸ ${lang==='bm'?'Permit ini sedang ditangguhkan. Semak remarks terdahulu dan buat keputusan baru.':'This permit is on hold. Review previous remarks and make a new decision.'}
-    </div>`:''}
-    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span>
-        <span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${p.permitNo||'—'}</span>
-        <span class="status s-${(p.status||'').replace(/_/g,'-')}">${sl(p.status)}</span>
-      </div>
-      <div style="font-size:14px;font-weight:600;margin-bottom:6px">${p.projectName||p.vesselName||'—'}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;color:var(--text2)">
-        <div>📍 ${p.location||'—'}</div>
-        <div>👷 ${p.pic||'—'}</div>
-        <div>📅 ${p.startDate||'—'} → ${p.endDate||'—'}</div>
-        <div>👥 ${p.workers||'—'} ${lang==='bm'?'pekerja':'workers'}</div>
-      </div>
-      ${(p.activityTypes||[]).map(at=>`<span class="track-${(p.track||'a').toLowerCase()}" style="margin-top:6px;display:inline-block;margin-right:4px">${pt(at)}</span>`).join('')}
-    </div>`;
-  openModal('modal-approval');
-};
-
-window.selectApprAction=function(action){
-  window._apprAction=action;
-  ['approve','onhold','reject'].forEach(a=>{
-    const el=document.getElementById('ac-'+a);
-    if(el)el.className='appr-choice'+(a===action?' selected-'+a:'');
-  });
-  const remark=document.getElementById('appr-remark');
-  const warn=document.getElementById('appr-warn');
-  const submitBtn=document.getElementById('btn-appr-submit');
-  const req=document.getElementById('appr-remark-req');
-  if(action==='approve'){
-    if(remark)remark.placeholder=lang==='bm'?'(Pilihan) Nyatakan syarat kelulusan, perkara yang perlu diberi perhatian oleh kontraktor...':'(Optional) State approval conditions or things contractor must note...';
-    if(req)req.style.display='none';
-    if(warn){warn.style.display='none'}
-    if(submitBtn){submitBtn.disabled=false;submitBtn.style.background='var(--success)';submitBtn.innerHTML='<span id="btn-appr-txt">✅ '+(lang==='bm'?'Lulus Permit':'Approve Permit')+'</span>'}
-  } else if(action==='onhold'){
-    if(remark)remark.placeholder=lang==='bm'?'Nyatakan sebab permit ditangguhkan dan apa yang perlu dilakukan sebelum boleh diteruskan...':'State reason for hold and what must be done before proceeding...';
-    if(req)req.style.display='inline';
-    if(warn){warn.style.display='flex';warn.textContent=lang==='bm'?'⏸ Kontraktor akan dimaklumkan bahawa permit mereka sedang ditangguhkan.':'⏸ Contractor will be notified their permit is on hold.';warn.classList.add('show')}
-    if(submitBtn){submitBtn.disabled=false;submitBtn.style.background='var(--warning)';submitBtn.innerHTML='<span id="btn-appr-txt">⏸ On Hold</span>'}
-  } else if(action==='reject'){
-    if(remark)remark.placeholder=lang==='bm'?'Nyatakan sebab permit ditolak. Kontraktor perlu memahami kenapa dan apa langkah seterusnya...':'State reason for rejection. Contractor needs to understand why and next steps...';
-    if(req)req.style.display='inline';
-    if(warn){warn.style.display='flex';warn.textContent=lang==='bm'?'❌ Kontraktor akan dimaklumkan bahawa permit mereka telah ditolak.':'❌ Contractor will be notified their permit has been rejected.';warn.classList.add('show')}
-    if(submitBtn){submitBtn.disabled=false;submitBtn.style.background='var(--danger)';submitBtn.innerHTML='<span id="btn-appr-txt">❌ '+(lang==='bm'?'Tolak Permit':'Reject Permit')+'</span>'}
-  }
-};
-
-window.submitApproval=async function(){
-  const id=currentApprId;
-  const action=window._apprAction;
-  const remark=document.getElementById('appr-remark').value.trim();
-  const p=allPermits.find(x=>x.id===id);
-  if(!p||!action)return;
-  const err=document.getElementById('appr-err');
-  err.classList.remove('show');
-  // Remarks required for onhold and reject
-  if((action==='onhold'||action==='reject')&&!remark){
-    err.textContent=lang==='bm'?'Sila masukkan sebab / remarks untuk tindakan ini.':'Please enter remarks for this action.';
-    err.classList.add('show');return;
-  }
-  const btn=document.getElementById('btn-appr-submit');
-  btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
-  // Build timeline entry
-  const actionLabels={
-    approve:{bm:`Diluluskan oleh ${rl(currentData.role)}`,en:`Approved by ${rl(currentData.role)}`},
-    onhold:{bm:`Ditangguhkan oleh ${rl(currentData.role)}`,en:`Put On Hold by ${rl(currentData.role)}`},
-    reject:{bm:`Ditolak oleh ${rl(currentData.role)}`,en:`Rejected by ${rl(currentData.role)}`},
-  };
-  const tl={
-    type:action==='approve'?'approved':action==='onhold'?'onhold':'rejected',
-    label:actionLabels[action][lang]||actionLabels[action].bm,
-    by:currentData.name,
-    role:currentData.role,
-    at:new Date().toISOString(),
-    remark:remark||''
-  };
-  // Determine next status
-  let newStatus;
-  if(action==='reject') newStatus='rejected';
-  else if(action==='onhold') newStatus='onhold';
-  else {
-    if(p.status==='pending_hod') newStatus='pending_hse';
-    else if(p.status==='pending_op') newStatus='pending_hse';
-    else if(p.status==='pending_hse') newStatus='approved';
-    else newStatus='approved';
-  }
-  try{
-    await updateDoc(doc(db,'permits',id),{
-      status:newStatus,
-      timeline:[...(p.timeline||[]),tl],
-      ...(newStatus==='approved'?{approvedAt:new Date().toISOString()}:{}),
-      ...(newStatus==='rejected'?{rejectedAt:new Date().toISOString()}:{}),
-      ...(newStatus==='onhold'?{onholdAt:new Date().toISOString()}:{}),
-    });
-    // Notify contractor
-    const notifMap={
-      approve:{title:`✅ Permit ${lang==='bm'?'Diluluskan':'Approved'}`,msg:`${p.permitNo} ${lang==='bm'?'telah diluluskan oleh':'approved by'} ${rl(currentData.role)}`},
-      onhold:{title:`⏸ Permit On Hold`,msg:`${p.permitNo} ${lang==='bm'?'ditangguhkan oleh':'put on hold by'} ${rl(currentData.role)}. ${remark?lang==='bm'?'Catatan: ':'Note: ':''}${remark||''}`},
-      reject:{title:`❌ Permit ${lang==='bm'?'Ditolak':'Rejected'}`,msg:`${p.permitNo} ${lang==='bm'?'ditolak oleh':'rejected by'} ${rl(currentData.role)}. ${remark?lang==='bm'?'Sebab: ':'Reason: ':''}${remark||''}`},
-    };
-    await sendNotif(p.submittedBy, notifMap[action].title, notifMap[action].msg);
-    // If HOD approved → notify HSE
-    if(action==='approve'&&newStatus==='pending_hse'){
-      try{
-        const hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');
-        await Promise.all(hses.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Menunggu Kelulusan HSE':'Permit Awaiting HSE Approval'}`,`${p.permitNo} — ${p.projectName||p.vesselName||''}`)));
-      }catch(ne){}
-    }
-    closeModal('modal-approval');
-    closeModal('modal-detail');
-    const toastMap={approve:lang==='bm'?'✅ Permit telah diluluskan.':'✅ Permit approved.',onhold:lang==='bm'?'⏸ Permit ditangguhkan.':'⏸ Permit on hold.',reject:lang==='bm'?'❌ Permit telah ditolak.':'❌ Permit rejected.'};
-    showToast(toastMap[action],action==='approve'?'success':action==='onhold'?'warn':'error');
-  }catch(e){
-    console.error(e);
-    err.textContent='Ralat. Cuba lagi.';err.classList.add('show');
-    btn.disabled=false;
-    btn.innerHTML=`<span id="btn-appr-txt">${action==='approve'?'✅ '+(lang==='bm'?'Lulus':'Approve'):action==='onhold'?'⏸ On Hold':'❌ '+(lang==='bm'?'Tolak':'Reject')}</span>`;
-  }
-};
-
-
-window.closePermit=function(id){openClosureFlow(id);};
-
-window.openPermitForm=function(){draft={track:'A',activityTypes:[]};document.getElementById('pf-title').textContent=lang==='bm'?'Submit Permit Baru':'Submit New Permit';renderFormStep(1);openModal('modal-permit-form')};
-window.openActivityForm=function(track){draft={track,activityTypes:[]};document.getElementById('pf-title').textContent=track==='B'?(lang==='bm'?'Daftar Aktiviti Rutin':'Register Routine Activity'):(lang==='bm'?'Daftar Aktiviti Non-Rutin':'Register Non-Routine Activity');renderFormStep(1);openModal('modal-permit-form')};
-
-function renderFormStep(step){formStep=step;['stp1','stp2','stp3'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.className='step'+(i+1<step?' done':i+1===step?' active':'')});const tr=draft.track||'A',isS=tr==='B'||tr==='C';if(step===1){document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Maklumat Asas':'Basic Information'}</p><div class="form-group"><label class="form-label">${isS?(lang==='bm'?'Nama Kapal':'Vessel Name'):(lang==='bm'?'Nama Projek':'Project Name')} <span class="req">*</span></label><input class="form-input" id="pf-name" placeholder="${isS?'MV Ocean Star':'Nama projek...'}" value="${draft.projectName||draft.vesselName||''}"></div>${isS?`<div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Jenis Kargo':'Cargo Type'}</label><input class="form-input" id="pf-cargo" placeholder="Clinker, Coal..." value="${draft.cargo||''}"></div><div class="form-group"><label class="form-label">Berth</label><select class="form-input" id="pf-berth"><option value="">--</option>${LOCS.filter(l=>l.startsWith('Berth')).map(l=>`<option${draft.berth===l?' selected':''}>${l}</option>`).join('')}</select></div></div>`:''}<div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Lokasi':'Location'} <span class="req">*</span></label><select class="form-input" id="pf-loc"><option value="">--</option>${LOCS.map(l=>`<option${draft.location===l?' selected':''}>${l}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">${lang==='bm'?'Bil. Pekerja':'No. Workers'}</label><input class="form-input" type="number" id="pf-workers" min="1" placeholder="10" value="${draft.workers||''}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Mula':'Start Date'} <span class="req">*</span></label><input class="form-input" type="date" id="pf-start" value="${draft.startDate||''}"></div><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Tamat':'End Date'}</label><input class="form-input" type="date" id="pf-end" value="${draft.endDate||''}"></div></div><div class="form-group"><label class="form-label">PIC <span class="req">*</span></label><input class="form-input" id="pf-pic" placeholder="${lang==='bm'?'Nama pegawai':'Officer name'}" value="${draft.pic||''}"></div>`;document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →'}
-if(step===2){const tt=Object.entries(PTYPES).filter(([,v])=>v.track===tr);document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Jenis Aktiviti':'Activity Types'} — Track ${tr}</p><div class="check-grid">${tt.map(([k,v])=>`<div class="check-item${(draft.activityTypes||[]).includes(k)?' selected':''}" onclick="toggleAct('${k}',this)"><div class="check-icon">${(draft.activityTypes||[]).includes(k)?'✓':''}</div><span>${lang==='bm'?v.bm:v.en}</span>${v.hr?'<span style="font-size:9px;color:var(--danger);margin-left:auto">⚠</span>':''}</div>`).join('')}</div>`;document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →'}
-if(step===3){
-  let s3html='<p style="font-size:12px;color:var(--text3);margin-bottom:14px">'+(lang==='bm'?'Dokumen & Maklumat Tambahan':'Documents & Additional Info')+'</p>'
-    +'<div class="form-group"><label class="form-label">'+(lang==='bm'?'Penerangan Kerja':'Work Description')+'</label><textarea class="form-input" id="pf-desc">'+(draft.description||'')+'</textarea></div>';
-  if(tr!=='B'){
-    const docReq=tr==='C'?'<span class="req">*</span>':'';
-    s3html+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Link Dokumen (Google Drive)':'Document Link (Google Drive)')+' '+docReq+'</label>'
-      +'<input class="form-input" id="pf-doc" type="url" placeholder="https://drive.google.com/..." value="'+(draft.docLink||'')+'"><div style="font-size:11px;color:var(--text3);margin-top:4px">'
-      +(lang==='bm'?'Submit HIRARC & Method Statement via emel ke HSE/Operasi, paste link di sini.':'Submit HIRARC & Method Statement via email to HSE/Operations, paste link here.')+'</div></div>';
+    footerBtns+='<button class="btn btn-info" style="width:auto;padding:0 14px;height:36px;margin:0;border-radius:8px" onclick="downloadClosureReport(\''+id+'\')">&#128274; '+(lang==='bm'?'Closure Report':'Closure Report')+'</button>';
+    footerBtns+='<button class="btn btn-info" style="width:auto;padding:0 14px;height:36px;margin:0;border-radius:8px" onclick="downloadInspectionPDF(\''+id+'\')">&#128203; '+(lang==='bm'?'Inspection Report':'Inspection Report')+'</button>';
   }
 
-  // Track A: Add self-declaration sections
-  if(tr==='A'){
-    s3html+=`
-    <div style="margin-top:16px">
-      <div style="font-size:12px;font-weight:600;color:var(--text);font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)">
-        📋 ${lang==='bm'?'Section 2 — Work Preparation Checklist (Self-Declaration)':'Section 2 — Work Preparation Checklist (Self-Declaration)'}
-      </div>
-
-      <div style="margin-bottom:14px">
-        <div class="form-label" style="margin-bottom:8px">${lang==='bm'?'Jenis Aktiviti (* perlu sijil berkaitan)':'Activity Includes (* to include relevant certificates)'}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          ${CONTRACTOR_DECL.activityTypes.map(a=>`
-            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;color:var(--text2)">
-              <input type="checkbox" name="act_type" value="${a}" style="width:14px;height:14px;accent-color:var(--accent)"> ${a}
-            </label>`).join('')}
-        </div>
-      </div>
-
-      <div style="margin-bottom:14px">
-        <div class="form-label" style="margin-bottom:8px">${lang==='bm'?'Hazard Identification':'Hazard Identification'}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-          ${CONTRACTOR_DECL.hazards.map(h=>`
-            <label style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:11px;color:var(--text2)">
-              <input type="checkbox" name="hazard" value="${h}" style="width:13px;height:13px;accent-color:var(--accent)"> ${h}
-            </label>`).join('')}
-        </div>
-      </div>
-
-      <div style="margin-bottom:14px">
-        <div class="form-label" style="margin-bottom:8px">${lang==='bm'?'PPE Diperlukan':'PPE Required'}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-          ${CONTRACTOR_DECL.ppe.map(p=>`
-            <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:12px;color:var(--text2)">
-              <input type="checkbox" name="ppe" value="${p}" style="width:14px;height:14px;accent-color:var(--accent)"> ${p}
-            </label>`).join('')}
-        </div>
-      </div>
-
-      <div style="margin-bottom:14px">
-        <div class="form-label" style="margin-bottom:8px">${lang==='bm'?'Safety Control Checklist':'Safety Control Checklist'}</div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-          <div style="display:grid;grid-template-columns:1fr 60px 60px 60px;padding:8px 12px;background:var(--bg3);font-size:11px;font-weight:600;color:var(--text3);font-family:var(--mono)">
-            <div>${lang==='bm'?'Item':'Item'}</div><div style="text-align:center">Yes</div><div style="text-align:center">No</div><div style="text-align:center">N/A</div>
-          </div>
-          ${CONTRACTOR_DECL.safetyChecklist.map(item=>`
-            <div style="display:grid;grid-template-columns:1fr 60px 60px 60px;padding:9px 12px;border-top:1px solid var(--border);align-items:center">
-              <div style="font-size:12px;color:var(--text2)">${lang==='bm'?item.itemBM:item.item}</div>
-              <div style="text-align:center"><input type="radio" name="${item.id}" value="yes" style="accent-color:var(--success);width:15px;height:15px"></div>
-              <div style="text-align:center"><input type="radio" name="${item.id}" value="no" style="accent-color:var(--danger);width:15px;height:15px"></div>
-              <div style="text-align:center"><input type="radio" name="${item.id}" value="na" style="accent-color:var(--text3);width:15px;height:15px"></div>
-            </div>`).join('')}
-        </div>
-      </div>
-    </div>`;
-  }
-
-  s3html+=`<div class="alert alert-warn show" style="margin-top:12px">${tr==='A'?(lang==='bm'?'Track A: Permit akan dihantar ke HOD untuk 1st approval, kemudian HSE untuk 2nd approval. Pastikan dokumen (HIRARC, MS) telah dihantar via emel.':'Track A: Permit will be sent to HOD for 1st approval, then HSE for 2nd approval. Ensure documents (HIRARC, MS) have been sent via email.'):tr==='B'?(lang==='bm'?'Track B: Notifikasi HSE sahaja. Tiada kelulusan diperlukan.':'Track B: HSE notification only. No approval required.'):(lang==='bm'?'Track C: Permit akan dihantar ke Operasi kemudian HSE untuk kelulusan.':'Track C: Permit sent to Operations then HSE for approval.')}</div>`;
-
-  document.getElementById('pf-content').innerHTML=s3html;
-  document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Hantar':'Submit'}}
-
-window.toggleAct=function(k,el){if(!draft.activityTypes)draft.activityTypes=[];const i=draft.activityTypes.indexOf(k);if(i>-1)draft.activityTypes.splice(i,1);else draft.activityTypes.push(k);el.classList.toggle('selected',draft.activityTypes.includes(k));el.querySelector('.check-icon').textContent=draft.activityTypes.includes(k)?'✓':''};
-
-window.submitPermitForm=async function(){if(formStep===1){const name=document.getElementById('pf-name')?.value.trim(),loc=document.getElementById('pf-loc')?.value,start=document.getElementById('pf-start')?.value,pic=document.getElementById('pf-pic')?.value.trim();if(!name)return showToast(lang==='bm'?'Sila masukkan nama.':'Please enter name.','error');if(!loc)return showToast(lang==='bm'?'Sila pilih lokasi.':'Please select location.','error');if(!start)return showToast(lang==='bm'?'Sila pilih tarikh mula.':'Please select start date.','error');if(!pic)return showToast(lang==='bm'?'Sila masukkan PIC.':'Please enter PIC.','error');const iS=draft.track==='B'||draft.track==='C';if(iS)draft.vesselName=name;else draft.projectName=name;draft.location=loc;draft.startDate=start;draft.endDate=document.getElementById('pf-end')?.value||'';draft.workers=document.getElementById('pf-workers')?.value||'';draft.pic=pic;if(iS){draft.cargo=document.getElementById('pf-cargo')?.value||'';draft.berth=document.getElementById('pf-berth')?.value||''}renderFormStep(2)}else if(formStep===2){if(!draft.activityTypes?.length)return showToast(lang==='bm'?'Pilih sekurang-kurangnya satu aktiviti.':'Select at least one activity.','error');renderFormStep(3)}else{draft.description=document.getElementById('pf-desc')?.value.trim()||'';draft.docLink=document.getElementById('pf-doc')?.value.trim()||'';if(draft.track==='C'&&!draft.docLink)return showToast(lang==='bm'?'Track C memerlukan link dokumen.':'Track C requires document link.','error');
-// Collect self-declaration for Track A
-if(draft.track==='A'){
-  draft.selfDecl={
-    activityTypes:[...document.querySelectorAll('input[name="act_type"]:checked')].map(e=>e.value),
-    hazards:[...document.querySelectorAll('input[name="hazard"]:checked')].map(e=>e.value),
-    ppe:[...document.querySelectorAll('input[name="ppe"]:checked')].map(e=>e.value),
-    safetyChecklist:{}
-  };
-  CONTRACTOR_DECL.safetyChecklist.forEach(item=>{
-    const checked=document.querySelector(`input[name="${item.id}"]:checked`);
-    draft.selfDecl.safetyChecklist[item.id]=checked?checked.value:'';
-  });
-}const btn=document.getElementById('btn-pf-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{const pn=genPermitNo(draft.track),is=draft.track==='A'?'pending_hod':draft.track==='B'?'approved':'pending_op',tl=[{type:'submitted',label:lang==='bm'?'Permit dihantar':'Permit submitted',by:currentData.name,at:new Date().toISOString(),remark:''}];let ea=null;if(draft.track==='A'){const tps=draft.activityTypes||[];let me=null;tps.forEach(at=>{const p=PTYPES[at];if(p?.expiry_hours){const ex=new Date(draft.startDate);ex.setHours(ex.getHours()+p.expiry_hours);if(!me||ex<me)me=ex}});if(me)ea=me.toISOString();else if(draft.endDate){const ed=new Date(draft.endDate);ed.setDate(ed.getDate()+30);ea=ed.toISOString()}}const pd={permitNo:pn,track:draft.track,status:is,...draft,submittedBy:currentData.uid,submittedByName:currentData.name,company:currentData.company||'',createdAt:new Date().toISOString(),timeline:tl,expiryAt:ea};await addDoc(collection(db,'permits'),pd);if(draft.track==='A'){const hods=allUsers.filter(u=>u.role==='hod'&&u.status==='active'),hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all([...hods.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru – Kelulusan HOD':'New Permit – HOD Approval'}`,`${pn} – ${pd.projectName||''}`)),...hses.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru Dihantar':'New Permit Submitted'}`,`${pn} – ${pd.projectName||''}`))])}else if(draft.track==='B'){const hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all(hses.map(u=>sendNotif(u.uid,`🚢 ${lang==='bm'?'Aktiviti Rutin Didaftarkan':'Routine Activity Registered'}`,`${pn} – ${pd.vesselName||''} @ ${pd.location||''}`)))}closeModal('modal-permit-form');showToast(draft.track==='B'?(lang==='bm'?'Aktiviti berjaya didaftarkan.':'Activity registered successfully.'):(lang==='bm'?'Permit berjaya dihantar.':'Permit submitted successfully.'),'success')}catch(e){console.error(e);showToast('Ralat. Cuba lagi.','error')}finally{btn.disabled=false;btn.innerHTML=`<span id="btn-pf-txt">${lang==='bm'?'Hantar':'Submit'}</span>`}}};
-
-function genPermitNo(t){const n=new Date(),y=n.getFullYear().toString().slice(-2),m=String(n.getMonth()+1).padStart(2,'0'),d=String(n.getDate()).padStart(2,'0'),r=String(Math.floor(Math.random()*9000)+1000);return `KP/${t}/${y}${m}${d}/${r}`}
-
-async function renderUsersPage(){
-  try{const snap=await getDocs(collection(db,'users'));allUsers=snap.docs.map(d=>d.data())}catch(e){console.error(e)}
-  updateBadges();
-  const pending=allUsers.filter(u=>u.status==='pending');
-  const active=allUsers.filter(u=>u.status==='active');
-  let html='';
-  html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-    <button class="btn-sm btn-info" onclick="openCreateUser()" style="height:34px;padding:0 16px;font-size:12px;border-radius:8px">+ ${lang==='bm'?'Tambah Pengguna Baru':'Add New User'}</button>
-  </div>`;
-  html+=`<div class="sec-title">${lang==='bm'?'Permohonan Pending':'Pending Applications'} (${pending.length})</div>`;
-  html+='<div class="data-table" style="margin-bottom:16px">';
-  if(pending.length){
-    html+=`<div class="table-head" style="grid-template-columns:1fr 130px 140px 120px"><div>Nama</div><div>${lang==='bm'?'Jenis':'Type'}</div><div>Syarikat</div><div>${lang==='bm'?'Tindakan':'Actions'}</div></div>`;
-    pending.forEach(u=>{html+=`<div class="table-row" style="grid-template-columns:1fr 130px 140px 120px" id="ur-${u.uid}"><div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div><div><span class="rbadge ${u.role}">${rl(u.role)}</span></div><div style="font-size:12px;color:var(--text2)">${u.company||'—'}</div><div style="display:flex;gap:6px"><button class="btn-sm btn-approve" onclick="approveUser('${u.uid}','${u.name}')">${lang==='bm'?'Lulus':'Approve'}</button><button class="btn-sm btn-reject" onclick="rejectUser('${u.uid}','${u.name}')">${lang==='bm'?'Tolak':'Reject'}</button></div></div>`;});
-  }else{html+=`<div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permohonan':'No pending applications'}</div>`;}
-  html+='</div>';
-  html+=`<div class="sec-title">${lang==='bm'?'Pengguna Aktif':'Active Users'} (${active.length})</div>`;
-  html+='<div class="data-table">';
-  html+=`<div class="table-head" style="grid-template-columns:1fr 120px 130px 110px"><div>Nama</div><div>Role</div><div>${lang==='bm'?'Jabatan':'Dept'}</div><div>${lang==='bm'?'Tindakan':'Actions'}</div></div>`;
-  active.forEach(u=>{
-    const isSelf=u.uid===currentData?.uid;
-    html+=`<div class="table-row" style="grid-template-columns:1fr 120px 130px 110px">
-      <div><div style="font-weight:500">${u.name}${u.mustChangePass?'<span style="font-size:9px;color:var(--warning);margin-left:6px;background:rgba(245,158,11,.15);padding:1px 5px;border-radius:4px">TUKAR PASS</span>':''}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div>
-      <div><span class="rbadge ${u.role}">${rl(u.role)}</span></div>
-      <div style="font-size:12px;color:var(--text2)">${u.dept||u.company||'—'}</div>
-      <div style="display:flex;gap:5px">${isSelf?'<span style="font-size:11px;color:var(--text3)">(anda)</span>':`<button class="btn-sm btn-warn" onclick="resetUserPassword('${u.uid}','${u.email}','${u.name}')">🔑</button><button class="btn-sm btn-reject" onclick="suspendUser('${u.uid}','${u.name}')">⊘</button>`}</div>
-    </div>`;
-  });
-  html+='</div>';
-
-  // Suspended users section
-  const suspended=allUsers.filter(u=>u.status==='suspended');
-  if(suspended.length){
-    html+=`<div class="sec-title" style="color:var(--danger)">${lang==='bm'?'Akaun Digantung':'Suspended Accounts'} (${suspended.length})</div>`;
-    html+='<div class="data-table">';
-    html+=`<div class="table-head" style="grid-template-columns:1fr 120px 130px 110px"><div>Nama</div><div>Role</div><div>${lang==='bm'?'Jabatan':'Dept'}</div><div>${lang==='bm'?'Tindakan':'Actions'}</div></div>`;
-    suspended.forEach(u=>{
-      html+=`<div class="table-row" style="grid-template-columns:1fr 120px 130px 110px;opacity:.7">
-        <div><div style="font-weight:500">${u.name}</div><div style="font-size:11px;font-family:var(--mono);color:var(--text3)">${u.email}</div></div>
-        <div><span class="rbadge ${u.role}">${rl(u.role)}</span></div>
-        <div style="font-size:12px;color:var(--text2)">${u.dept||u.company||'—'}</div>
-        <div><button class="btn-sm btn-approve" onclick="reactivateUser('${u.uid}','${u.name}')">${lang==='bm'?'Aktifkan Semula':'Reactivate'}</button></div>
-      </div>`;
-    });
-    html+='</div>';
-  }
-
-  document.getElementById('users-body').innerHTML=html;
-}
-
-
-window.approveUser=async function(uid,name){await updateDoc(doc(db,'users',uid),{status:'active'});await sendNotif(uid,lang==='bm'?'✓ Akaun Diluluskan':'✓ Account Approved',lang==='bm'?'Akaun anda telah diluluskan. Sila log masuk ke KP Work Registry.':'Your account has been approved. Please log in to KP Work Registry.');document.getElementById(`ur-${uid}`)?.remove();showToast(`${name} ${lang==='bm'?'telah diluluskan':'approved'}`,'success');renderUsersPage()};
-window.rejectUser=async function(uid,name){await updateDoc(doc(db,'users',uid),{status:'rejected'});document.getElementById(`ur-${uid}`)?.remove();showToast(`${name} ${lang==='bm'?'telah ditolak':'rejected'}`,'error');renderUsersPage()};
-
-window.openModal=function(id){document.getElementById(id)?.classList.add('show')};
-window.closeModal=function(id){document.getElementById(id)?.classList.remove('show')};
-document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show')}));
-
-function showToast(msg,type='info'){const el=document.getElementById('toast');const ic={success:'✓',error:'✕',info:'ℹ'};el.innerHTML=`<span>${ic[type]||'ℹ'}</span><span>${msg}</span>`;el.className=`toast ${type} show`;setTimeout(()=>el.classList.remove('show'),3500)}
-
-window.createAdmin=async function(email,password,name){try{const cred=await createUserWithEmailAndPassword(auth,email,password);await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name:name||'Admin KP',email,role:'admin',status:'active',company:'Kuantan Port Sdn Bhd',phone:'',dept:'',createdAt:new Date().toISOString()});console.log('Admin created:',cred.user.uid);showToast('Admin account created!','success')}catch(e){console.error(e)}};
-
-window.openCreateUser=function(){
-  ['cu-name','cu-phone','cu-email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
-  const cp=document.getElementById('cu-pass');if(cp)cp.value='KP@2026';
-  const cc=document.getElementById('cu-company');if(cc)cc.value='Kuantan Port Sdn Bhd';
-  const cr=document.getElementById('cu-role');if(cr)cr.value='';
-  const cd=document.getElementById('cu-dept');if(cd)cd.value='';
-  const err=document.getElementById('cu-err'),ok=document.getElementById('cu-ok');
-  if(err){err.classList.remove('show');err.textContent=''}
-  if(ok){ok.classList.remove('show');ok.textContent=''}
-  openModal('modal-create-user');
-};
-
-window.submitCreateUser=async function(){
-  const name=document.getElementById('cu-name').value.trim(),phone=document.getElementById('cu-phone').value.trim(),email=document.getElementById('cu-email').value.trim(),pass=document.getElementById('cu-pass').value,company=document.getElementById('cu-company').value.trim(),role=document.getElementById('cu-role').value,dept=document.getElementById('cu-dept').value;
-  const err=document.getElementById('cu-err'),ok=document.getElementById('cu-ok');
-  err.classList.remove('show');ok.classList.remove('show');
-  if(!name){err.textContent=lang==='bm'?'Sila masukkan nama.':'Please enter name.';err.classList.add('show');return}
-  if(!email||!email.includes('@')){err.textContent=lang==='bm'?'Sila masukkan emel yang sah.':'Please enter valid email.';err.classList.add('show');return}
-  if(pass.length<6){err.textContent='Password minimum 6 aksara.';err.classList.add('show');return}
-  if(!role){err.textContent=lang==='bm'?'Sila pilih role.':'Please select role.';err.classList.add('show');return}
-  const btn=document.getElementById('btn-cu-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
-  try{
-    const cred=await createUserWithEmailAndPassword(auth2,email,pass);
-    await setDoc(doc(db,'users',cred.user.uid),{uid:cred.user.uid,name,phone,email,role,company:company||'Kuantan Port Sdn Bhd',dept:dept||'',status:'active',mustChangePass:true,lastPass:pass,createdAt:new Date().toISOString(),createdBy:currentData.uid,createdByName:currentData.name});
-    await signOut(auth2);
-    ok.textContent=lang==='bm'?`✓ Akaun ${name} berjaya dicipta. Credentials: ${email} / ${pass}`:`✓ Account created for ${name}. Credentials: ${email} / ${pass}`;
-    ok.classList.add('show');
-    ['cu-name','cu-phone','cu-email'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
-    document.getElementById('cu-role').value='';document.getElementById('cu-dept').value='';
-    renderUsersPage();
-  }catch(e){
-    let msg=lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.';
-    if(e.code==='auth/email-already-in-use')msg=lang==='bm'?'Emel ini sudah berdaftar.':'Email already registered.';
-    err.textContent=msg;err.classList.add('show');
-  }finally{btn.disabled=false;btn.innerHTML=`<span id="btn-cu-txt">${lang==='bm'?'Cipta Akaun':'Create Account'}</span>`}
-};
-
-window.openChangePass=function(){
-  ['cp-old','cp-new','cp-confirm'].forEach(id=>{const e=document.getElementById(id);if(e)e.value=''});
-  const err=document.getElementById('cp-err'),ok=document.getElementById('cp-ok');
-  if(err){err.classList.remove('show');err.textContent=''}
-  if(ok){ok.classList.remove('show');ok.textContent=''}
-  openModal('modal-change-pass');
-};
-
-window.submitChangePass=async function(){
-  const oldP=document.getElementById('cp-old').value,newP=document.getElementById('cp-new').value,conf=document.getElementById('cp-confirm').value;
-  const err=document.getElementById('cp-err'),ok=document.getElementById('cp-ok');
-  err.classList.remove('show');ok.classList.remove('show');
-  if(!oldP){err.textContent=lang==='bm'?'Masukkan kata laluan semasa.':'Enter current password.';err.classList.add('show');return}
-  if(newP.length<6){err.textContent=lang==='bm'?'Kata laluan baru minimum 6 aksara.':'Min 6 characters.';err.classList.add('show');return}
-  if(newP!==conf){err.textContent=lang==='bm'?'Kata laluan baru tidak sepadan.':'Passwords do not match.';err.classList.add('show');return}
-  const btn=document.getElementById('btn-cp-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
-  try{
-    const cred=EmailAuthProvider.credential(currentUser.email,oldP);
-    await reauthenticateWithCredential(currentUser,cred);
-    await updatePassword(currentUser,newP);
-    await updateDoc(doc(db,'users',currentUser.uid),{mustChangePass:false,lastPass:''});
-    ok.textContent=lang==='bm'?'✓ Kata laluan berjaya ditukar.':'✓ Password changed successfully.';
-    ok.classList.add('show');
-    setTimeout(()=>closeModal('modal-change-pass'),2000);
-  }catch(e){
-    let msg=lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.';
-    if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')msg=lang==='bm'?'Kata laluan semasa tidak betul.':'Current password incorrect.';
-    err.textContent=msg;err.classList.add('show');
-  }finally{btn.disabled=false;btn.innerHTML=`<span id="btn-cp-txt">${lang==='bm'?'Tukar Password':'Change Password'}</span>`}
-};
-
-window.resetUserPassword=async function(uid,email,name){
-  const defPass='Abc@1234';
-  const overlay=document.createElement('div');
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
-  overlay.innerHTML=`
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.5)">
-      <div style="font-size:15px;font-weight:600;margin-bottom:6px">🔑 Reset Password</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:16px">${name} &nbsp;·&nbsp; <span style="font-family:var(--mono);font-size:11px">${email}</span></div>
-      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;text-align:center">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">${lang==='bm'?'Password baru':'New password'}</div>
-        <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--accent2);letter-spacing:.15em">${defPass}</div>
-      </div>
-      <div id="reset-status" style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:14px;min-height:16px"></div>
-      <div style="display:flex;gap:8px">
-        <button id="btn-rc" style="flex:1;height:38px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">${lang==='bm'?'Batal':'Cancel'}</button>
-        <button id="btn-rk" style="flex:2;height:38px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">✓ Reset</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  document.getElementById('btn-rc').onclick=()=>overlay.remove();
-  document.getElementById('btn-rk').onclick=async()=>{
-    const btn=document.getElementById('btn-rk');
-    const status=document.getElementById('reset-status');
-    btn.disabled=true;btn.textContent=lang==='bm'?'Memproses...':'Processing...';
-    status.textContent=lang==='bm'?'Mencuba reset password...':'Attempting reset...';
-    // Try to get stored password from Firestore
-    let success=false;
-    try{
-      const usnap=await getDoc(doc(db,'users',uid));
-      const udata=usnap.data();
-      const storedPass=udata?.lastPass||null;
-      if(storedPass){
-        // Use secondary app to sign in with stored pass then change to defPass
-        status.textContent=lang==='bm'?'Menukar password...':'Changing password...';
-        const cred2=await signInWithEmailAndPassword(auth2,email,storedPass);
-        await updatePassword(cred2.user,defPass);
-        await signOut(auth2);
-        // Update stored pass and flag
-        await updateDoc(doc(db,'users',uid),{lastPass:defPass,mustChangePass:true,resetBy:currentData.name,resetAt:new Date().toISOString()});
-        success=true;
-        status.style.color='#34d399';
-        status.textContent='✓ '+(lang==='bm'?'Password berjaya ditukar kepada Abc@1234':'Password successfully changed to Abc@1234');
-        btn.style.background='var(--success)';btn.textContent='✓ Done';
-        setTimeout(()=>{overlay.remove();showToast(lang==='bm'?`✓ Password ${name} berjaya direset kepada "${defPass}"`:`✓ ${name}'s password reset to "${defPass}"`,'success');renderUsersPage()},1500);
-      } else {
-        throw new Error('no_stored_pass');
-      }
-    }catch(e){
-      console.log('Reset attempt:',e.code||e.message);
-      // Can't reset Firebase Auth password — show manual instruction
-      status.style.color='var(--warning)';
-      status.textContent='';
-      overlay.querySelector('div > div:last-child').insertAdjacentHTML('beforebegin',`
-        <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:12px;margin-bottom:12px;font-size:12px;color:#fbbf24">
-          ⚠ ${lang==='bm'
-            ?'Password tidak dapat ditukar secara automatik. Sila maklumkan kepada <strong>'+name+'</strong> untuk log masuk dengan password asal mereka, kemudian guna butang 🔒 untuk tukar kepada <strong>'+defPass+'</strong>.'
-            :'Password cannot be changed automatically. Please inform <strong>'+name+'</strong> to login with their current password, then use the 🔒 button to change it to <strong>'+defPass+'</strong>.'}
-          <br><br>
-          ${lang==='bm'?'Atau, Admin boleh <strong>delete dan recreate</strong> akaun mereka.':'Or, Admin can <strong>delete and recreate</strong> their account.'}
-        </div>`);
-      await updateDoc(doc(db,'users',uid),{mustChangePass:true,resetBy:currentData.name,resetAt:new Date().toISOString()}).catch(()=>{});
-      btn.disabled=false;btn.style.background='var(--bg3)';btn.style.color='var(--text2)';btn.textContent=lang==='bm'?'Tutup':'Close';
-      btn.onclick=()=>overlay.remove();
-      document.getElementById('btn-rc').style.display='none';
-    }
-  };
-};
-
-window.reactivateUser=async function(uid,name){
-  if(!confirm(lang==='bm'?`Aktifkan semula akaun ${name}?`:`Reactivate account for ${name}?`))return;
-  await updateDoc(doc(db,'users',uid),{status:'active'});
-  showToast(lang==='bm'?`✓ Akaun ${name} telah diaktifkan semula.`:`✓ ${name}'s account reactivated.`,'success');
-  renderUsersPage();
-};
-
-window.suspendUser=async function(uid,name){
-  if(!confirm(lang==='bm'
-    ?`Gantung akaun ${name}?\n\nUser tidak akan dapat log masuk. Akaun boleh diaktifkan semula kemudian.\n(Ini BUKAN delete — rekod PTW kekal selamat.)`
-    :`Suspend ${name}'s account?\n\nUser will not be able to login. Account can be reactivated later.\n(This is NOT delete — PTW records remain safe.)`))return;
-  await updateDoc(doc(db,'users',uid),{status:'suspended'});
-  showToast(lang==='bm'?`Akaun ${name} digantung.`:`${name} suspended.`,'warn');
-  renderUsersPage();
-};
-
-
-// ── INSPECTION CHECKLISTS ──────────────────────────────
-const CHECKLISTS = {
-  trackBC: {
-    pre: [
-      {id:'bc_pre_1', item:'Routine work / Non-routine work / Emergency', itemBM:'Jenis kerja: Rutin / Non-Rutin / Kecemasan', type:'select', options:['Rutin','Non-Rutin','Kecemasan']},
-      {id:'bc_pre_2', item:'Updated risk assessment (HIRARC) available', itemBM:'HIRARC terkini tersedia', type:'yn'},
-      {id:'bc_pre_3', item:'Updated Environmental Aspect Impact (EAI)', itemBM:'EAI (Aspek Impak Alam Sekitar) terkini', type:'yn'},
-      {id:'bc_pre_4', item:'All workers are trained (training records available)', itemBM:'Semua pekerja terlatih (ada rekod latihan)', type:'yn'},
-      {id:'bc_pre_5', item:'Method agreed by client', itemBM:'Kaedah operasi dipersetujui oleh klien', type:'yn'},
-      {id:'bc_pre_6', item:'Reviewed and approved by Operation', itemBM:'Disemak dan diluluskan oleh Operasi', type:'yn'},
-      {id:'bc_pre_7', item:'Equipment in good condition (maintenance records available)', itemBM:'Peralatan dalam keadaan baik (ada rekod penyelenggaraan)', type:'yn'},
-      {id:'bc_pre_8', item:'Lifting equipment verified (optional for breakbulk)', itemBM:'Peralatan angkat disahkan (pilihan untuk breakbulk)', type:'yn', optional:true},
-    ],
-    during: [
-      {id:'bc_dur_1', item:'Access and egress routes — Safe / Unsafe', itemBM:'Laluan masuk dan keluar — Selamat / Tidak selamat', type:'status', options:['Selamat','Tidak Selamat']},
-      {id:'bc_dur_2', item:'Signalman for each gang (cargo hold) — Present / Not visible', itemBM:'Signalman untuk setiap gang (petak kapal) — Ada / Tidak kelihatan', type:'status', options:['Ada','Tidak Kelihatan']},
-      {id:'bc_dur_3', item:'Operation supervisor — Present / Not visible', itemBM:'Penyelia operasi — Ada / Tidak kelihatan', type:'status', options:['Ada','Tidak Kelihatan']},
-      {id:'bc_dur_4', item:'Worker PPE compliance — Compliant / Non-compliant', itemBM:'Pematuhan pekerja kepada pemakaian PPE — Patuh / Tidak patuh', type:'status', options:['Patuh','Tidak Patuh']},
-      {id:'bc_dur_5', item:'Housekeeping — Clean / Needs attention', itemBM:'Kebersihan dan kekemasan kerja — Baik / Perlu perhatian', type:'status', options:['Baik','Perlu Perhatian']},
-      {id:'bc_dur_6', item:'Dust/debris generation (drybulk) — Controlled / Uncontrolled', itemBM:'Operasi menghasilkan debu/habuk (drybulk) — Terkawal / Tidak terkawal', type:'status', options:['Terkawal','Tidak Terkawal'], optional:true, tag:'drybulk'},
-      {id:'bc_dur_7', item:'Lighting (night operations) — Adequate / Inadequate', itemBM:'Pencahayaan (operasi malam) — Mencukupi / Tidak mencukupi', type:'status', options:['Mencukupi','Tidak Mencukupi'], optional:true, tag:'night'},
-    ],
-    post: [
-      {id:'bc_post_1', item:'Work area cleared and cleaned', itemBM:'Kawasan kerja telah dibersihkan', type:'yn'},
-      {id:'bc_post_2', item:'Equipment returned and accounted for', itemBM:'Peralatan dipulangkan dan disahkan', type:'yn'},
-      {id:'bc_post_3', item:'No outstanding hazards or incidents', itemBM:'Tiada bahaya atau insiden yang belum diselesaikan', type:'yn'},
-      {id:'bc_post_4', item:'Cargo secured/stowed properly', itemBM:'Kargo telah disimpan dengan selamat', type:'yn'},
-      {id:'bc_post_5', item:'All workers have left the work area', itemBM:'Semua pekerja telah meninggalkan kawasan kerja', type:'yn'},
-      {id:'bc_post_6', item:'Any incidents/near misses to report?', itemBM:'Ada insiden / hampir celaka untuk dilaporkan?', type:'yn'},
-    ]
-  },
-  trackA: {
-    pre: [
-      {id:'a_pre_1', item:'Work permit approved and displayed at worksite', itemBM:'Permit kerja diluluskan dan dipamerkan di tapak kerja', type:'yn'},
-      {id:'a_pre_2', item:'HIRARC reviewed and available at worksite', itemBM:'HIRARC disemak dan tersedia di tapak kerja', type:'yn'},
-      {id:'a_pre_3', item:'Method Statement available and briefed to workers', itemBM:'Method Statement tersedia dan dibriefing kepada pekerja', type:'yn'},
-      {id:'a_pre_4', item:'All workers attended KP safety induction', itemBM:'Semua pekerja hadir KP safety induction', type:'yn'},
-      {id:'a_pre_5', item:'PPE appropriate and worn correctly', itemBM:'PPE sesuai dan dipakai dengan betul', type:'yn'},
-      {id:'a_pre_6', item:'Equipment in good and safe working condition', itemBM:'Peralatan dalam keadaan baik dan selamat', type:'yn'},
-      {id:'a_pre_7', item:'Work area barricaded / warning signs installed', itemBM:'Kawasan kerja dipagar / tanda amaran dipasang', type:'yn'},
-      {id:'a_pre_8', item:'Emergency procedures communicated to all workers', itemBM:'Prosedur kecemasan dikomunikasikan kepada semua pekerja', type:'yn'},
-      {id:'a_pre_9', item:'Lock Out Tag Out (LOTO) implemented (if applicable)', itemBM:'LOTO dilaksanakan (jika berkenaan)', type:'yn', optional:true},
-      {id:'a_pre_10', item:'Standby person available (confined space / fire watch / lifting)', itemBM:'Standby person tersedia (confined space / fire watch / lifting)', type:'yn', optional:true},
-      {id:'a_pre_11', item:'Hot work: fire extinguisher available and inspected', itemBM:'Hot work: alat pemadam api tersedia dan diperiksa', type:'yn', optional:true, tag:'hot_work'},
-      {id:'a_pre_12', item:'Confined space: gas test completed, result OK', itemBM:'Confined space: ujian gas selesai, hasil OK', type:'yn', optional:true, tag:'confined_space'},
-    ],
-    during: [
-      {id:'a_dur_1', item:'Workers following approved method statement', itemBM:'Pekerja mengikut method statement yang diluluskan', type:'status', options:['Patuh','Tidak Patuh']},
-      {id:'a_dur_2', item:'PPE compliance', itemBM:'Pematuhan PPE', type:'status', options:['Patuh','Tidak Patuh']},
-      {id:'a_dur_3', item:'Work area safety maintained / barricade intact', itemBM:'Keselamatan kawasan kerja terjaga / pagar masih elok', type:'status', options:['Baik','Perlu Perhatian']},
-      {id:'a_dur_4', item:'Housekeeping — clean and tidy', itemBM:'Kebersihan dan kekemasan — bersih dan kemas', type:'status', options:['Baik','Perlu Perhatian']},
-      {id:'a_dur_5', item:'Supervisor / foreman present at worksite', itemBM:'Supervisor / foreman hadir di tapak kerja', type:'status', options:['Ada','Tidak Kelihatan']},
-      {id:'a_dur_6', item:'No unauthorized persons in work area', itemBM:'Tiada orang tidak dibenarkan dalam kawasan kerja', type:'yn'},
-      {id:'a_dur_7', item:'LOTO still in place (if applicable)', itemBM:'LOTO masih di tempatnya (jika berkenaan)', type:'yn', optional:true},
-      {id:'a_dur_8', item:'Fire watch present and alert (hot work)', itemBM:'Fire watch hadir dan berwaspada (hot work)', type:'yn', optional:true, tag:'hot_work'},
-      {id:'a_dur_9', item:'Confined space: continuous gas monitoring', itemBM:'Confined space: pemantauan gas berterusan', type:'yn', optional:true, tag:'confined_space'},
-    ],
-    post: [
-      {id:'a_post_1', item:'Work completed as per approved scope', itemBM:'Kerja selesai mengikut skop yang diluluskan', type:'yn'},
-      {id:'a_post_2', item:'Work area cleaned and restored to original condition', itemBM:'Kawasan kerja dibersihkan dan dipulihkan', type:'yn'},
-      {id:'a_post_3', item:'All tools, equipment and materials removed', itemBM:'Semua alatan, peralatan dan bahan telah dikeluarkan', type:'yn'},
-      {id:'a_post_4', item:'LOTO removed and documented (if applicable)', itemBM:'LOTO telah dilepaskan dan didokumenkan (jika berkenaan)', type:'yn', optional:true},
-      {id:'a_post_5', item:'Any damage to existing facilities noted', itemBM:'Ada kerosakan pada kemudahan sedia ada?', type:'yn'},
-      {id:'a_post_6', item:'Any incidents / near misses to report?', itemBM:'Ada insiden / hampir celaka untuk dilaporkan?', type:'yn'},
-      {id:'a_post_7', item:'Site supervisor sign-off obtained', itemBM:'Pengesahan supervisor tapak telah diperoleh', type:'yn'},
-    ]
-  }
-};
-
-// ── CONTRACTOR SELF-DECLARATION (Track A — submit masa PTW) ──
-const CONTRACTOR_DECL = {
-  activityTypes: [
-    'Working at Height','Confined Space*','Excavation*','Hot Work*','Lifting',
-    'Diving*','Heavy Lifting >40 tonne*','Work with Electrical (LOTO)*','NDT','Other'
-  ],
-  hazards: [
-    'Slip, Trip & Fall','Overhead Load','Danger of Falling','Hit an Object','Poor Lighting',
-    'Excavation Collapse','Heavy Loading','Open Flames or Arcs','Under Water Work','Combustible Materials',
-    'Dust','Radiation','Traffic Flow','Vibration (power tools)','Flammable Materials','Explosive Materials',
-    'Manual Handling','Extremes Temperature','Struck by Moving Objects','Flying/Falling Objects',
-    'Fire','Noise','Electrical','Biological','Heat Stress',
-    'Exposure of Hazardous Chemical','Stored Energy Release (high pressure/mechanical)','Other'
-  ],
-  ppe: [
-    'Safety Helmet','Safety Shoes','Safety Harness','Ear Muff / Plugs',
-    'Safety Glass / Goggle','Face Shield','Protective Overall','Respirator Protection',
-    'Hand Gloves','Life Jacket'
-  ],
-  safetyChecklist: [
-    {id:'sc1', item:'Has all workers attended KP safety induction?', itemBM:'Adakah semua pekerja hadir KP safety induction?'},
-    {id:'sc2', item:'HIRARC has been reviewed and approved? (as attached)', itemBM:'HIRARC telah disemak dan diluluskan? (lampirkan)'},
-    {id:'sc3', item:'EAIA has been reviewed and approved? (as attached)', itemBM:'EAIA telah disemak dan diluluskan? (lampirkan)'},
-    {id:'sc4', item:'Job Method Statement required for permit documentation attached?', itemBM:'Method Statement dilampirkan dalam dokumentasi permit?'},
-    {id:'sc5', item:'Warning signs / Barricade installed?', itemBM:'Tanda amaran / pagar dipasang?'},
-    {id:'sc6', item:'Lock Out Tag Out (LOTO)?', itemBM:'Lock Out Tag Out (LOTO) dilaksanakan?'},
-    {id:'sc7', item:'PMA/PMT attached?', itemBM:'PMA/PMT dilampirkan?'},
-    {id:'sc8', item:'Additional lighting?', itemBM:'Pencahayaan tambahan diperlukan?'},
-    {id:'sc9', item:'Standby person available? (Confined space / Fire watcher / Loading / Unloading)', itemBM:'Standby person tersedia? (Confined space / Fire watcher / Bongkar muat)'},
-    {id:'sc10', item:'Power tools / equipment in good and safe working condition?', itemBM:'Alat kuasa / peralatan dalam keadaan baik dan selamat?'},
-    {id:'sc11', item:'Is it permissible to use: Open flame / welding equipment?', itemBM:'Adakah dibenarkan menggunakan: Nyalaan terbuka / peralatan kimpalan?'},
-    {id:'sc12', item:'Is it permissible to use: Electrical equipment / power tools?', itemBM:'Adakah dibenarkan menggunakan: Peralatan elektrik / alat kuasa?'},
-  ]
-};
-
-const INSP_STAGES = ['pre','during','post'];
-const INSP_STAGE_LABELS = {bm:{pre:'Pre-Work (Sebelum Mula)',during:'During Work (Semasa Kerja)',post:'Post-Work (Selepas Selesai)'},en:{pre:'Pre-Work (Before Start)',during:'During Work (In Progress)',post:'Post-Work (After Completion)'}};
-const INSP_RESULTS = ['ok','attention','nc','na'];
-const INSP_RESULT_LABELS = {ok:{bm:'OK ✓',en:'OK ✓',color:'#34d399',bg:'rgba(16,185,129,.15)'},attention:{bm:'Perlu Perhatian ⚠',en:'Needs Attention ⚠',color:'#fbbf24',bg:'rgba(245,158,11,.15)'},nc:{bm:'Tidak Patuh ✕',en:'Non-Compliant ✕',color:'#f87171',bg:'rgba(239,68,68,.15)'},na:{bm:'N/A',en:'N/A',color:'#64748b',bg:'rgba(148,163,184,.1)'}};
-
-
-
-// ── INSPECTION FUNCTIONS ──────────────────────────────
-function getChecklistForPermit(p){
-  const track=p.track||'A';
-  return (track==='B'||track==='C')?CHECKLISTS.trackBC:CHECKLISTS.trackA;
-}
-
-function renderInspectionPage(){
-  const r=currentData?.role;
-  document.getElementById('pg-insp-title').textContent='Inspection';
-  document.getElementById('pg-insp-sub').textContent=lang==='bm'?'Klik permit untuk buat atau semak inspection':'Click a permit to conduct or view inspection';
-
-  const inspectable=allPermits.filter(p=>['approved','extended'].includes(p.status));
-  let html='';
-
-  if(!inspectable.length){
-    html='<div class="data-table"><div class="table-empty"><span class="em-icon">📋</span>'+(lang==='bm'?'Tiada permit aktif untuk inspection':'No active permits for inspection')+'</div></div>';
-  } else {
-    // Summary cards
-    let totalDuring=0, totalIssues=0, totalPermits=inspectable.length;
-    inspectable.forEach(p=>{
-      const insp=p.inspections||{};
-      ['inspector1','inspector2'].forEach(ik=>{
-        const rounds=(insp[ik]&&insp[ik].during)||[];
-        if(Array.isArray(rounds)){
-          totalDuring+=rounds.length;
-          rounds.forEach(rd=>{ if(rd.hasIssues) totalIssues++; });
-        }
-      });
-    });
-
-    html+='<div class="stats-grid" style="margin-bottom:16px">';
-    html+='<div class="stat-card sc-blue"><div class="stat-label">'+(lang==='bm'?'Permit Aktif':'Active Permits')+'</div><div class="stat-value">'+totalPermits+'</div><div class="stat-sub">'+(lang==='bm'?'Memerlukan inspection':'Require inspection')+'</div></div>';
-    html+='<div class="stat-card sc-green"><div class="stat-label">'+(lang==='bm'?'Inspection Dibuat':'Inspections Done')+'</div><div class="stat-value">'+totalDuring+'</div><div class="stat-sub">During work rounds</div></div>';
-    html+='<div class="stat-card sc-red"><div class="stat-label">Red Flags / Issues</div><div class="stat-value">'+totalIssues+'</div><div class="stat-sub">'+(lang==='bm'?'Inspection ada isu':'Inspections with issues')+'</div></div>';
-    html+='</div>';
-
-    html+='<div class="data-table">';
-    html+='<div class="table-head" style="grid-template-columns:130px 1fr 90px 100px 110px 110px 70px 90px">';
-    html+='<div>No. Permit</div><div>'+(lang==='bm'?'Projek/Kapal':'Project/Vessel')+'</div><div>Track</div>';
-    html+='<div>Pre-Work</div><div>During ('+(lang==='bm'?'Rondaan':'Rounds')+')</div><div>Post-Work</div><div>Red Flag</div>';
-    html+='</div>';
-
-    inspectable.forEach(p=>{
-      const insp=p.inspections||{};
-      const canInspect=(r==='hse'||r==='supervisor'||r==='admin');
-
-      // Aggregate both inspectors
-      const i1=insp.inspector1||{}, i2=insp.inspector2||{};
-      const preDone=!!(i1.pre?.submittedAt||i2.pre?.submittedAt);
-      const postDone=!!(i1.post?.submittedAt||i2.post?.submittedAt);
-
-      // Count during rounds across both inspectors
-      const i1rounds=Array.isArray(i1.during)?i1.during:[];
-      const i2rounds=Array.isArray(i2.during)?i2.during:[];
-      const totalRounds=i1rounds.length+i2rounds.length;
-      const issueRounds=[...i1rounds,...i2rounds].filter(rd=>rd.hasIssues).length;
-      const hasRedFlag=issueRounds>0;
-
-      html+='<div class="table-row" style="grid-template-columns:130px 1fr 90px 100px 110px 110px 70px 90px'+(canInspect?'':';cursor:default')+'" '+(canInspect?'onclick="openInspection(\''+p.id+'\')"':'')+' >';
-      html+='<div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">'+(p.permitNo||'—')+'</div>';
-      html+='<div><div style="font-size:13px;font-weight:500">'+(p.projectName||p.vesselName||'—')+'</div><div style="font-size:11px;color:var(--text3)">'+(p.submittedByName||'')+'</div></div>';
-      html+='<div><span class="track-'+(p.track||'a').toLowerCase()+'">Track '+p.track+'</span></div>';
-      html+='<div>'+(preDone?'<span class="status s-approved">✓ Selesai</span>':'<span style="font-size:11px;color:var(--text3)">Belum</span>')+'</div>';
-      html+='<div><span style="font-size:12px;color:'+(hasRedFlag?'var(--danger)':'var(--success)')+'">'+totalRounds+' rondaan'+(hasRedFlag?' ⚠':'')+'</span></div>';
-      html+='<div>'+(postDone?'<span class="status s-approved">✓ Selesai</span>':'<span style="font-size:11px;color:var(--text3)">Belum</span>')+'</div>';
-      html+='<div>'+(hasRedFlag?'<span style="color:var(--danger);font-weight:600">🚩 '+issueRounds+'</span>':'<span style="color:var(--success)">✓</span>')+'</div>';
-      html+='<div><button class="btn-sm btn-info" onclick="event.stopPropagation();openInspectionReport(this.dataset.pid)" data-pid="'+p.id+'" style="font-size:10px;height:24px;padding:0 8px">'+(lang==='bm'?'Laporan':'Report')+'</button></div>';
-      html+='</div>';
-    });
-    html+='</div>';
-  }
-  document.getElementById('insp-body').innerHTML=html;
-}
-
-function renderInspBadge(insp,hasPre,hasDone,isHSE){
-  if(!insp&&!hasPre) return '<span style="font-size:11px;color:var(--text3)">'+(lang==='bm'?'Belum mula':'Not started')+'</span>';
-  if(hasDone) return '<span class="status s-approved">'+(lang==='bm'?'Selesai':'Done')+'</span>';
-  if(hasPre) return '<span class="status s-pending-hse">'+(lang==='bm'?'Sedang berjalan':'In Progress')+'</span>';
-  return '<span style="font-size:11px;color:var(--text3)">—</span>';
-}
-
-window.openInspection=function(permitId){
-  const p=allPermits.find(x=>x.id===permitId);
-  if(!p)return;
-  const r=currentData?.role;
-  const isHSE=r==='hse';
-  // HOD & Management — read only, show full report
-  if(r==='hod'||r==='management'){openInspectionReport(permitId);return;}
-  const insp=p.inspections||{};
-  const inspKey=isHSE?'inspector2':'inspector1';
-  const myInsp=insp[inspKey]||{};
-
-  // During is now an array
-  const duringRounds=Array.isArray(myInsp.during)?myInsp.during:[];
-  const hasPre=!!myInsp.pre?.submittedAt;
-  const hasPost=!!myInsp.post?.submittedAt;
-
-  const overlay=document.createElement('div');
-  overlay.id='insp-overlay';
-  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
-
-  // Build during rounds summary
-  let duringHtml='';
-  if(duringRounds.length){
-    duringHtml+='<div style="margin-bottom:12px">';
-    duringHtml+='<div style="font-size:11px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">During Work — '+(lang==='bm'?'Rondaan Lepas':'Previous Rounds')+'</div>';
-    duringRounds.forEach(function(rd,i){
-      const hasIssue=rd.hasIssues;
-      duringHtml+='<div style="background:var(--bg2);border:1px solid '+(hasIssue?'rgba(239,68,68,.3)':'var(--border)')+ ';border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="viewDuringRound(\''+permitId+'\',\''+inspKey+'\','+i+')">';
-      duringHtml+='<div>';
-      duringHtml+='<div style="font-size:13px;font-weight:500">'+(lang==='bm'?'Rondaan':'Round')+' '+(i+1)+(hasIssue?' <span style="color:var(--danger)">🚩 '+(lang==='bm'?'Ada Isu':'Issues Found')+'</span>':'')+'</div>';
-      duringHtml+='<div style="font-size:11px;color:var(--text3)">'+(rd.submittedBy||'')+ ' · '+(rd.submittedAt?new Date(rd.submittedAt).toLocaleString(lang==='bm'?'ms-MY':'en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+'</div>';
-      if(rd.overallRemark) duringHtml+='<div style="font-size:12px;color:var(--text2);margin-top:4px;font-style:italic">"'+rd.overallRemark+'"</div>';
-      duringHtml+='</div>';
-      duringHtml+='<span style="font-size:11px;color:var(--text3)">👁 View</span>';
-      duringHtml+='</div>';
-    });
-    duringHtml+='</div>';
-  }
-
-  overlay.innerHTML=
-    '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:680px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
-    +'<div><div style="font-size:15px;font-weight:600">📋 Inspection — '+(p.permitNo||'—')+'</div>'
-    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.projectName||p.vesselName||'—')+' · '+(p.location||'—')+'</div></div>'
-    +'<button onclick="document.getElementById(\'insp-overlay\').remove()" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">✕</button>'
+  document.getElementById('detail-title').innerHTML='<span class="track-'+(p.track||'a').toLowerCase()+'">Track '+p.track+'</span> '+(p.permitNo||'—');
+  document.getElementById('detail-body').innerHTML=
+    '<div class="detail-grid">'
+    +'<div class="detail-item"><div class="detail-label">Status</div><div class="detail-value"><span class="status s-'+(p.status||'').replace(/_/g,'-')+'">'+sl(p.status||'draft')+'</span></div></div>'
+    +'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Tarikh Submit':'Submitted')+'</div><div class="detail-value">'+fmtDate(p.createdAt)+'</div></div>'
+    +'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Submitted By':'Submitted By')+'</div><div class="detail-value">'+(p.submittedByName||'—')+'</div></div>'
+    +'<div class="detail-item"><div class="detail-label">PIC</div><div class="detail-value">'+(p.pic||'—')+'</div></div>'
+    +(p.vesselName?'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Nama Kapal':'Vessel')+'</div><div class="detail-value">'+p.vesselName+'</div></div>':'')
+    +(p.projectName?'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Nama Projek':'Project')+'</div><div class="detail-value">'+p.projectName+'</div></div>':'')
+    +(p.shiftCount?'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Anggaran Shift':'Est. Shifts')+'</div><div class="detail-value">'+p.shiftCount+' shifts</div></div>':'')
+    +(p.firstShift?'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Shift Pertama':'First Shift')+'</div><div class="detail-value">'+(SHIFTS.find(function(s){return s.id===p.firstShift})||{}).label+' ('+p.shiftStartDate+')</div></div>':'')
+    +'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Lokasi':'Location')+'</div><div class="detail-value">'+(p.location||'—')+'</div></div>'
+    +'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Jenis Kerja':'Work Type')+'</div><div class="detail-value">'+(p.workType||'—')+'</div></div>'
+    +'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Tarikh Mula':'Start Date')+'</div><div class="detail-value">'+(p.startDate||'—')+'</div></div>'
+    +'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Tarikh Tamat':'End Date')+'</div><div class="detail-value">'+(p.endDate||'—')+'</div></div>'
+    +(p.cargo?'<div class="detail-item"><div class="detail-label">Cargo</div><div class="detail-value">'+p.cargo+'</div></div>':'')
+    +(p.workers?'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Bil. Pekerja':'Workers')+'</div><div class="detail-value">'+p.workers+'</div></div>':'')
+    +(p.company?'<div class="detail-item"><div class="detail-label">'+(lang==='bm'?'Syarikat':'Company')+'</div><div class="detail-value">'+p.company+'</div></div>':'')
+    +(types?'<div class="detail-item detail-full"><div class="detail-label">'+(lang==='bm'?'Jenis Aktiviti':'Activity Types')+'</div><div class="detail-value" style="display:flex;flex-wrap:wrap;gap:4px">'+types+'</div></div>':'')
+    +(p.scope?'<div class="detail-item detail-full"><div class="detail-label">'+(lang==='bm'?'Skop Kerja':'Scope of Work')+'</div><div class="detail-value">'+p.scope+'</div></div>':'')
+    +(p.docLink?'<div class="detail-item detail-full"><div class="detail-label">'+(lang==='bm'?'Link Dokumen':'Document Link')+'</div><div class="detail-value"><a href="'+p.docLink+'" target="_blank" style="color:var(--accent2)">'+p.docLink+'</a></div></div>':'')
+    +shiftSched
+    +selfDecl
     +'</div>'
-    +'<div style="padding:14px 20px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">'
-    +'<span class="rbadge '+r+'">'+rl(r)+'</span>'
-    +'<span style="font-size:13px;color:var(--text2)">'+currentData.name+'</span>'
-    +'<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">'+(isHSE?'Inspector 2 (HSE)':'Inspector 1 ('+rl(r)+')')+'</span>'
-    +'</div>'
+    +'<div class="tl-section"><div class="sec-title">'+(lang==='bm'?'Sejarah & Status':'History & Status')+'</div>'
+    +'<div class="tl-list">'+tl+'</div></div>';
 
-    // Stage selector
-    +'<div style="padding:14px 20px;border-bottom:1px solid var(--border)">'
-    +'<div style="font-size:11px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">'+(lang==='bm'?'Tindakan Inspection':'Inspection Actions')+'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+  const footer=document.getElementById('detail-footer');
+  if(footer) footer.innerHTML=footerBtns;
+  openModal('modal-detail');
 
-    // Pre-Work button
-    +'<button onclick="loadStage(\''+permitId+'\',\''+inspKey+'\',\'pre\')" style="padding:10px 8px;border-radius:8px;border:2px solid '+(hasPre?'var(--success)':'var(--border)')+ ';background:'+(hasPre?'rgba(16,185,129,.08)':'var(--bg2)')+';cursor:pointer;transition:all .2s">'
-    +'<div style="font-size:16px;margin-bottom:3px">'+(hasPre?'✅':'🔍')+'</div>'
-    +'<div style="font-size:11px;font-weight:500;color:'+(hasPre?'var(--success)':'var(--text2)')+'">'+INSP_STAGE_LABELS[lang].pre+'</div>'
-    +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(hasPre?(lang==='bm'?'Selesai':'Done'):(lang==='bm'?'Klik untuk buat':'Click to start'))+'</div>'
-    +'</button>'
-
-    // During button — + New Round
-    +'<button onclick="loadStage(\''+permitId+'\',\''+inspKey+'\',\'during\')" style="padding:10px 8px;border-radius:8px;border:2px solid '+(duringRounds.length?'var(--accent)':'var(--border)')+ ';background:'+(duringRounds.length?'rgba(37,99,235,.08)':'var(--bg2)')+';cursor:pointer;transition:all .2s">'
-    +'<div style="font-size:16px;margin-bottom:3px">👁️</div>'
-    +'<div style="font-size:11px;font-weight:500;color:'+(duringRounds.length?'var(--accent2)':'var(--text2)')+'">'+INSP_STAGE_LABELS[lang].during+'</div>'
-    +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+duringRounds.length+' '+(lang==='bm'?'rondaan':'rounds')+' · '+(lang==='bm'?'+ Tambah Baru':'+ Add New')+'</div>'
-    +'</button>'
-
-    // Post-Work button
-    +'<button onclick="loadStage(\''+permitId+'\',\''+inspKey+'\',\'post\')" style="padding:10px 8px;border-radius:8px;border:2px solid '+(hasPost?'var(--success)':'var(--border)')+ ';background:'+(hasPost?'rgba(16,185,129,.08)':'var(--bg2)')+';cursor:pointer;transition:all .2s">'
-    +'<div style="font-size:16px;margin-bottom:3px">'+(hasPost?'✅':'🏁')+'</div>'
-    +'<div style="font-size:11px;font-weight:500;color:'+(hasPost?'var(--success)':'var(--text2)')+'">'+INSP_STAGE_LABELS[lang].post+'</div>'
-    +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(hasPost?(lang==='bm'?'Selesai':'Done'):(lang==='bm'?'Klik untuk buat':'Click to start'))+'</div>'
-    +'</button>'
-    +'</div></div>'
-
-    // During rounds history
-    +(duringRounds.length?'<div style="padding:14px 20px;border-bottom:1px solid var(--border)">'+duringHtml+'</div>':'')
-
-    // Content area
-    +'<div id="insp-stage-content" style="padding:20px">'
-    +'<div style="text-align:center;color:var(--text3);font-size:13px;padding:20px">'
-    +(lang==='bm'?'Pilih peringkat inspection di atas untuk mula.':'Select an inspection stage above to begin.')
-    +'</div></div>'
-    +'</div>';
-
-  document.body.appendChild(overlay);
-};
+  // Wire reply toggle and tl-insp-link after render
+  setTimeout(function(){
+    document.querySelectorAll('.reply-toggle-btn').forEach(function(btn){
+      btn.onclick=function(){
+        var box=document.getElementById(btn.dataset.boxId);
+        if(box) box.style.display=box.style.display==='none'?'block':'none';
+      };
+    });
+    document.querySelectorAll('.reply-cancel-btn').forEach(function(btn){
+      btn.onclick=function(){
+        var box=document.getElementById(btn.dataset.boxId);
+        if(box) box.style.display='none';
+      };
+    });
+    document.querySelectorAll('.tl-insp-link').forEach(function(el){
+      el.onclick=function(){openInspectionReport(el.dataset.permitId);};
+    });
+  },50);
+}
 
 window.viewDuringRound=function(permitId,inspKey,roundIdx){
   const p=allPermits.find(x=>x.id===permitId);
@@ -2586,6 +1939,395 @@ document.addEventListener('click',function(e){
   if(card&&chip&&card.classList.contains('show')&&!card.contains(e.target)&&!chip.contains(e.target)){
     card.classList.remove('show');
   }
+});
+
+
+// ── SHIFT & LOCATION CONFIG FUNCTIONS ────────────────
+function buildShiftTable(p){
+  const shifts=p.shiftSchedule||[];
+  if(!shifts.length) return '';
+  const completed=shifts.filter(s=>s.status==='completed').length;
+  const canManage=(p.submittedBy===currentData?.uid||['admin','hse'].includes(currentData?.role));
+
+  let html='<div class="detail-item detail-full">'
+    +'<div class="detail-label" style="margin-bottom:8px">'
+    +(lang==='bm'?'Jadual Shift Operasi':'Operation Shift Schedule')
+    +' <span style="font-size:10px;color:var(--text3)">('+completed+'/'+shifts.length+' '+(lang==='bm'?'selesai':'completed')+')</span>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:4px">';
+
+  shifts.forEach(function(s,i){
+    const isDone=s.status==='completed';
+    const isCancelled=s.status==='cancelled';
+    const bg=isDone?'rgba(16,185,129,.06)':isCancelled?'rgba(148,163,184,.05)':'var(--bg3)';
+    const border=isDone?'rgba(16,185,129,.2)':isCancelled?'var(--border)':'var(--border)';
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:'+bg+';border:1px solid '+border+';border-radius:6px">'
+      +'<span style="font-size:11px;font-family:var(--mono);color:var(--text3);width:16px">'+s.shiftNum+'</span>'
+      +'<span style="font-size:11px;font-weight:500;color:var(--text);flex:1">'+s.shiftLabel+' <span style="color:var(--text3)">'+s.shiftTime+'</span></span>'
+      +'<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">'+s.date+'</span>'
+      +'<span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;'
+        +(isDone?'background:rgba(16,185,129,.15);color:var(--success)':isCancelled?'background:rgba(148,163,184,.1);color:var(--text3)':'background:rgba(37,99,235,.1);color:var(--accent2)')+'">'+
+        (isDone?(lang==='bm'?'Selesai':'Done'):isCancelled?(lang==='bm'?'Dibatal':'Cancelled'):(lang==='bm'?'Dijadualkan':'Scheduled'))+'</span>'
+      +(canManage&&!isDone&&!isCancelled?'<button class="shift-done-btn" data-pid="'+p.id+'" data-sidx="'+i+'" style="height:22px;padding:0 8px;border:none;background:rgba(16,185,129,.15);color:var(--success);border-radius:4px;cursor:pointer;font-size:10px">✓</button>':'')
+      +(canManage&&!isCancelled?'<button class="shift-cancel-btn" data-pid="'+p.id+'" data-sidx="'+i+'" style="height:22px;padding:0 8px;border:none;background:rgba(239,68,68,.1);color:var(--danger);border-radius:4px;cursor:pointer;font-size:10px">✕</button>':'')
+      +'</div>';
+  });
+
+  // Add shift button
+  if(canManage){
+    html+='<button class="add-shift-btn" data-pid="'+p.id+'" style="margin-top:6px;width:100%;height:32px;border:1px dashed var(--border2);background:transparent;color:var(--accent2);border-radius:6px;cursor:pointer;font-size:12px">+ '+(lang==='bm'?'Tambah Shift':'Add Shift')+'</button>';
+  }
+  html+='</div></div>';
+  return html;
+}
+
+window.markShiftDone=async function(permitId,shiftIdx){
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const schedule=[...(p.shiftSchedule||[])];
+  schedule[shiftIdx]={...schedule[shiftIdx],status:'completed',completedAt:new Date().toISOString(),completedBy:currentData.name};
+  await updateDoc(doc(db,'permits',permitId),{shiftSchedule:schedule});
+  viewPermit(permitId);
+  showToast(lang==='bm'?'✓ Shift ditanda selesai.':'✓ Shift marked complete.','success');
+};
+
+window.cancelShift=async function(permitId,shiftIdx){
+  if(!confirm(lang==='bm'?'Batalkan shift ini?':'Cancel this shift?'))return;
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const schedule=[...(p.shiftSchedule||[])];
+  schedule[shiftIdx]={...schedule[shiftIdx],status:'cancelled'};
+  await updateDoc(doc(db,'permits',permitId),{shiftSchedule:schedule});
+  viewPermit(permitId);
+  showToast(lang==='bm'?'Shift dibatalkan.':'Shift cancelled.','info');
+};
+
+window.addShiftToPermit=async function(permitId){
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const schedule=[...(p.shiftSchedule||[])];
+  const lastShift=schedule[schedule.length-1];
+  const shiftOrder=['shift1','shift2','shift3'];
+  const lastIdx=shiftOrder.indexOf(lastShift?.shiftId||'shift1');
+  const nextIdx=(lastIdx+1)%3;
+  const sh=SHIFTS[nextIdx];
+  const lastDate=new Date(lastShift?.date||new Date());
+  if(nextIdx<=lastIdx) lastDate.setDate(lastDate.getDate()+1);
+  const newShift={
+    shiftNum:schedule.length+1,
+    shiftId:sh.id,shiftLabel:sh.label,shiftTime:sh.time,
+    date:lastDate.toISOString().slice(0,10),
+    status:'scheduled'
+  };
+  schedule.push(newShift);
+  await updateDoc(doc(db,'permits',permitId),{shiftSchedule:schedule,shiftCount:schedule.length});
+  viewPermit(permitId);
+  showToast(lang==='bm'?'✓ Shift baru ditambah.':'✓ Shift added.','success');
+};
+
+// ── Shift-based inspection for stevedoring ──
+window.openShiftInspection=function(permitId,shiftIdx){
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const shift=(p.shiftSchedule||[])[shiftIdx];if(!shift)return;
+  const r=currentData?.role;
+  const isHSE=r==='hse';
+  const inspKey=isHSE?'inspector2':'inspector1';
+
+  // Check if this shift already inspected
+  const insp=p.inspections||{};
+  const myInsp=insp[inspKey]||{};
+  const shiftInspections=Array.isArray(myInsp.during)?myInsp.during:[];
+  const alreadyInspected=shiftInspections.find(function(rd){return rd.shiftIdx===shiftIdx;});
+  const alreadyInspectedIdx=alreadyInspectedIdx;
+
+  // Open inspection with shift context
+  const overlay=document.createElement('div');
+  overlay.id='insp-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+
+  const cl=getChecklistForPermit(p);
+  const items=cl.during||[];
+
+  let checklistHtml='<div style="background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--accent2)">'
+    +'📅 '+shift.shiftLabel+' ('+shift.shiftTime+') — '+shift.date
+    +(alreadyInspected?' <span style="color:var(--warning)">⚠ '+(lang==='bm'?'Sudah diinspect':'Already inspected')+'</span>':'')
+    +'</div>';
+
+  if(alreadyInspected){
+    checklistHtml+='<div style="text-align:center;padding:20px;color:var(--text3);">';
+    checklistHtml+=(lang==='bm'?'Inspection untuk shift ini sudah dilakukan oleh ':'Inspection for this shift already done by ');
+    checklistHtml+=alreadyInspected.submittedBy+' pada '+fmtDate(alreadyInspected.submittedAt);
+    checklistHtml+='</div>';
+    checklistHtml+='<div style="text-align:center;margin-top:12px">';
+    checklistHtml+='<button id="btn-view-already-insp" style="height:36px;padding:0 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px">&#128065; '+(lang==='bm'?'Lihat Hasil':'View Result')+'</button>';
+    checklistHtml+='</div>';
+  } else {
+    items.forEach(function(item){
+      checklistHtml+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px">'
+        +'<div style="font-size:13px;font-weight:500;margin-bottom:4px">'+(lang==='bm'?item.itemBM:item.item)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+(lang==='bm'?item.item:item.itemBM)+'</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'
+        +[{v:'ok',label:item.options?.[0]||'OK',c:'#34d399',bg:'rgba(16,185,129,.15)'},{v:'nc',label:item.options?.[1]||'Tidak',c:'#f87171',bg:'rgba(239,68,68,.15)'},{v:'attention',label:'⚠',c:'#fbbf24',bg:'rgba(245,158,11,.15)'},{v:'na',label:'N/A',c:'#64748b',bg:'rgba(148,163,184,.1)'}].map(function(opt){return '<button class="sel-result-btn" data-item-id="'+item.id+'" data-val="'+opt.v+'" id="btn-res-'+item.id+'-'+opt.v+'" style="padding:5px 12px;border-radius:6px;border:2px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s">'+opt.label+'</button>';}).join('')
+        +'</div>'
+        +'<div id="remark-wrap-'+item.id+'" style="display:none"><input class="form-input" id="remark-'+item.id+'" placeholder="'+(lang==='bm'?'Nyatakan pemerhatian...':'State observation...')+'" style="height:36px;font-size:12px"></div>'
+        +'</div>';
+    });
+    checklistHtml+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Catatan Umum':'General Remarks')+'</label>'
+      +'<textarea class="form-input" id="insp-overall-remark" style="min-height:60px" placeholder="'+(lang==='bm'?'Catatan keseluruhan...':'Overall notes...')+'"></textarea></div>'
+      +'<div style="display:flex;gap:8px;margin-top:12px">'
+      +'<button id="btn-insp-cancel" style="flex:1;height:40px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">'+(lang==='bm'?'Batal':'Cancel')+'</button>'
+      +'<button id="btn-submit-stage" class="btn-submit-shift-insp" data-pid="\'+permitId+\'" data-ikey="\'+inspKey+\'" data-sidx="\'+shiftIdx+\'" style="flex:2;height:40px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">&#10003; \'+(lang===\'bm\'?\'Submit Inspection Shift \'+shift.shiftNum:\'Submit Shift \'+shift.shiftNum+\' Inspection\')+\'</button>'
+      +'</div>';
+  }
+
+  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
+    +'<div><div style="font-size:15px;font-weight:600">📋 '+shift.shiftLabel+' Inspection — '+(p.permitNo||'—')+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.vesselName||'—')+' · '+(p.location||'—')+'</div></div>'
+    +'<button id="btn-close-insp-overlay" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer">✕</button>'
+    +'</div>'
+    +'<div style="padding:20px">'+checklistHtml+'</div>'
+    +'</div>';
+
+  document.body.appendChild(overlay);
+  // Wire the view-already-inspection button
+  setTimeout(function(){
+    var vBtn=document.getElementById('btn-view-already-insp');
+    if(vBtn) vBtn.onclick=function(){
+      var ov=document.getElementById('insp-overlay');if(ov)ov.remove();
+      viewDuringRound(permitId,inspKey,alreadyInspectedIdx);
+    };
+    var cBtn=document.getElementById('btn-insp-cancel');
+    if(cBtn) cBtn.onclick=function(){var ov=document.getElementById('insp-overlay');if(ov)ov.remove();};
+    var sBtn=document.getElementById('btn-submit-stage');
+    if(sBtn) sBtn.onclick=function(){submitShiftInspection(sBtn.dataset.pid,sBtn.dataset.ikey,parseInt(sBtn.dataset.sidx));};
+  },50);
+};
+
+window.submitShiftInspection=async function(permitId,inspKey,shiftIdx){
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const cl=getChecklistForPermit(p);
+  const items=cl.during||[];
+  const shift=(p.shiftSchedule||[])[shiftIdx];
+
+  const btn=document.getElementById('btn-submit-stage');
+  if(btn){btn.disabled=true;btn.textContent=lang==='bm'?'Menyimpan...':'Saving...';}
+
+  const itemResults={};let hasIssues=false;
+  items.forEach(function(item){
+    let result='';
+    document.querySelectorAll('[id^="btn-res-'+item.id+'-"]').forEach(function(b){if(b.dataset.selected==='true')result=b.dataset.val;});
+    const remark=document.getElementById('remark-'+item.id)?.value||'';
+    itemResults[item.id]={result,remark};
+    if(result==='nc'||result==='attention')hasIssues=true;
+  });
+
+  const overallRemark=document.getElementById('insp-overall-remark')?.value||'';
+  const myInsp=(p.inspections||{})[inspKey]||{};
+  const rounds=Array.isArray(myInsp.during)?[...myInsp.during]:[];
+
+  const roundData={
+    round:rounds.length+1,
+    shiftIdx,
+    shiftLabel:shift?.shiftLabel||'',
+    shiftTime:shift?.shiftTime||'',
+    shiftDate:shift?.date||'',
+    items:itemResults,overallRemark,hasIssues,
+    submittedAt:new Date().toISOString(),
+    submittedBy:currentData.name,
+    submittedByRole:currentData.role
+  };
+  rounds.push(roundData);
+
+  const tl={type:'inspection',label:INSP_STAGE_LABELS[lang].during+' inspection — '+(shift?.shiftLabel||'')+(hasIssues?' [🚩 '+(lang==='bm'?'Ada Isu':'Issues Found')+']':''),by:currentData.name,role:currentData.role,at:new Date().toISOString(),remark:overallRemark};
+
+  try{
+    const updateData={timeline:[...(p.timeline||[]),tl]};
+    updateData['inspections.'+inspKey+'.during']=rounds;
+    await updateDoc(doc(db,'permits',permitId),updateData);
+    if(hasIssues){
+      const hses=allUsers.filter(function(u){return u.role==='hse'&&u.status==='active';});
+      await Promise.all(hses.map(function(u){return sendNotif(u.uid,'🚩 Inspection Issues — '+(p.permitNo||''),p.vesselName+' · '+(shift?.shiftLabel||''));;}));
+    }
+    showToast(lang==='bm'?'✓ Inspection shift disimpan.':'✓ Shift inspection saved.','success');
+    document.getElementById('insp-overlay')?.remove();
+    renderInspectionPage();
+  }catch(e){
+    console.error(e);showToast('Error saving','error');
+    if(btn){btn.disabled=false;btn.textContent='Cuba Lagi';}
+  }
+};
+
+// ── ADMIN LOCATION CONFIG ──────────────────────────────
+window.openLocationConfig=function(){
+  const overlay=document.createElement('div');
+  overlay.id='loc-config-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  const listHtml=LOCS.map(function(loc,i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px">'
+      +'<span style="flex:1;font-size:13px;color:var(--text)">'+loc+'</span>'
+      +'<button data-loc-idx="'+i+'" class="loc-del-btn" style="height:24px;padding:0 8px;border:none;background:rgba(239,68,68,.1);color:#f87171;border-radius:4px;cursor:pointer;font-size:11px">✕</button>'
+      +'</div>';
+  }).join('');
+
+  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.5)">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">'
+    +'<span style="font-size:15px;font-weight:600">📍 '+(lang==='bm'?'Konfigurasi Lokasi':'Location Configuration')+'</span>'
+    +'<button id="btn-close-loc" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer">✕</button>'
+    +'</div>'
+    +'<div style="padding:16px 20px;max-height:400px;overflow-y:auto">'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+(lang==='bm'?'Senarai lokasi yang tersedia dalam borang permit:':'List of locations available in permit forms:')+'</div>'
+    +'<div id="loc-list">'+listHtml+'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:12px">'
+    +'<input class="form-input" id="loc-new-input" placeholder="'+(lang==='bm'?'Nama lokasi baru...':'New location name...')+'" style="height:36px;font-size:13px">'
+    +'<button id="btn-add-loc" style="height:36px;padding:0 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap">+ '+(lang==='bm'?'Tambah':'Add')+'</button>'
+    +'</div>'
+    +'</div>'
+    +'<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">'
+    +'<button id="btn-reset-loc" style="height:36px;padding:0 14px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:12px">'+(lang==='bm'?'Reset Default':'Reset Default')+'</button>'
+    +'<button id="btn-save-loc" style="height:36px;padding:0 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">✓ '+(lang==='bm'?'Simpan':'Save')+'</button>'
+    +'</div>'
+    +'</div>';
+
+  document.body.appendChild(overlay);
+
+  // Wire buttons
+  document.getElementById('btn-close-loc').onclick=function(){overlay.remove();};
+
+  document.getElementById('btn-add-loc').onclick=function(){
+    const input=document.getElementById('loc-new-input');
+    const val=input.value.trim();
+    if(!val)return;
+    LOCS.push(val);
+    refreshLocList();
+    input.value='';
+  };
+
+  document.getElementById('btn-reset-loc').onclick=function(){
+    if(confirm(lang==='bm'?'Reset kepada senarai lokasi default?':'Reset to default location list?')){
+      LOCS=[...DEFAULT_LOCS];
+      refreshLocList();
+    }
+  };
+
+  document.getElementById('btn-save-loc').onclick=async function(){
+    const btn=document.getElementById('btn-save-loc');
+    btn.disabled=true;btn.textContent=lang==='bm'?'Menyimpan...':'Saving...';
+    try{
+      await setDoc(doc(db,'config','locations'),{list:LOCS,updatedBy:currentData.name,updatedAt:new Date().toISOString()});
+      overlay.remove();
+      showToast(lang==='bm'?'✓ Senarai lokasi disimpan.':'✓ Location list saved.','success');
+    }catch(e){
+      btn.disabled=false;btn.textContent='✓ '+(lang==='bm'?'Simpan':'Save');
+      showToast('Error saving','error');
+    }
+  };
+
+  // Event delegation for delete buttons
+  document.getElementById('loc-list').addEventListener('click',function(e){
+    if(e.target.classList.contains('loc-del-btn')){
+      const idx=parseInt(e.target.dataset.locIdx);
+      LOCS.splice(idx,1);
+      refreshLocList();
+    }
+  });
+
+  function refreshLocList(){
+    document.getElementById('loc-list').innerHTML=LOCS.map(function(loc,i){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px">'
+        +'<span style="flex:1;font-size:13px;color:var(--text)">'+loc+'</span>'
+        +'<button data-loc-idx="'+i+'" class="loc-del-btn" style="height:24px;padding:0 8px;border:none;background:rgba(239,68,68,.1);color:#f87171;border-radius:4px;cursor:pointer;font-size:11px">✕</button>'
+        +'</div>';
+    }).join('');
+  }
+};
+
+
+window.openShiftInspectionSelector=function(permitId){
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const r=currentData?.role;
+  const isHSE=r==='hse';
+  const inspKey=isHSE?'inspector2':'inspector1';
+  const insp=p.inspections||{};
+  const myInsp=insp[inspKey]||{};
+  const rounds=Array.isArray(myInsp.during)?myInsp.during:[];
+
+  const overlay=document.createElement('div');
+  overlay.id='insp-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+
+  const shifts=p.shiftSchedule||[];
+  const shiftsHtml=shifts.map(function(s,i){
+    const inspected=rounds.find(function(rd){return rd.shiftIdx===i;});
+    const isDone=s.status==='completed';
+    const isCancelled=s.status==='cancelled';
+    const bg=inspected?'rgba(16,185,129,.06)':isCancelled?'rgba(148,163,184,.05)':'var(--bg2)';
+    const border=inspected?'rgba(16,185,129,.2)':isCancelled?'var(--border)':'var(--border)';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:'+bg+';border:1px solid '+border+';border-radius:8px;margin-bottom:8px;cursor:'+(isCancelled?'default':'pointer')+'"'
+      +(isCancelled?'':' class="open-shift-insp-btn" data-pid="'+permitId+'" data-sidx="'+i+'"')+'>'  
+      +'<div style="width:32px;height:32px;border-radius:50%;background:'+(inspected?'rgba(16,185,129,.2)':isCancelled?'var(--bg3)':'rgba(37,99,235,.15)')+';display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">'+(inspected?'✅':isCancelled?'✕':'👁')+'</div>'
+      +'<div style="flex:1">'
+      +'<div style="font-size:13px;font-weight:500;color:var(--text)">'+s.shiftLabel+' <span style="font-size:11px;font-weight:400;color:var(--text3)">'+s.shiftTime+'</span></div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+s.date+(inspected?' · Inspected by '+inspected.submittedBy:'')+'</div>'
+      +(inspected&&inspected.hasIssues?'<div style="font-size:11px;color:var(--danger);margin-top:2px">🚩 '+(lang==='bm'?'Ada Isu Ditemui':'Issues Found')+'</div>':'')
+      +'</div>'
+      +'<span style="font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600;background:'+(inspected?'rgba(16,185,129,.15)':isCancelled?'rgba(148,163,184,.1)':'rgba(37,99,235,.1)')+';color:'+(inspected?'var(--success)':isCancelled?'var(--text3)':'var(--accent2)')+'">'+
+      (inspected?(lang==='bm'?'Selesai':'Done'):isCancelled?(lang==='bm'?'Dibatal':'Cancelled'):(lang==='bm'?'Buat Sekarang':'Inspect Now'))+'</span>'
+      +'</div>';
+  }).join('');
+
+  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
+    +'<div><div style="font-size:15px;font-weight:600">📋 '+(lang==='bm'?'Pilih Shift untuk Inspection':'Select Shift to Inspect')+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.vesselName||'—')+' — '+(p.permitNo||'—')+'</div></div>'
+    +'<button id="btn-close-shift-sel" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">&#10005;</button>'
+    +'</div>'
+    +'<div style="padding:20px">'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:12px">'+rounds.length+' / '+shifts.length+' '+(lang==='bm'?'shift telah diinspect':'shifts inspected')+'</div>'
+    +shiftsHtml
+    +'<button id="btn-view-full-report" style="margin-top:12px;width:100%;height:36px;border:1px solid var(--border2);background:transparent;color:var(--accent2);border-radius:8px;cursor:pointer;font-size:12px">&#128203; View Full Report / Lihat Laporan</button>'
+    +'</div></div>';
+
+  document.body.appendChild(overlay);
+  setTimeout(function(){
+    var r=document.getElementById('btn-view-full-report');
+    if(r) r.onclick=function(){openInspectionReport(permitId);};
+  },50);
+};
+
+
+// Event delegation for shift done/cancel buttons
+document.addEventListener('click',function(e){
+  if(e.target.classList.contains('shift-done-btn')){
+    markShiftDone(e.target.dataset.pid,parseInt(e.target.dataset.sidx));
+  } else if(e.target.classList.contains('shift-cancel-btn')){
+    cancelShift(e.target.dataset.pid,parseInt(e.target.dataset.sidx));
+  } else if(e.target.classList.contains('add-shift-btn')){
+    addShiftToPermit(e.target.dataset.pid);
+  } else if(e.target.classList.contains('view-shift-insp-btn')||e.target.classList.contains('view-insp-btn')){
+    viewDuringRound(e.target.dataset.pid,e.target.dataset.ikey,parseInt(e.target.dataset.ridx));
+  } else if(e.target.classList.contains('reply-submit-btn')){
+    submitReply(e.target.dataset.permitId,parseInt(e.target.dataset.tidx),e.target.dataset.inputId);
+  } else if(e.target.classList.contains('sel-result-btn')){
+    selectResult(e.target.dataset.itemId,e.target.dataset.val,e.target);
+  } else if(e.target.classList.contains('open-shift-insp-btn')){
+    var ov=document.getElementById('insp-overlay');if(ov)ov.remove();
+    openShiftInspection(e.target.dataset.pid,parseInt(e.target.dataset.sidx));
+  }
+});
+
+
+// Close insp-overlay button delegation
+document.addEventListener('click',function(e){
+  if(e.target.id==='btn-close-insp-overlay'){
+    var ov=document.getElementById('insp-overlay');if(ov)ov.remove();
+  }
+});
+
+// Wire overlay close buttons via event delegation
+document.addEventListener('click',function(e){
+  var id=e.target.id;
+  if(id==='btn-close-lupa'){var o=document.getElementById('lupa-overlay');if(o)o.remove();}
+  else if(id==='btn-close-insp'){var o=document.getElementById('insp-overlay');if(o)o.remove();}
+  else if(id==='btn-close-shift-sel'){var o=document.getElementById('insp-overlay');if(o)o.remove();}
 });
 
 
