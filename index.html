@@ -496,24 +496,25 @@ function buildSidebar(data){const r=data.role;let h=`<div class="nav-label">${la
 
 window.showPage=function(pg){document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));const page=document.getElementById(`pg-${pg}`);if(page)page.classList.add('active');const nav=document.getElementById(`nav-${pg}`);if(nav)nav.classList.add('active');document.getElementById('app-sub').textContent={dashboard:'Dashboard',permits:lang==='bm'?'Permit & Aktiviti':'Permits',approvals:lang==='bm'?'Kelulusan':'Approvals',users:lang==='bm'?'Pengguna':'Users',inspection:'Inspection'}[pg]||pg;if(pg==='permits')renderPermitsPage();if(pg==='approvals')renderApprovalsPage();if(pg==='users')renderUsersPage();if(pg==='inspection')renderInspectionPage()};
 
-function loadPermits(data){if(permitUnsub)permitUnsub();
-  console.log('Loading permits for role:',data.role,'uid:',data.uid);let q;if(['admin','hse','management','hod','supervisor'].includes(data.role)){q=query(collection(db,'permits'),orderBy('createdAt','desc'))}else{q=query(collection(db,'permits'),where('submittedBy','==',data.uid),orderBy('createdAt','desc'))}permitUnsub=onSnapshot(q,snap=>{allPermits=snap.docs.map(d=>({id:d.id,...d.data()}));updateBadges();if(document.getElementById('pg-permits').classList.contains('active'))renderPermitsPage();if(document.getElementById('pg-dashboard').classList.contains('active'))renderDash(currentData);if(document.getElementById('pg-approvals')?.classList.contains('active'))renderApprovalsPage()}),err=>{
-    // Composite index might be missing — fallback to simple query without orderBy
-    console.warn('Permits query error, trying fallback:',err.code);
-    if(err.code==='failed-precondition'||err.code==='unimplemented'){
-      const fallbackQ=['admin','hse','management','hod','supervisor'].includes(data.role)
-        ?query(collection(db,'permits'))
-        :query(collection(db,'permits'),where('submittedBy','==',data.uid));
-      if(permitUnsub){permitUnsub();permitUnsub=null}
-      permitUnsub=onSnapshot(fallbackQ,snap=>{
-        allPermits=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-        updateBadges();
-        if(document.getElementById('pg-dashboard').classList.contains('active'))renderDash(currentData);
-        if(document.getElementById('pg-permits').classList.contains('active'))renderPermitsPage();
-      });
-    }
-  })
-
+function loadPermits(data){
+  if(permitUnsub){permitUnsub();permitUnsub=null}
+  const isInternal=['admin','hse','management','hod','supervisor'].includes(data.role);
+  const q=isInternal
+    ?query(collection(db,'permits'))
+    :query(collection(db,'permits'),where('submittedBy','==',data.uid));
+  permitUnsub=onSnapshot(q,
+    function(snap){
+      allPermits=snap.docs.map(function(d){return{id:d.id,...d.data()}})
+        .sort(function(a,b){return new Date(b.createdAt||0)-new Date(a.createdAt||0)});
+      updateBadges();
+      if(document.getElementById('pg-permits')&&document.getElementById('pg-permits').classList.contains('active'))renderPermitsPage();
+      if(document.getElementById('pg-dashboard')&&document.getElementById('pg-dashboard').classList.contains('active'))renderDash(currentData);
+      if(document.getElementById('pg-approvals')&&document.getElementById('pg-approvals').classList.contains('active'))renderApprovalsPage();
+      if(document.getElementById('pg-inspection')&&document.getElementById('pg-inspection').classList.contains('active'))renderInspectionPage();
+    },
+    function(err){console.error('Permits error:',err.code);}
+  );
+}
 function loadNotifs(data){if(notifUnsub)notifUnsub();const q=query(collection(db,'notifications'),where('toUid','==',data.uid),orderBy('createdAt','desc'));notifUnsub=onSnapshot(q,snap=>{notifications=snap.docs.map(d=>({id:d.id,...d.data()}));const u=notifications.filter(n=>!n.read).length;const dot=document.getElementById('notif-dot');if(dot)dot.classList.toggle('show',u>0);renderNotifList()})}
 
 function renderNotifList(){const list=document.getElementById('notif-list');if(!list)return;if(!notifications.length){list.innerHTML=`<div class="notif-empty">${lang==='bm'?'Tiada notifikasi':'No notifications'}</div>`;return}list.innerHTML=notifications.slice(0,20).map(n=>`<div class="notif-item${n.read?'':' unread'}" onclick="readNotif('${n.id}')"><div class="notif-title">${n.title||''}</div><div class="notif-msg">${n.message||''}</div><div class="notif-time">${fmtDate(n.createdAt)}</div></div>`).join('')}
@@ -526,13 +527,23 @@ async function sendNotif(toUid,title,message){try{await addDoc(collection(db,'no
 function updateBadges(){const r=currentData?.role;const pa=allPermits.filter(p=>(r==='hod'&&p.status==='pending_hod')||(r==='hse'&&(p.status==='pending_hse'))||(['admin'].includes(r)&&['submitted','pending_hod','pending_hse','pending_op'].includes(p.status))).length;const nb=document.getElementById('nb-approvals');if(nb){nb.textContent=pa||'';nb.classList.toggle('show',pa>0)}const pu=allUsers.filter(u=>u.status==='pending').length;const nbu=document.getElementById('nb-users');if(nbu){nbu.textContent=pu||'';nbu.classList.toggle('show',pu>0)}}
 
 function buildContractorQA(){
-  const myPending=allPermits.filter(p=>['submitted','pending_hod','pending_hse'].includes(p.status)).length;
-  const myActive=allPermits.filter(p=>p.status==='approved').length;
-  const myRejected=allPermits.filter(p=>p.status==='rejected').length;
-  const rejLabel=myRejected?' · <span style="color:var(--danger)">'+myRejected+' '+(lang==='bm'?'ditolak':'rejected')+'</span>':'';
-  const subLabel=myActive+' '+(lang==='bm'?'aktif':'active')+' · '+myPending+' pending'+rejLabel;
-  return '<div class="qa-card" onclick="openPermitForm()"><div class="qa-icon" style="background:rgba(37,99,235,.15)">📝</div><div><div class="qa-title">'+(lang==='bm'?'Submit Permit Baru':'Submit New Permit')+'</div><div class="qa-sub">Track A</div></div></div>'
-    +'<div class="qa-card" onclick="showPage('permits')"><div class="qa-icon" style="background:rgba(16,185,129,.15)">📂</div><div><div class="qa-title">'+(lang==='bm'?'Permit Saya':'My Permits')+'</div><div class="qa-sub">'+subLabel+'</div></div></div>';
+  var p=allPermits.filter(function(x){return['submitted','pending_hod','pending_hse'].includes(x.status)}).length;
+  var a=allPermits.filter(function(x){return x.status==='approved'}).length;
+  var rej=allPermits.filter(function(x){return x.status==='rejected'}).length;
+  var sub=a+' '+(lang==='bm'?'aktif':'active')+' - '+p+' pending'+(rej?' - '+rej+' '+(lang==='bm'?'ditolak':'rejected'):'');
+  var btn1='<div class="qa-card" onclick="openPermitForm()">'
+    +'<div class="qa-icon" style="background:rgba(37,99,235,.15)">&#128221;</div>'
+    +'<div><div class="qa-title">'+(lang==='bm'?'Submit Permit Baru':'Submit New Permit')+'</div>'
+    +'<div class="qa-sub">Track A</div></div></div>';
+  var btn2='<div class="qa-card" id="qa-my-permits" style="cursor:pointer">'
+    +'<div class="qa-icon" style="background:rgba(16,185,129,.15)">&#128194;</div>'
+    +'<div><div class="qa-title">'+(lang==='bm'?'Permit Saya':'My Permits')+'</div>'
+    +'<div class="qa-sub">'+sub+'</div></div></div>';
+  setTimeout(function(){
+    var el=document.getElementById('qa-my-permits');
+    if(el)el.onclick=function(){showPage('permits');};
+  },0);
+  return btn1+btn2;
 }
 
 function renderDash(data){const active=allPermits.filter(p=>p.status==='approved').length,pending=allPermits.filter(p=>['submitted','pending_hod','pending_hse','pending_op'].includes(p.status)).length,now=Date.now(),exp=allPermits.filter(p=>p.status==='approved'&&p.expiryAt&&(new Date(p.expiryAt)-now)<86400000&&new Date(p.expiryAt)>now).length;
