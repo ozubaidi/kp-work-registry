@@ -1199,6 +1199,7 @@ const INSP_RESULTS = ['ok','attention','nc','na'];
 const INSP_RESULT_LABELS = {ok:{bm:'OK ✓',en:'OK ✓',color:'#34d399',bg:'rgba(16,185,129,.15)'},attention:{bm:'Perlu Perhatian ⚠',en:'Needs Attention ⚠',color:'#fbbf24',bg:'rgba(245,158,11,.15)'},nc:{bm:'Tidak Patuh ✕',en:'Non-Compliant ✕',color:'#f87171',bg:'rgba(239,68,68,.15)'},na:{bm:'N/A',en:'N/A',color:'#64748b',bg:'rgba(148,163,184,.1)'}};
 
 
+
 // ── INSPECTION FUNCTIONS ──────────────────────────────
 function getChecklistForPermit(p){
   const track=p.track||'A';
@@ -1207,115 +1208,209 @@ function getChecklistForPermit(p){
 
 function renderInspectionPage(){
   const r=currentData?.role;
-  document.getElementById('pg-insp-title').textContent=lang==='bm'?'Inspection':'Inspection';
-  document.getElementById('pg-insp-sub').textContent=lang==='bm'?'Klik permit untuk buat inspection':'Click a permit to conduct inspection';
+  document.getElementById('pg-insp-title').textContent='Inspection';
+  document.getElementById('pg-insp-sub').textContent=lang==='bm'?'Klik permit untuk buat atau semak inspection':'Click a permit to conduct or view inspection';
 
-  // Show approved permits for inspection
   const inspectable=allPermits.filter(p=>['approved','extended'].includes(p.status));
-
   let html='';
+
   if(!inspectable.length){
-    html=`<div class="data-table"><div class="table-empty"><span class="em-icon">📋</span>${lang==='bm'?'Tiada permit aktif untuk inspection':'No active permits for inspection'}</div></div>`;
+    html='<div class="data-table"><div class="table-empty"><span class="em-icon">📋</span>'+(lang==='bm'?'Tiada permit aktif untuk inspection':'No active permits for inspection')+'</div></div>';
   } else {
-    html+=`<div class="data-table">
-      <div class="table-head" style="grid-template-columns:130px 1fr 110px 100px 130px 130px">
-        <div>No. Permit</div><div>${lang==='bm'?'Projek/Kapal':'Project/Vessel'}</div>
-        <div>${lang==='bm'?'Lokasi':'Location'}</div><div>Track</div>
-        <div>Inspector 1</div><div>Inspector 2 (HSE)</div>
-      </div>`;
+    // Summary cards
+    let totalDuring=0, totalIssues=0, totalPermits=inspectable.length;
     inspectable.forEach(p=>{
       const insp=p.inspections||{};
-      const i1Done=insp.inspector1?.post?.submittedAt;
-      const i2Done=insp.inspector2?.post?.submittedAt;
-      const i1Pre=insp.inspector1?.pre?.submittedAt;
-      const i2Pre=insp.inspector2?.pre?.submittedAt;
+      ['inspector1','inspector2'].forEach(ik=>{
+        const rounds=(insp[ik]&&insp[ik].during)||[];
+        if(Array.isArray(rounds)){
+          totalDuring+=rounds.length;
+          rounds.forEach(rd=>{ if(rd.hasIssues) totalIssues++; });
+        }
+      });
+    });
+
+    html+='<div class="stats-grid" style="margin-bottom:16px">';
+    html+='<div class="stat-card sc-blue"><div class="stat-label">'+(lang==='bm'?'Permit Aktif':'Active Permits')+'</div><div class="stat-value">'+totalPermits+'</div><div class="stat-sub">'+(lang==='bm'?'Memerlukan inspection':'Require inspection')+'</div></div>';
+    html+='<div class="stat-card sc-green"><div class="stat-label">'+(lang==='bm'?'Inspection Dibuat':'Inspections Done')+'</div><div class="stat-value">'+totalDuring+'</div><div class="stat-sub">During work rounds</div></div>';
+    html+='<div class="stat-card sc-red"><div class="stat-label">Red Flags / Issues</div><div class="stat-value">'+totalIssues+'</div><div class="stat-sub">'+(lang==='bm'?'Inspection ada isu':'Inspections with issues')+'</div></div>';
+    html+='</div>';
+
+    html+='<div class="data-table">';
+    html+='<div class="table-head" style="grid-template-columns:130px 1fr 90px 100px 110px 110px 80px">';
+    html+='<div>No. Permit</div><div>'+(lang==='bm'?'Projek/Kapal':'Project/Vessel')+'</div><div>Track</div>';
+    html+='<div>Pre-Work</div><div>During ('+(lang==='bm'?'Rondaan':'Rounds')+')</div><div>Post-Work</div><div>Red Flag</div>';
+    html+='</div>';
+
+    inspectable.forEach(p=>{
+      const insp=p.inspections||{};
       const canInspect=(r==='hse'||r==='supervisor'||r==='admin');
-      html+=`<div class="table-row" style="grid-template-columns:130px 1fr 110px 100px 130px 130px" onclick="${canInspect?`openInspection('${p.id}')`:''}" ${!canInspect?'style="cursor:default"':''}>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">${p.permitNo||'—'}</div>
-        <div><div style="font-size:13px;font-weight:500">${p.projectName||p.vesselName||'—'}</div><div style="font-size:11px;color:var(--text3)">${p.submittedByName||''}</div></div>
-        <div style="font-size:12px;color:var(--text2)">${p.location||'—'}</div>
-        <div><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span></div>
-        <div>${renderInspBadge(insp.inspector1,i1Pre,i1Done)}</div>
-        <div>${renderInspBadge(insp.inspector2,i2Pre,i2Done,true)}</div>
-      </div>`;
+
+      // Aggregate both inspectors
+      const i1=insp.inspector1||{}, i2=insp.inspector2||{};
+      const preDone=!!(i1.pre?.submittedAt||i2.pre?.submittedAt);
+      const postDone=!!(i1.post?.submittedAt||i2.post?.submittedAt);
+
+      // Count during rounds across both inspectors
+      const i1rounds=Array.isArray(i1.during)?i1.during:[];
+      const i2rounds=Array.isArray(i2.during)?i2.during:[];
+      const totalRounds=i1rounds.length+i2rounds.length;
+      const issueRounds=[...i1rounds,...i2rounds].filter(rd=>rd.hasIssues).length;
+      const hasRedFlag=issueRounds>0;
+
+      html+='<div class="table-row" style="grid-template-columns:130px 1fr 90px 100px 110px 110px 80px'+(canInspect?'':';cursor:default')+'" '+(canInspect?'onclick="openInspection(\''+p.id+'\')"':'')+' >';
+      html+='<div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">'+(p.permitNo||'—')+'</div>';
+      html+='<div><div style="font-size:13px;font-weight:500">'+(p.projectName||p.vesselName||'—')+'</div><div style="font-size:11px;color:var(--text3)">'+(p.submittedByName||'')+'</div></div>';
+      html+='<div><span class="track-'+(p.track||'a').toLowerCase()+'">Track '+p.track+'</span></div>';
+      html+='<div>'+(preDone?'<span class="status s-approved">✓ Selesai</span>':'<span style="font-size:11px;color:var(--text3)">Belum</span>')+'</div>';
+      html+='<div><span style="font-size:12px;color:'+(hasRedFlag?'var(--danger)':'var(--success)')+'">'+totalRounds+' rondaan'+(hasRedFlag?' ⚠':'')+'</span></div>';
+      html+='<div>'+(postDone?'<span class="status s-approved">✓ Selesai</span>':'<span style="font-size:11px;color:var(--text3)">Belum</span>')+'</div>';
+      html+='<div>'+(hasRedFlag?'<span style="color:var(--danger);font-weight:600">🚩 '+issueRounds+'</span>':'<span style="color:var(--success)">✓</span>')+'</div>';
+      html+='</div>';
     });
     html+='</div>';
   }
   document.getElementById('insp-body').innerHTML=html;
 }
 
-function renderInspBadge(insp,hasPre,hasDone,isHSE=false){
-  if(!insp&&!hasPre) return `<span style="font-size:11px;color:var(--text3)">${lang==='bm'?'Belum mula':'Not started'}</span>`;
-  if(hasDone) return `<span class="status s-approved">${lang==='bm'?'Selesai':'Done'}</span>`;
-  if(hasPre) return `<span class="status s-pending-hse">${lang==='bm'?'Sedang berjalan':'In Progress'}</span>`;
-  return `<span style="font-size:11px;color:var(--text3)">—</span>`;
+function renderInspBadge(insp,hasPre,hasDone,isHSE){
+  if(!insp&&!hasPre) return '<span style="font-size:11px;color:var(--text3)">'+(lang==='bm'?'Belum mula':'Not started')+'</span>';
+  if(hasDone) return '<span class="status s-approved">'+(lang==='bm'?'Selesai':'Done')+'</span>';
+  if(hasPre) return '<span class="status s-pending-hse">'+(lang==='bm'?'Sedang berjalan':'In Progress')+'</span>';
+  return '<span style="font-size:11px;color:var(--text3)">—</span>';
 }
 
 window.openInspection=function(permitId){
   const p=allPermits.find(x=>x.id===permitId);
   if(!p)return;
-  // Determine which inspector slot current user fills
   const r=currentData?.role;
   const isHSE=r==='hse';
   const insp=p.inspections||{};
+  const inspKey=isHSE?'inspector2':'inspector1';
+  const myInsp=insp[inspKey]||{};
 
-  // Show inspection modal
+  // During is now an array
+  const duringRounds=Array.isArray(myInsp.during)?myInsp.during:[];
+  const hasPre=!!myInsp.pre?.submittedAt;
+  const hasPost=!!myInsp.post?.submittedAt;
+
   const overlay=document.createElement('div');
   overlay.id='insp-overlay';
   overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
 
-  const inspKey=isHSE?'inspector2':'inspector1';
-  const myInsp=insp[inspKey]||{};
-  const currentStage=myInsp.pre&&!myInsp.during?'during':myInsp.during&&!myInsp.post?'post':myInsp.post?'done':'pre';
-  const cl=getChecklistForPermit(p);
+  // Build during rounds summary
+  let duringHtml='';
+  if(duringRounds.length){
+    duringHtml+='<div style="margin-bottom:12px">';
+    duringHtml+='<div style="font-size:11px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">During Work — '+(lang==='bm'?'Rondaan Lepas':'Previous Rounds')+'</div>';
+    duringRounds.forEach(function(rd,i){
+      const hasIssue=rd.hasIssues;
+      duringHtml+='<div style="background:var(--bg2);border:1px solid '+(hasIssue?'rgba(239,68,68,.3)':'var(--border)')+ ';border-radius:8px;padding:10px 14px;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="viewDuringRound(\''+permitId+'\',\''+inspKey+'\','+i+')">';
+      duringHtml+='<div>';
+      duringHtml+='<div style="font-size:13px;font-weight:500">'+(lang==='bm'?'Rondaan':'Round')+' '+(i+1)+(hasIssue?' <span style="color:var(--danger)">🚩 '+(lang==='bm'?'Ada Isu':'Issues Found')+'</span>':'')+'</div>';
+      duringHtml+='<div style="font-size:11px;color:var(--text3)">'+(rd.submittedBy||'')+ ' · '+(rd.submittedAt?new Date(rd.submittedAt).toLocaleString(lang==='bm'?'ms-MY':'en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'')+'</div>';
+      if(rd.overallRemark) duringHtml+='<div style="font-size:12px;color:var(--text2);margin-top:4px;font-style:italic">"'+rd.overallRemark+'"</div>';
+      duringHtml+='</div>';
+      duringHtml+='<span style="font-size:11px;color:var(--text3)">👁 View</span>';
+      duringHtml+='</div>';
+    });
+    duringHtml+='</div>';
+  }
 
-  overlay.innerHTML=`
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:680px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">
-        <div>
-          <div style="font-size:15px;font-weight:600">📋 Inspection — ${p.permitNo||'—'}</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:2px">${p.projectName||p.vesselName||'—'} &nbsp;·&nbsp; ${p.location||'—'}</div>
-        </div>
-        <button onclick="document.getElementById('insp-overlay').remove()" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">✕</button>
-      </div>
+  overlay.innerHTML=
+    '<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:680px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
+    +'<div><div style="font-size:15px;font-weight:600">📋 Inspection — '+(p.permitNo||'—')+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.projectName||p.vesselName||'—')+' · '+(p.location||'—')+'</div></div>'
+    +'<button onclick="document.getElementById(\'insp-overlay\').remove()" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">✕</button>'
+    +'</div>'
+    +'<div style="padding:14px 20px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">'
+    +'<span class="rbadge '+r+'">'+rl(r)+'</span>'
+    +'<span style="font-size:13px;color:var(--text2)">'+currentData.name+'</span>'
+    +'<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">'+(isHSE?'Inspector 2 (HSE)':'Inspector 1 ('+rl(r)+')')+'</span>'
+    +'</div>'
 
-      <!-- Inspector info -->
-      <div style="padding:14px 20px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-        <span class="rbadge ${r}">${rl(r)}</span>
-        <span style="font-size:13px;color:var(--text2)">${currentData.name}</span>
-        <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">${isHSE?'Inspector 2 (HSE)':'Inspector 1 ('+rl(r)+')'}</span>
-      </div>
+    // Stage selector
+    +'<div style="padding:14px 20px;border-bottom:1px solid var(--border)">'
+    +'<div style="font-size:11px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">'+(lang==='bm'?'Tindakan Inspection':'Inspection Actions')+'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
 
-      <!-- Stage selector -->
-      <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
-        <div style="font-size:11px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">${lang==='bm'?'Pilih Peringkat Inspection':'Select Inspection Stage'}</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px" id="stage-btns">
-          ${INSP_STAGES.map(s=>{
-            const done=myInsp[s]?.submittedAt;
-            const active=s===currentStage&&currentStage!=='done';
-            return `<button onclick="loadStage('${permitId}','${inspKey}','${s}')" style="padding:10px 8px;border-radius:8px;border:2px solid ${done?'var(--success)':active?'var(--accent)':'var(--border)'};background:${done?'rgba(16,185,129,.08)':active?'rgba(37,99,235,.08)':'var(--bg2)'};cursor:pointer;transition:all .2s">
-              <div style="font-size:16px;margin-bottom:3px">${done?'✅':'s'==='pre'?'🔍':'s'==='during'?'👁️':'🏁'}</div>
-              <div style="font-size:11px;font-weight:500;color:${done?'var(--success)':active?'var(--accent2)':'var(--text2)'}">${INSP_STAGE_LABELS[lang][s]}</div>
-              <div style="font-size:10px;color:var(--text3);margin-top:2px">${done?(lang==='bm'?'Selesai':'Done'):(lang==='bm'?'Klik untuk buat':'Click to start')}</div>
-            </button>`;
-          }).join('')}
-        </div>
-      </div>
+    // Pre-Work button
+    +'<button onclick="loadStage(\''+permitId+'\',\''+inspKey+'\',\'pre\')" style="padding:10px 8px;border-radius:8px;border:2px solid '+(hasPre?'var(--success)':'var(--border)')+ ';background:'+(hasPre?'rgba(16,185,129,.08)':'var(--bg2)')+';cursor:pointer;transition:all .2s">'
+    +'<div style="font-size:16px;margin-bottom:3px">'+(hasPre?'✅':'🔍')+'</div>'
+    +'<div style="font-size:11px;font-weight:500;color:'+(hasPre?'var(--success)':'var(--text2)')+'">'+INSP_STAGE_LABELS[lang].pre+'</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(hasPre?(lang==='bm'?'Selesai':'Done'):(lang==='bm'?'Klik untuk buat':'Click to start'))+'</div>'
+    +'</button>'
 
-      <!-- Checklist content -->
-      <div id="insp-stage-content" style="padding:20px">
-        <div style="text-align:center;color:var(--text3);font-size:13px;padding:20px">
-          ${currentStage==='done'
-            ?`<div style="font-size:32px;margin-bottom:8px">✅</div>${lang==='bm'?'Semua peringkat inspection telah selesai.':'All inspection stages completed.'}`
-            :`${lang==='bm'?'Pilih peringkat inspection di atas untuk mula.':'Select an inspection stage above to begin.'}`}
-        </div>
-      </div>
-    </div>`;
+    // During button — + New Round
+    +'<button onclick="loadStage(\''+permitId+'\',\''+inspKey+'\',\'during\')" style="padding:10px 8px;border-radius:8px;border:2px solid '+(duringRounds.length?'var(--accent)':'var(--border)')+ ';background:'+(duringRounds.length?'rgba(37,99,235,.08)':'var(--bg2)')+';cursor:pointer;transition:all .2s">'
+    +'<div style="font-size:16px;margin-bottom:3px">👁️</div>'
+    +'<div style="font-size:11px;font-weight:500;color:'+(duringRounds.length?'var(--accent2)':'var(--text2)')+'">'+INSP_STAGE_LABELS[lang].during+'</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+duringRounds.length+' '+(lang==='bm'?'rondaan':'rounds')+' · '+(lang==='bm'?'+ Tambah Baru':'+ Add New')+'</div>'
+    +'</button>'
+
+    // Post-Work button
+    +'<button onclick="loadStage(\''+permitId+'\',\''+inspKey+'\',\'post\')" style="padding:10px 8px;border-radius:8px;border:2px solid '+(hasPost?'var(--success)':'var(--border)')+ ';background:'+(hasPost?'rgba(16,185,129,.08)':'var(--bg2)')+';cursor:pointer;transition:all .2s">'
+    +'<div style="font-size:16px;margin-bottom:3px">'+(hasPost?'✅':'🏁')+'</div>'
+    +'<div style="font-size:11px;font-weight:500;color:'+(hasPost?'var(--success)':'var(--text2)')+'">'+INSP_STAGE_LABELS[lang].post+'</div>'
+    +'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+(hasPost?(lang==='bm'?'Selesai':'Done'):(lang==='bm'?'Klik untuk buat':'Click to start'))+'</div>'
+    +'</button>'
+    +'</div></div>'
+
+    // During rounds history
+    +(duringRounds.length?'<div style="padding:14px 20px;border-bottom:1px solid var(--border)">'+duringHtml+'</div>':'')
+
+    // Content area
+    +'<div id="insp-stage-content" style="padding:20px">'
+    +'<div style="text-align:center;color:var(--text3);font-size:13px;padding:20px">'
+    +(lang==='bm'?'Pilih peringkat inspection di atas untuk mula.':'Select an inspection stage above to begin.')
+    +'</div></div>'
+    +'</div>';
 
   document.body.appendChild(overlay);
+};
 
-  // Auto-load current stage
-  if(currentStage!=='done') loadStage(permitId,inspKey,currentStage);
+window.viewDuringRound=function(permitId,inspKey,roundIdx){
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+  const insp=p.inspections||{};
+  const myInsp=insp[inspKey]||{};
+  const rounds=Array.isArray(myInsp.during)?myInsp.during:[];
+  const rd=rounds[roundIdx];
+  if(!rd)return;
+
+  const cl=getChecklistForPermit(p);
+  const items=cl.during||[];
+  const content=document.getElementById('insp-stage-content');
+  if(!content)return;
+
+  let html='<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">';
+  html+='<div style="font-size:14px;font-weight:600">'+(lang==='bm'?'Rondaan':'Round')+' '+(roundIdx+1)+' — '+INSP_STAGE_LABELS[lang].during+'</div>';
+  html+='<span class="status s-approved">'+(lang==='bm'?'Dah Submitted':'Submitted')+'</span>';
+  html+='</div>';
+
+  if(rd.overallRemark){
+    html+='<div style="background:rgba(37,99,235,.08);border-left:3px solid var(--accent);border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--text2)">📝 '+rd.overallRemark+'</div>';
+  }
+
+  html+='<div style="font-size:12px;color:var(--text3);margin-bottom:10px">'+rd.submittedBy+' · '+(rd.submittedAt?new Date(rd.submittedAt).toLocaleString():'')+'</div>';
+  html+='<div style="display:flex;flex-direction:column;gap:8px">';
+
+  items.forEach(function(item){
+    const res=(rd.items&&rd.items[item.id])||{};
+    const colors={ok:'#34d399',nc:'#f87171',attention:'#fbbf24',na:'#64748b','':''};
+    const col=colors[res.result||'']||'var(--text3)';
+    const bg=res.result==='nc'?'rgba(239,68,68,.06)':res.result==='attention'?'rgba(245,158,11,.06)':res.result==='ok'?'rgba(16,185,129,.04)':'var(--bg2)';
+    html+='<div style="background:'+bg+';border:1px solid var(--border);border-radius:8px;padding:10px 14px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px">';
+    html+='<div style="flex:1"><div style="font-size:12px;color:var(--text)">'+(lang==='bm'?item.itemBM:item.item)+'</div>';
+    if(res.remark) html+='<div style="font-size:11px;color:var(--warning);margin-top:4px;font-style:italic">⚠ '+res.remark+'</div>';
+    html+='</div>';
+    if(res.result) html+='<span style="color:'+col+';font-size:11px;font-weight:600;font-family:var(--mono);white-space:nowrap">'+res.result.toUpperCase()+'</span>';
+    html+='</div>';
+  });
+
+  html+='</div>';
+  content.innerHTML=html;
 };
 
 window.loadStage=function(permitId,inspKey,stage){
@@ -1324,99 +1419,96 @@ window.loadStage=function(permitId,inspKey,stage){
   const cl=getChecklistForPermit(p);
   const items=cl[stage]||[];
   const myInsp=(p.inspections||{})[inspKey]||{};
-  const stageData=myInsp[stage]||{};
-  const isSubmitted=!!stageData.submittedAt;
+
+  // For during — always create NEW round (array)
+  const isDuring=stage==='during';
+  const existingData=isDuring?{}:(myInsp[stage]||{});
+  const isSubmitted=isDuring?false:!!existingData.submittedAt;
+  const roundNum=isDuring?((Array.isArray(myInsp.during)?myInsp.during.length:0)+1):null;
 
   const content=document.getElementById('insp-stage-content');
   if(!content)return;
 
-  let html=`<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
-    <div style="font-size:14px;font-weight:600">${INSP_STAGE_LABELS[lang][stage]}</div>
-    ${isSubmitted?`<span class="status s-approved">${lang==='bm'?'Dah Submitted':'Submitted'} — ${new Date(stageData.submittedAt).toLocaleDateString()}</span>`:''}
-  </div>`;
+  let html='<div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">';
+  html+='<div style="font-size:14px;font-weight:600">'+INSP_STAGE_LABELS[lang][stage]+(isDuring?' — '+(lang==='bm'?'Rondaan Baru':'New Round')+' #'+roundNum:'')+'</div>';
+  if(isSubmitted) html+='<span class="status s-approved">'+(lang==='bm'?'Dah Submitted':'Submitted')+'</span>';
+  html+='</div>';
 
-  // Overall remarks
-  html+=`<div class="form-group" style="margin-bottom:16px">
-    <label class="form-label">${lang==='bm'?'Catatan Umum (Keseluruhan)':'General Remarks (Overall)'}</label>
-    <textarea class="form-input" id="insp-overall-remark" style="min-height:70px" placeholder="${lang==='bm'?'Catatan keseluruhan inspection peringkat ini...':'Overall remarks for this inspection stage...'}" ${isSubmitted?'disabled':''}>${stageData.overallRemark||''}</textarea>
-  </div>`;
+  if(isDuring){
+    html+='<div style="background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--accent2)">';
+    html+='📅 '+(lang==='bm'?'Tarikh & Masa:':'Date & Time:')+' '+new Date().toLocaleString(lang==='bm'?'ms-MY':'en-MY',{weekday:'long',day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    html+='</div>';
+  }
 
-  html+=`<div style="display:flex;flex-direction:column;gap:10px">`;
+  html+='<div class="form-group" style="margin-bottom:16px">';
+  html+='<label class="form-label">'+(lang==='bm'?'Catatan Umum (Keseluruhan)':'General Remarks (Overall)')+'</label>';
+  html+='<textarea class="form-input" id="insp-overall-remark" style="min-height:70px" placeholder="'+(lang==='bm'?'Catatan keseluruhan inspection peringkat ini...':'Overall remarks for this inspection stage...')+'" '+(isSubmitted?'disabled':'')+'>'+(existingData.overallRemark||'')+'</textarea>';
+  html+='</div>';
 
-  items.forEach(item=>{
-    const existing=stageData.items?.[item.id]||{};
+  html+='<div style="display:flex;flex-direction:column;gap:10px">';
+
+  items.forEach(function(item){
+    const existing=(existingData.items&&existingData.items[item.id])||{};
     const resultVal=existing.result||'';
     const remarkVal=existing.remark||'';
 
-    html+=`<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px" id="item-wrap-${item.id}">
-      <div style="font-size:13px;font-weight:500;margin-bottom:4px;color:var(--text)">
-        ${lang==='bm'?item.itemBM:item.item}
-        ${item.optional?`<span style="font-size:10px;color:var(--text3);margin-left:6px">(${lang==='bm'?'Pilihan':'Optional'})</span>`:''}
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:10px">${lang==='bm'?item.item:item.itemBM}</div>`;
+    html+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px" id="item-wrap-'+item.id+'">';
+    html+='<div style="font-size:13px;font-weight:500;margin-bottom:4px;color:var(--text)">'+(lang==='bm'?item.itemBM:item.item);
+    if(item.optional) html+='<span style="font-size:10px;color:var(--text3);margin-left:6px">('+( lang==='bm'?'Pilihan':'Optional')+')</span>';
+    html+='</div>';
+    html+='<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+(lang==='bm'?item.item:item.itemBM)+'</div>';
 
     if(item.type==='select'){
-      html+=`<select class="form-input" id="res-${item.id}" style="height:36px;font-size:12px" ${isSubmitted?'disabled':''}>
-        <option value="">-- ${lang==='bm'?'Pilih':'Select'} --</option>
-        ${item.options.map(o=>`<option value="${o}" ${resultVal===o?'selected':''}>${o}</option>`).join('')}
-      </select>`;
-    } else if(item.type==='yn'||item.type==='status'){
-      const opts=item.type==='yn'
+      html+='<select class="form-input" id="res-'+item.id+'" style="height:36px;font-size:12px" '+(isSubmitted?'disabled':'')+'>';
+      html+='<option value="">-- '+(lang==='bm'?'Pilih':'Select')+' --</option>';
+      item.options.forEach(function(o){ html+='<option value="'+o+'" '+(resultVal===o?'selected':'')+'>'+o+'</option>'; });
+      html+='</select>';
+    } else {
+      var opts=item.type==='yn'
         ?[{v:'ok',label:'OK ✓',c:'#34d399',bg:'rgba(16,185,129,.15)'},{v:'nc',label:lang==='bm'?'Tidak ✕':'No ✕',c:'#f87171',bg:'rgba(239,68,68,.15)'},{v:'attention',label:'⚠',c:'#fbbf24',bg:'rgba(245,158,11,.15)'},{v:'na',label:'N/A',c:'#64748b',bg:'rgba(148,163,184,.1)'}]
         :[{v:'ok',label:item.options?.[0]||'OK',c:'#34d399',bg:'rgba(16,185,129,.15)'},{v:'nc',label:item.options?.[1]||'Tidak',c:'#f87171',bg:'rgba(239,68,68,.15)'},{v:'attention',label:'⚠',c:'#fbbf24',bg:'rgba(245,158,11,.15)'},{v:'na',label:'N/A',c:'#64748b',bg:'rgba(148,163,184,.1)'}];
-      html+=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">`;
-      opts.forEach(opt=>{
-        const sel=resultVal===opt.v;
-        html+=`<button ${isSubmitted?'disabled':''} onclick="selectResult('${item.id}','${opt.v}',this)" data-val="${opt.v}"
-          style="padding:5px 12px;border-radius:6px;border:2px solid ${sel?opt.c:'var(--border)'};background:${sel?opt.bg:'transparent'};color:${sel?opt.c:'var(--text2)'};font-size:12px;font-weight:500;cursor:pointer;transition:all .2s"
-          id="btn-res-${item.id}-${opt.v}">${opt.label}</button>`;
+      html+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">';
+      opts.forEach(function(opt){
+        var sel=resultVal===opt.v;
+        html+='<button '+(isSubmitted?'disabled':'')+' onclick="selectResult(\''+item.id+'\',\''+opt.v+'\',this)" data-val="'+opt.v+'"'
+          +' style="padding:5px 12px;border-radius:6px;border:2px solid '+(sel?opt.c:'var(--border)')+';background:'+(sel?opt.bg:'transparent')+';color:'+(sel?opt.c:'var(--text2)')+';font-size:12px;font-weight:500;cursor:pointer;transition:all .2s"'
+          +' id="btn-res-'+item.id+'-'+opt.v+'">'+opt.label+'</button>';
       });
-      html+=`</div>`;
+      html+='</div>';
     }
 
-    // Remark field — show when nc or attention
-    const showRemark=resultVal==='nc'||resultVal==='attention';
-    html+=`<div id="remark-wrap-${item.id}" style="margin-top:6px;display:${showRemark?'block':'none'}">
-      <input class="form-input" id="remark-${item.id}" placeholder="${lang==='bm'?'Nyatakan pemerhatian / tindakan yang diperlukan...':'State observation / action required...'}" style="height:36px;font-size:12px" value="${remarkVal}" ${isSubmitted?'disabled':''}/>
-    </div>`;
-
-    html+=`</div>`;
+    var showRemark=resultVal==='nc'||resultVal==='attention';
+    html+='<div id="remark-wrap-'+item.id+'" style="margin-top:6px;display:'+(showRemark?'block':'none')+'">';
+    html+='<input class="form-input" id="remark-'+item.id+'" placeholder="'+(lang==='bm'?'Nyatakan pemerhatian / tindakan yang diperlukan...':'State observation / action required...')+'" style="height:36px;font-size:12px" value="'+remarkVal+'" '+(isSubmitted?'disabled':'')+'>';
+    html+='</div>';
+    html+='</div>';
   });
 
-  html+=`</div>`;
+  html+='</div>';
 
   if(!isSubmitted){
-    html+=`<div style="margin-top:20px;display:flex;gap:10px">
-      <button onclick="document.getElementById('insp-overlay').remove()" style="flex:1;height:40px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">${lang==='bm'?'Simpan & Tutup':'Save & Close'}</button>
-      <button onclick="submitInspStage('${permitId}','${inspKey}','${stage}')" style="flex:2;height:40px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600" id="btn-submit-stage">
-        ✓ ${lang==='bm'?'Submit Peringkat Ini':'Submit This Stage'}
-      </button>
-    </div>`;
+    var submitLabel=isDuring
+      ?(lang==='bm'?'✓ Submit Rondaan #'+roundNum:'✓ Submit Round #'+roundNum)
+      :(lang==='bm'?'✓ Submit Peringkat Ini':'✓ Submit This Stage');
+    html+='<div style="margin-top:20px;display:flex;gap:10px">'
+      +'<button onclick="document.getElementById(\'insp-overlay\').remove()" style="flex:1;height:40px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">'+(lang==='bm'?'Batal':'Cancel')+'</button>'
+      +'<button onclick="submitInspStage(\''+permitId+'\',\''+inspKey+'\',\''+stage+'\')" style="flex:2;height:40px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600" id="btn-submit-stage">'+submitLabel+'</button>'
+      +'</div>';
   }
 
   content.innerHTML=html;
 };
 
 window.selectResult=function(itemId,val,btn){
-  // Deselect all buttons for this item
-  document.querySelectorAll(`[id^="btn-res-${itemId}-"]`).forEach(b=>{
-    const bVal=b.dataset.val;
-    const colors={ok:'#34d399',nc:'#f87171',attention:'#fbbf24',na:'#64748b'};
-    const bgs={ok:'rgba(16,185,129,.15)',nc:'rgba(239,68,68,.15)',attention:'rgba(245,158,11,.15)',na:'rgba(148,163,184,.1)'};
-    b.style.borderColor='var(--border)';
-    b.style.background='transparent';
-    b.style.color='var(--text2)';
+  document.querySelectorAll('[id^="btn-res-'+itemId+'-"]').forEach(function(b){
+    b.style.borderColor='var(--border)';b.style.background='transparent';b.style.color='var(--text2)';
+    delete b.dataset.selected;
   });
-  // Select this button
-  const colors={ok:'#34d399',nc:'#f87171',attention:'#fbbf24',na:'#64748b'};
-  const bgs={ok:'rgba(16,185,129,.15)',nc:'rgba(239,68,68,.15)',attention:'rgba(245,158,11,.15)',na:'rgba(148,163,184,.1)'};
-  btn.style.borderColor=colors[val];
-  btn.style.background=bgs[val];
-  btn.style.color=colors[val];
-  btn.dataset.selected='true';
-  // Show/hide remark field
-  const remarkWrap=document.getElementById(`remark-wrap-${itemId}`);
-  if(remarkWrap) remarkWrap.style.display=(val==='nc'||val==='attention')?'block':'none';
+  var colors={ok:'#34d399',nc:'#f87171',attention:'#fbbf24',na:'#64748b'};
+  var bgs={ok:'rgba(16,185,129,.15)',nc:'rgba(239,68,68,.15)',attention:'rgba(245,158,11,.15)',na:'rgba(148,163,184,.1)'};
+  btn.style.borderColor=colors[val];btn.style.background=bgs[val];btn.style.color=colors[val];btn.dataset.selected='true';
+  var remarkWrap=document.getElementById('remark-wrap-'+itemId);
+  if(remarkWrap)remarkWrap.style.display=(val==='nc'||val==='attention')?'block':'none';
 };
 
 window.submitInspStage=async function(permitId,inspKey,stage){
@@ -1424,66 +1516,89 @@ window.submitInspStage=async function(permitId,inspKey,stage){
   if(!p)return;
   const cl=getChecklistForPermit(p);
   const items=cl[stage]||[];
+  const isDuring=stage==='during';
   const btn=document.getElementById('btn-submit-stage');
   if(btn){btn.disabled=true;btn.textContent=lang==='bm'?'Menyimpan...':'Saving...';}
 
-  // Collect results
-  const itemResults={};
-  let hasNcOrAttention=false;
-  items.forEach(item=>{
-    const el=document.getElementById(`res-${item.id}`);
-    // For yn/status type, find selected button
-    const selBtn=document.querySelector(`[id^="btn-res-${item.id}-"][style*="border-color: rgb"]`)||
-                 document.querySelector(`[id^="btn-res-${item.id}-"][style*="${'rgba'}"]`);
-    // Get result from button selected state
-    let result='';
-    document.querySelectorAll(`[id^="btn-res-${item.id}-"]`).forEach(b=>{
-      if(b.dataset.selected==='true'||b.style.background.includes('rgba(16,185,129')||b.style.background.includes('rgba(239,68,68')||b.style.background.includes('rgba(245,158,11')||b.style.background.includes('rgba(148,163,184')){
-        // check which one has contrast
-        if(b.style.color&&b.style.color!=='var(--text2)') result=b.dataset.val;
-      }
+  var itemResults={};
+  var hasNcOrAttention=false;
+  items.forEach(function(item){
+    var result='';
+    document.querySelectorAll('[id^="btn-res-'+item.id+'-"]').forEach(function(b){
+      if(b.dataset.selected==='true') result=b.dataset.val;
     });
-    if(!result&&el) result=el.value;
-    const remark=document.getElementById(`remark-${item.id}`)?.value||'';
+    var selEl=document.getElementById('res-'+item.id);
+    if(!result&&selEl) result=selEl.value;
+    var remark=document.getElementById('remark-'+item.id)?.value||'';
     itemResults[item.id]={result,remark};
     if(result==='nc'||result==='attention') hasNcOrAttention=true;
   });
 
-  const overallRemark=document.getElementById('insp-overall-remark')?.value||'';
+  var overallRemark=document.getElementById('insp-overall-remark')?.value||'';
+  var now=new Date().toISOString();
+  var myInsp=(p.inspections||{})[inspKey]||{};
+  var rounds=Array.isArray(myInsp.during)?[...myInsp.during]:[];
 
-  const stageData={
+  var stageData={
     items:itemResults,
     overallRemark,
     hasIssues:hasNcOrAttention,
-    submittedAt:new Date().toISOString(),
+    submittedAt:now,
     submittedBy:currentData.name,
     submittedByRole:currentData.role
   };
 
+  var tlLabel='';
+  if(isDuring){
+    var roundNum=rounds.length+1;
+    stageData.round=roundNum;
+    stageData.roundDate=now;
+    rounds.push(stageData);
+    tlLabel=INSP_STAGE_LABELS[lang].during+' inspection '+(lang==='bm'?'Rondaan':'Round')+' #'+roundNum+(hasNcOrAttention?' [🚩 '+(lang==='bm'?'Ada Isu':'Issues Found')+']':'');
+  } else {
+    tlLabel=INSP_STAGE_LABELS[lang][stage]+' inspection '+(lang==='bm'?'selesai oleh':'completed by')+' '+rl(currentData.role)+(hasNcOrAttention?' [🚩 '+(lang==='bm'?'Ada Isu':'Issues Found')+']':'');
+  }
+
+  var tl={
+    type:'inspection',
+    label:tlLabel,
+    by:currentData.name,
+    role:currentData.role,
+    at:now,
+    remark:overallRemark+(hasNcOrAttention?' — '+(lang==='bm'?'Ada isu ditemui':'Issues found'):'')
+  };
+
   try{
-    const inspPath=`inspections.${inspKey}.${stage}`;
-    const updateData={};
-    updateData[inspPath]=stageData;
-    // Add timeline entry
-    const tl={
-      type:'inspection',
-      label:`${INSP_STAGE_LABELS[lang][stage]} inspection ${lang==='bm'?'selesai oleh':'completed by'} ${rl(currentData.role)}`,
-      by:currentData.name,
-      role:currentData.role,
-      at:new Date().toISOString(),
-      remark:overallRemark||''+(hasNcOrAttention?` [${lang==='bm'?'Ada isu':'Issues found'}]`:'')
-    };
+    var updateData={};
+    if(isDuring){
+      updateData['inspections.'+inspKey+'.during']=rounds;
+    } else {
+      updateData['inspections.'+inspKey+'.'+stage]=stageData;
+    }
     updateData.timeline=[...(p.timeline||[]),tl];
     await updateDoc(doc(db,'permits',permitId),updateData);
-    showToast(lang==='bm'?`✓ ${INSP_STAGE_LABELS['bm'][stage]} inspection disimpan.`:`✓ ${INSP_STAGE_LABELS['en'][stage]} inspection saved.`,'success');
+
+    // If issues found, notify HSE & admin
+    if(hasNcOrAttention&&currentData.role!=='hse'){
+      try{
+        var hses=allUsers.filter(function(u){return u.role==='hse'&&u.status==='active'});
+        await Promise.all(hses.map(function(u){
+          return sendNotif(u.uid,'🚩 '+(lang==='bm'?'Inspection — Ada Isu Ditemui':'Inspection — Issues Found'),
+            p.permitNo+' — '+tlLabel);
+        }));
+      }catch(ne){}
+    }
+
+    showToast(lang==='bm'?'✓ Inspection disimpan.':'✓ Inspection saved.','success');
     document.getElementById('insp-overlay')?.remove();
     renderInspectionPage();
   }catch(e){
     console.error(e);
     showToast(lang==='bm'?'Ralat menyimpan inspection.':'Error saving inspection.','error');
-    if(btn){btn.disabled=false;btn.textContent=`✓ ${lang==='bm'?'Submit Peringkat Ini':'Submit This Stage'}`;}
+    if(btn){btn.disabled=false;btn.textContent=lang==='bm'?'Cuba Lagi':'Try Again';}
   }
 };
+
 
 
 onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data());renderApp(data)}}}});
