@@ -291,7 +291,7 @@ select.form-input option{background:var(--bg2)}
       <button class="ctrl-btn" onclick="toggleLang()"><span id="dlang-lbl">EN</span></button>
       <button class="ctrl-btn" onclick="toggleTheme()"><span id="dtheme-ic">☀</span></button>
       <button class="ctrl-btn notif-btn" onclick="toggleNotif()" id="notif-btn">🔔<span class="notif-dot" id="notif-dot"></span></button>
-      <div class="user-chip"><div class="user-av" id="user-av">?</div><div class="user-nm" id="user-nm">—</div></div>
+      <div class="user-chip" id="user-chip-btn" style="cursor:pointer" title="Profil"><div class="user-av" id="user-av">?</div><div class="user-nm" id="user-nm">—</div></div>
       <button class="ctrl-btn" onclick="openChangePass()" title="Tukar Kata Laluan" style="font-size:14px">🔒</button><button class="btn-logout" onclick="doLogout()" id="btn-lo-txt">Log Keluar</button>
     </div>
   </header>
@@ -333,6 +333,8 @@ select.form-input option{background:var(--bg2)}
     </main>
   </div>
 </div>
+
+<div class="profile-card" id="profile-card" style="position:fixed;top:60px;right:16px;width:260px;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow);z-index:250;display:none;overflow:hidden;animation:modalIn .2s ease"></div>
 
 <div class="modal-overlay" id="modal-permit-form">
   <div class="modal">
@@ -1084,8 +1086,48 @@ window.closePermit=async function(id){const p=allPermits.find(x=>x.id===id);if(!
 window.openPermitForm=function(){draft={track:'A',activityTypes:[]};document.getElementById('pf-title').textContent=lang==='bm'?'Submit Permit Baru':'Submit New Permit';renderFormStep(1);openModal('modal-permit-form')};
 window.openActivityForm=function(track){draft={track,activityTypes:[]};document.getElementById('pf-title').textContent=track==='B'?(lang==='bm'?'Daftar Aktiviti Rutin':'Register Routine Activity'):(lang==='bm'?'Daftar Aktiviti Non-Rutin':'Register Non-Routine Activity');renderFormStep(1);openModal('modal-permit-form')};
 
-function renderFormStep(step){formStep=step;['stp1','stp2','stp3'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.className='step'+(i+1<step?' done':i+1===step?' active':'')});const tr=draft.track||'A',isS=tr==='B'||tr==='C';if(step===1){document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Maklumat Asas':'Basic Information'}</p><div class="form-group"><label class="form-label">${isS?(lang==='bm'?'Nama Kapal':'Vessel Name'):(lang==='bm'?'Nama Projek':'Project Name')} <span class="req">*</span></label><input class="form-input" id="pf-name" placeholder="${isS?'MV Ocean Star':'Nama projek...'}" value="${draft.projectName||draft.vesselName||''}"></div>${isS?`<div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Jenis Kargo':'Cargo Type'}</label><input class="form-input" id="pf-cargo" placeholder="Clinker, Coal..." value="${draft.cargo||''}"></div><div class="form-group"><label class="form-label">Berth</label><select class="form-input" id="pf-berth"><option value="">--</option>${LOCS.filter(l=>l.startsWith('Berth')).map(l=>`<option${draft.berth===l?' selected':''}>${l}</option>`).join('')}</select></div></div>`:''}<div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Lokasi':'Location'} <span class="req">*</span></label><select class="form-input" id="pf-loc"><option value="">--</option>${LOCS.map(l=>`<option${draft.location===l?' selected':''}>${l}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">${lang==='bm'?'Bil. Pekerja':'No. Workers'}</label><input class="form-input" type="number" id="pf-workers" min="1" placeholder="10" value="${draft.workers||''}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Mula':'Start Date'} <span class="req">*</span></label><input class="form-input" type="date" id="pf-start" value="${draft.startDate||''}"></div><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Tamat':'End Date'}</label><input class="form-input" type="date" id="pf-end" value="${draft.endDate||''}"></div></div><div class="form-group"><label class="form-label">PIC <span class="req">*</span></label><input class="form-input" id="pf-pic" placeholder="${lang==='bm'?'Nama pegawai':'Officer name'}" value="${draft.pic||''}"></div>`;document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →'}
-if(step===2){const tt=Object.entries(PTYPES).filter(([,v])=>v.track===tr);document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Jenis Aktiviti':'Activity Types'} — Track ${tr}</p><div class="check-grid">${tt.map(([k,v])=>`<div class="check-item${(draft.activityTypes||[]).includes(k)?' selected':''}" onclick="toggleAct('${k}',this)"><div class="check-icon">${(draft.activityTypes||[]).includes(k)?'✓':''}</div><span>${lang==='bm'?v.bm:v.en}</span>${v.hr?'<span style="font-size:9px;color:var(--danger);margin-left:auto">⚠</span>':''}</div>`).join('')}</div>`;document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →'}
+function renderFormStep(step){formStep=step;['stp1','stp2','stp3'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.className='step'+(i+1<step?' done':i+1===step?' active':'')});const tr=draft.track||'A',isS=tr==='B'||tr==='C';if(step===1){document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Maklumat Asas':'Basic Information'}</p><div class="form-group"><label class="form-label">${isS?(lang==='bm'?'Nama Kapal':'Vessel Name'):(lang==='bm'?'Nama Projek':'Project Name')} <span class="req">*</span></label><input class="form-input" id="pf-name" placeholder="${isS?'MV Ocean Star':'Nama projek...'}" value="${draft.projectName||draft.vesselName||''}"></div>${isS?`<div class="form-row">
+  <div class="form-group"><label class="form-label">${lang==='bm'?'Jenis Kargo':'Cargo Type'}</label><input class="form-input" id="pf-cargo" placeholder="Clinker, Coal, Breakbulk..." value="${draft.cargo||''}"></div>
+  <div class="form-group"><label class="form-label">${lang==='bm'?'Anggaran Bilangan Shift':'Est. No. of Shifts'} <span class="req">*</span></label>
+    <input class="form-input" type="number" id="pf-shift-count" min="1" max="30" placeholder="cth: 6" value="${draft.shiftCount||''}">
+    <div style="font-size:11px;color:var(--text3);margin-top:3px">${lang==='bm'?'Boleh dikemaskini kemudian':'Can be updated later'}</div>
+  </div>
+</div>
+<div class="form-row">
+  <div class="form-group"><label class="form-label">${lang==='bm'?'Shift Pertama':'First Shift'} <span class="req">*</span></label>
+    <select class="form-input" id="pf-first-shift">
+      <option value="">-- ${lang==='bm'?'Pilih Shift':'Select Shift'} --</option>
+      ${SHIFTS.map(s=>`<option value="${s.id}" ${draft.firstShift===s.id?'selected':''}>${s.label} (${s.time})</option>`).join('')}
+    </select>
+  </div>
+  <div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Shift Pertama':'First Shift Date'} <span class="req">*</span></label>
+    <input class="form-input" type="date" id="pf-shift-date" value="${draft.shiftStartDate||draft.startDate||''}">
+  </div>
+</div>`:''}<div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Lokasi':'Location'} <span class="req">*</span></label><select class="form-input" id="pf-loc"><option value="">--</option>${LOCS.map(l=>`<option${draft.location===l?' selected':''}>${l}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">${lang==='bm'?'Bil. Pekerja':'No. Workers'}</label><input class="form-input" type="number" id="pf-workers" min="1" placeholder="10" value="${draft.workers||''}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Mula':'Start Date'} <span class="req">*</span></label><input class="form-input" type="date" id="pf-start" value="${draft.startDate||''}"></div><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Tamat':'End Date'}</label><input class="form-input" type="date" id="pf-end" value="${draft.endDate||''}"></div></div><div class="form-group"><label class="form-label">PIC <span class="req">*</span></label><input class="form-input" id="pf-pic" placeholder="${lang==='bm'?'Nama pegawai':'Officer name'}" value="${draft.pic||''}"></div>`;document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →'}
+if(step===2){
+  if(isS){
+    // Stevedore step 2: work scope & safety declaration
+    document.getElementById('pf-content').innerHTML=`
+      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Maklumat Kerja':'Work Information'} — Track ${tr}</p>
+      <div class="form-group">
+        <label class="form-label">${lang==='bm'?'Skop Kerja / Keterangan Aktiviti':'Scope of Work / Activity Description'}</label>
+        <textarea class="form-input" id="pf-scope" style="min-height:80px" placeholder="${lang==='bm'?'Huraikan aktiviti stevedoring yang akan dilaksanakan...':'Describe the stevedoring activity to be performed...'}">${draft.scope||''}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${lang==='bm'?'Nama Kapal / Muatan':'Vessel / Cargo Details'}</label>
+        <input class="form-input" id="pf-vessel-detail" placeholder="${lang==='bm'?'Cth: MV Ocean Star — Clinker 5,000MT':'e.g. MV Ocean Star — Clinker 5,000MT'}" value="${draft.vesselDetail||''}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">${lang==='bm'?'Bilangan Pekerja':'No. of Workers'}</label>
+        <input class="form-input" type="number" id="pf-workers" placeholder="10" value="${draft.workers||''}">
+      </div>`;
+    document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →';
+  } else {
+    const tt=Object.entries(PTYPES).filter(([,v])=>v.track===tr);
+    document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Jenis Aktiviti':'Activity Types'} — Track ${tr}</p><div class="check-grid">${tt.map(([k,v])=>`<div class="check-item${(draft.activityTypes||[]).includes(k)?' selected':''}" onclick="toggleAct('${k}',this)"><div class="check-icon">${(draft.activityTypes||[]).includes(k)?'✓':''}</div><span>${lang==='bm'?v.bm:v.en}</span>${v.hr?'<span style="font-size:9px;color:var(--danger);margin-left:auto">⚠</span>':''}</div>`).join('')}</div>`;
+    document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →';
+  }
+}
 if(step===3){
   let s3html='<p style="font-size:12px;color:var(--text3);margin-bottom:14px">'+(lang==='bm'?'Dokumen & Maklumat Tambahan':'Documents & Additional Info')+'</p>'
     +'<div class="form-group"><label class="form-label">'+(lang==='bm'?'Penerangan Kerja':'Work Description')+'</label><textarea class="form-input" id="pf-desc">'+(draft.description||'')+'</textarea></div>';
@@ -1159,7 +1201,26 @@ if(step===3){
 
 window.toggleAct=function(k,el){if(!draft.activityTypes)draft.activityTypes=[];const i=draft.activityTypes.indexOf(k);if(i>-1)draft.activityTypes.splice(i,1);else draft.activityTypes.push(k);el.classList.toggle('selected',draft.activityTypes.includes(k));el.querySelector('.check-icon').textContent=draft.activityTypes.includes(k)?'✓':''};
 
-window.submitPermitForm=async function(){if(formStep===1){const name=document.getElementById('pf-name')?.value.trim(),loc=document.getElementById('pf-loc')?.value,start=document.getElementById('pf-start')?.value,pic=document.getElementById('pf-pic')?.value.trim();if(!name)return showToast(lang==='bm'?'Sila masukkan nama.':'Please enter name.','error');if(!loc)return showToast(lang==='bm'?'Sila pilih lokasi.':'Please select location.','error');if(!start)return showToast(lang==='bm'?'Sila pilih tarikh mula.':'Please select start date.','error');if(!pic)return showToast(lang==='bm'?'Sila masukkan PIC.':'Please enter PIC.','error');const iS=draft.track==='B'||draft.track==='C';if(iS)draft.vesselName=name;else draft.projectName=name;draft.location=loc;draft.startDate=start;draft.endDate=document.getElementById('pf-end')?.value||'';draft.workers=document.getElementById('pf-workers')?.value||'';draft.pic=pic;if(iS){draft.cargo=document.getElementById('pf-cargo')?.value||'';draft.berth=document.getElementById('pf-berth')?.value||''}renderFormStep(2)}else if(formStep===2){if(!draft.activityTypes?.length)return showToast(lang==='bm'?'Pilih sekurang-kurangnya satu aktiviti.':'Select at least one activity.','error');renderFormStep(3)}else{draft.description=document.getElementById('pf-desc')?.value.trim()||'';draft.docLink=document.getElementById('pf-doc')?.value.trim()||'';if(draft.track==='C'&&!draft.docLink)return showToast(lang==='bm'?'Track C memerlukan link dokumen.':'Track C requires document link.','error');
+window.submitPermitForm=async function(){if(formStep===1){const name=document.getElementById('pf-name')?.value.trim(),loc=document.getElementById('pf-loc')?.value,start=document.getElementById('pf-start')?.value,pic=document.getElementById('pf-pic')?.value.trim();if(!name)return showToast(lang==='bm'?'Sila masukkan nama.':'Please enter name.','error');if(!loc)return showToast(lang==='bm'?'Sila pilih lokasi.':'Please select location.','error');if(!start)return showToast(lang==='bm'?'Sila pilih tarikh mula.':'Please select start date.','error');if(!pic)return showToast(lang==='bm'?'Sila masukkan PIC.':'Please enter PIC.','error');const iS=draft.track==='B'||draft.track==='C';if(iS)draft.vesselName=name;else draft.projectName=name;draft.location=loc;draft.startDate=start;draft.endDate=document.getElementById('pf-end')?.value||'';draft.workers=document.getElementById('pf-workers')?.value||'';draft.pic=pic;if(iS){
+    draft.cargo=document.getElementById('pf-cargo')?.value||'';
+    draft.shiftCount=parseInt(document.getElementById('pf-shift-count')?.value)||6;
+    draft.firstShift=document.getElementById('pf-first-shift')?.value||'';
+    draft.shiftStartDate=document.getElementById('pf-shift-date')?.value||draft.startDate||'';
+    if(!draft.shiftCount||draft.shiftCount<1)return showToast(lang==='bm'?'Sila masukkan anggaran bilangan shift.':'Please enter estimated shifts.','error');
+    if(!draft.firstShift)return showToast(lang==='bm'?'Sila pilih shift pertama.':'Please select first shift.','error');
+  }
+  renderFormStep(2);
+}else if(formStep===2){
+  if(iS){
+    draft.scope=document.getElementById('pf-scope')?.value.trim()||'';
+    draft.vesselDetail=document.getElementById('pf-vessel-detail')?.value.trim()||'';
+    draft.workers=document.getElementById('pf-workers')?.value||'';
+    renderFormStep(3);
+  } else {
+    if(!draft.activityTypes?.length)return showToast(lang==='bm'?'Pilih sekurang-kurangnya satu aktiviti.':'Select at least one activity.','error');
+    renderFormStep(3);
+  }
+}else{draft.description=document.getElementById('pf-desc')?.value.trim()||'';draft.docLink=document.getElementById('pf-doc')?.value.trim()||'';if(draft.track==='C'&&!draft.docLink)return showToast(lang==='bm'?'Track C memerlukan link dokumen.':'Track C requires document link.','error');
 // Collect self-declaration for Track A
 if(draft.track==='A'){
   draft.selfDecl={
@@ -1172,7 +1233,20 @@ if(draft.track==='A'){
     const checked=document.querySelector(`input[name="${item.id}"]:checked`);
     draft.selfDecl.safetyChecklist[item.id]=checked?checked.value:'';
   });
-}const btn=document.getElementById('btn-pf-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{const pn=genPermitNo(draft.track),is=draft.track==='A'?'pending_hod':draft.track==='B'?'approved':'pending_op',tl=[{type:'submitted',label:lang==='bm'?'Permit dihantar':'Permit submitted',by:currentData.name,at:new Date().toISOString(),remark:''}];let ea=null;if(draft.track==='A'){const tps=draft.activityTypes||[];let me=null;tps.forEach(at=>{const p=PTYPES[at];if(p?.expiry_hours){const ex=new Date(draft.startDate);ex.setHours(ex.getHours()+p.expiry_hours);if(!me||ex<me)me=ex}});if(me)ea=me.toISOString();else if(draft.endDate){const ed=new Date(draft.endDate);ed.setDate(ed.getDate()+30);ea=ed.toISOString()}}const pd={permitNo:pn,track:draft.track,status:is,...draft,submittedBy:currentData.uid,submittedByName:currentData.name,company:currentData.company||'',createdAt:new Date().toISOString(),timeline:tl,expiryAt:ea};await addDoc(collection(db,'permits'),pd);if(draft.track==='A'){const hods=allUsers.filter(u=>u.role==='hod'&&u.status==='active'),hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all([...hods.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru – Kelulusan HOD':'New Permit – HOD Approval'}`,`${pn} – ${pd.projectName||''}`)),...hses.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru Dihantar':'New Permit Submitted'}`,`${pn} – ${pd.projectName||''}`))])}else if(draft.track==='B'){const hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all(hses.map(u=>sendNotif(u.uid,`🚢 ${lang==='bm'?'Aktiviti Rutin Didaftarkan':'Routine Activity Registered'}`,`${pn} – ${pd.vesselName||''} @ ${pd.location||''}`)))}closeModal('modal-permit-form');showToast(draft.track==='B'?(lang==='bm'?'Aktiviti berjaya didaftarkan.':'Activity registered successfully.'):(lang==='bm'?'Permit berjaya dihantar.':'Permit submitted successfully.'),'success')}catch(e){console.error(e);showToast('Ralat. Cuba lagi.','error')}finally{btn.disabled=false;btn.innerHTML=`<span id="btn-pf-txt">${lang==='bm'?'Hantar':'Submit'}</span>`}}};
+}const btn=document.getElementById('btn-pf-submit');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';try{const pn=genPermitNo(draft.track),is=draft.track==='A'?'pending_hod':draft.track==='B'?'approved':'pending_op',tl=[{type:'submitted',label:lang==='bm'?'Permit dihantar':'Permit submitted',by:currentData.name,at:new Date().toISOString(),remark:''}];let ea=null;if(draft.track==='A'){const tps=draft.activityTypes||[];let me=null;tps.forEach(at=>{const p=PTYPES[at];if(p?.expiry_hours){const ex=new Date(draft.startDate);ex.setHours(ex.getHours()+p.expiry_hours);if(!me||ex<me)me=ex}});if(me)ea=me.toISOString();else if(draft.endDate){const ed=new Date(draft.endDate);ed.setDate(ed.getDate()+30);ea=ed.toISOString()}}// Build shift schedule for stevedoring
+let shiftSchedule=[];
+if((draft.track==='B'||draft.track==='C')&&draft.firstShift&&draft.shiftCount){
+  const shiftOrder=['shift1','shift2','shift3'];
+  const firstIdx=shiftOrder.indexOf(draft.firstShift);
+  for(let i=0;i<draft.shiftCount;i++){
+    const si=(firstIdx+i)%3;
+    const sh=SHIFTS[si];
+    const d=new Date(draft.shiftStartDate||draft.startDate||new Date());
+    d.setDate(d.getDate()+Math.floor((firstIdx+i)/3));
+    shiftSchedule.push({shiftNum:i+1,shiftId:sh.id,shiftLabel:sh.label,shiftTime:sh.time,date:d.toISOString().slice(0,10),status:'scheduled'});
+  }
+}
+const pd={permitNo:pn,track:draft.track,status:is,...draft,submittedBy:currentData.uid,submittedByName:currentData.name,company:currentData.company||'',createdAt:new Date().toISOString(),timeline:tl,expiryAt:ea,shiftSchedule};await addDoc(collection(db,'permits'),pd);if(draft.track==='A'){const hods=allUsers.filter(u=>u.role==='hod'&&u.status==='active'),hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all([...hods.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru – Kelulusan HOD':'New Permit – HOD Approval'}`,`${pn} – ${pd.projectName||''}`)),...hses.map(u=>sendNotif(u.uid,`📋 ${lang==='bm'?'Permit Baru Dihantar':'New Permit Submitted'}`,`${pn} – ${pd.projectName||''}`))])}else if(draft.track==='B'){const hses=allUsers.filter(u=>u.role==='hse'&&u.status==='active');await Promise.all(hses.map(u=>sendNotif(u.uid,`🚢 ${lang==='bm'?'Aktiviti Rutin Didaftarkan':'Routine Activity Registered'}`,`${pn} – ${pd.vesselName||''} @ ${pd.location||''}`)))}closeModal('modal-permit-form');showToast(draft.track==='B'?(lang==='bm'?'Aktiviti berjaya didaftarkan.':'Activity registered successfully.'):(lang==='bm'?'Permit berjaya dihantar.':'Permit submitted successfully.'),'success')}catch(e){console.error(e);showToast('Ralat. Cuba lagi.','error')}finally{btn.disabled=false;btn.innerHTML=`<span id="btn-pf-txt">${lang==='bm'?'Hantar':'Submit'}</span>`}}};
 
 function genPermitNo(t){const n=new Date(),y=n.getFullYear().toString().slice(-2),m=String(n.getMonth()+1).padStart(2,'0'),d=String(n.getDate()).padStart(2,'0'),r=String(Math.floor(Math.random()*9000)+1000);return `KP/${t}/${y}${m}${d}/${r}`}
 
@@ -2180,7 +2254,7 @@ async function submitClosure(permitId,step,checklist,nextStatus,overlay){
 window.toggleProfileCard=function(){
   const card=document.getElementById('profile-card');
   if(!card)return;
-  if(card.classList.contains('show')){card.classList.remove('show');return;}
+  if(card.style.display==='block'){card.style.display='none';return;}
   const d=currentData;
   if(!d)return;
   const initials=d.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
@@ -2217,7 +2291,7 @@ window.toggleProfileCard=function(){
     +'<button onclick="doLogout()" style="height:34px;padding:0 12px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:#f87171;border-radius:8px;cursor:pointer;font-size:12px;transition:all .2s">↩ '+(lang==='bm'?'Log Keluar':'Sign Out')+'</button>'
     +'</div>'
     +'</div>';
-  card.classList.add('show');
+  card.style.display='block';
   setTimeout(function(){
     var cpBtn=document.getElementById('btn-profile-chgpass');
     if(cpBtn) cpBtn.onclick=function(){openChangePass();card.classList.remove('show');};
@@ -2344,6 +2418,19 @@ const HSE_CLOSURE_CHECKLIST=[
   {id:'hse4',bm:'Semua dokumen HSE (HIRARC, MS, checklist) telah difailkan',en:'All HSE documents filed'},
   {id:'hse5',bm:'Permit boleh ditutup secara rasmi',en:'Permit may be officially closed'},
 ];
+// Wire profile card to user chip
+document.addEventListener('click',function(e){
+  var chip=document.getElementById('user-chip-btn');
+  var card=document.getElementById('profile-card');
+  if(!chip||!card)return;
+  if(chip.contains(e.target)){
+    toggleProfileCard();
+  } else if(!card.contains(e.target)&&card.style.display!=='none'){
+    card.style.display='none';
+  }
+});
+
+
 onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data());renderApp(data)}}}});
 </script>
 
