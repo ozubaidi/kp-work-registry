@@ -738,18 +738,49 @@ function buildSelfDeclHTML(sd){
   return html;
 }
 
-window.viewPermit=function(id){const p=allPermits.find(x=>x.id===id);if(!p)return;const r=currentData?.role;const types=(p.activityTypes||[]).map(at=>`<span class="track-${(p.track||'a').toLowerCase()}" style="margin:2px;display:inline-block">${pt(at)}</span>`).join('');const tl=(p.timeline||[]).map(t=>{
+window.viewPermit=function(id){const p=allPermits.find(x=>x.id===id);if(!p)return;const r=currentData?.role;const types=(p.activityTypes||[]).map(at=>`<span class="track-${(p.track||'a').toLowerCase()}" style="margin:2px;display:inline-block">${pt(at)}</span>`).join('');const tl=(p.timeline||[]).map((t,tIdx)=>{
   const isInsp=t.type==='inspection';
+  const hasRemark=!!(t.remark&&t.remark.trim());
   const canViewReport=['hse','hod','admin','management','supervisor'].includes(currentData?.role);
   const dotClass=t.type==='approved'?'done':t.type==='rejected'||t.type==='onhold'?'rejected':'';
   const dotIcon=t.type==='approved'?'✓':t.type==='rejected'?'✕':t.type==='onhold'?'⏸':isInsp?'📋':'○';
-  const clickAttr=(isInsp&&canViewReport)?` onclick="openInspectionReport('${id}')" style="cursor:pointer"`:' ';
+  const clickAttr=(isInsp&&canViewReport)?' onclick="openInspectionReport(\''+id+'\')" style="cursor:pointer"':' ';
+
+  // Build replies HTML
+  const replies=(t.replies||[]).map(function(rep,ri){
+    return '<div style="display:flex;gap:8px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--border)">'
+      +'<div style="width:20px;height:20px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text3)">↩</div>'
+      +'<div style="flex:1">'
+      +'<div style="font-size:12px;font-weight:500;color:var(--text)">'+rep.by+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-bottom:3px">'+rep.role+' · '+fmtDate(rep.at)+'</div>'
+      +'<div style="font-size:12px;color:var(--text2);background:var(--bg3);border-radius:6px;padding:6px 10px;border-left:2px solid var(--border2)">'+rep.text+'</div>'
+      +'</div></div>';
+  }).join('');
+
+  // Reply box (shown when reply button clicked)
+  const replyBoxId='reply-box-'+tIdx;
+  const replyBox='<div id="'+replyBoxId+'" style="display:none;margin-top:8px">'
+    +'<textarea class="form-input" id="reply-txt-'+tIdx+'" placeholder="'+(lang==='bm'?'Taip balasan anda...':'Type your reply...')+'" style="min-height:60px;font-size:12px"></textarea>'
+    +'<div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end">'
+    +'<button onclick="document.getElementById(\''+replyBoxId+'\').style.display=\'none\'" style="height:28px;padding:0 12px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:6px;cursor:pointer;font-size:11px">'+(lang==='bm'?'Batal':'Cancel')+'</button>'
+    +'<button onclick="submitReply(\''+id+'\','+tIdx+',\'reply-txt-'+tIdx+'\')" style="height:28px;padding:0 12px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600">↩ '+(lang==='bm'?'Hantar Balasan':'Send Reply')+'</button>'
+    +'</div></div>';
+
+  // Show reply button for entries with remarks or inspection entries
+  const canReply=(hasRemark||isInsp)&&['hse','hod','admin','contractor','stevedore','supervisor'].includes(currentData?.role);
+  const replyBtn=canReply
+    ?'<button onclick="document.getElementById(\''+replyBoxId+'\').style.display=document.getElementById(\''+replyBoxId+'\').style.display===\'none\'?\'block\':\'none\'" style="margin-top:6px;height:24px;padding:0 10px;border:1px solid var(--border2);background:transparent;color:var(--text3);border-radius:4px;cursor:pointer;font-size:10px;font-family:var(--mono)">↩ '+(lang==='bm'?'Balas':'Reply')+(t.replies&&t.replies.length?' ('+t.replies.length+')':'')+'</button>'
+    :'';
+
   return '<div class="tl-item">'
     +'<div class="tl-dot '+dotClass+'">'+dotIcon+'</div>'
     +'<div class="tl-content"'+clickAttr+'>'
     +'<div class="tl-title">'+(t.label||t.type)+(isInsp&&canViewReport?' <span style="font-size:10px;color:var(--accent2);text-decoration:underline;font-family:var(--mono)">'+(lang==='bm'?'[Lihat Laporan]':'[View Report]')+'</span>':'')+'</div>'
     +'<div class="tl-sub">'+(t.by||'')+' · '+fmtDate(t.at)+'</div>'
     +(t.remark?'<div class="tl-remark">"'+t.remark+'"</div>':'')
+    +replies
+    +replyBtn
+    +replyBox
     +'</div></div>';
 }).join('');document.getElementById('detail-title').textContent=`${lang==='bm'?'No. Permit':'Permit No.'}: ${p.permitNo||'—'}`;document.getElementById('detail-body').innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap"><span class="status s-${(p.status||'').replace(/_/g,'-')}">${sl(p.status)}</span><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span>${p.expiryAt?`<span style="font-size:11px;color:var(--warning);font-family:var(--mono)">⏱ ${lang==='bm'?'Tamat':'Expires'}: ${fmtDate(p.expiryAt)}</span>`:''}</div><div class="detail-grid"><div class="detail-item"><div class="detail-label">No. Permit</div><div class="detail-value" style="font-family:var(--mono);color:var(--accent2)">${p.permitNo||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Syarikat':'Company'}</div><div class="detail-value">${p.company||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Lokasi':'Location'}</div><div class="detail-value">${p.location||'—'}</div></div><div class="detail-item"><div class="detail-label">PIC</div><div class="detail-value">${p.pic||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Tarikh Mula':'Start Date'}</div><div class="detail-value">${p.startDate||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Tarikh Tamat':'End Date'}</div><div class="detail-value">${p.endDate||'—'}</div></div><div class="detail-item"><div class="detail-label">${lang==='bm'?'Bil. Pekerja':'Workers'}</div><div class="detail-value">${p.workers||'—'}</div></div>${p.vesselName?`<div class="detail-item"><div class="detail-label">${lang==='bm'?'Nama Kapal':'Vessel'}</div><div class="detail-value">${p.vesselName}</div></div>`:''}<div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Jenis Aktiviti':'Activity Types'}</div><div style="margin-top:4px">${types}</div></div><div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Penerangan':'Description'}</div><div class="detail-value" style="font-weight:400;line-height:1.6">${p.description||'—'}</div></div>${p.docLink?`<div class="detail-item detail-full"><div class="detail-label">${lang==='bm'?'Link Dokumen':'Document Link'}</div><div class="detail-value"><a href="${p.docLink}" target="_blank" style="color:var(--accent2)">${p.docLink}</a></div></div>`:''}
       ${p.selfDecl?buildSelfDeclHTML(p.selfDecl):''}</div><div class="sec-title">${lang==='bm'?'Sejarah & Status':'History & Status'}</div><div class="timeline">${tl||'—'}</div>`;
@@ -2023,6 +2054,64 @@ window.downloadInspectionPDF=function(permitId){
   win.document.close();
   win.focus();
   setTimeout(function(){win.print();},500);
+};
+
+
+window.submitReply=async function(permitId,timelineIdx,inputId){
+  const text=document.getElementById(inputId)?.value.trim();
+  if(!text){showToast(lang==='bm'?'Sila taip balasan.':'Please type a reply.','error');return;}
+
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+
+  const btn=document.querySelector('[onclick*="submitReply(\''+permitId+'\','+timelineIdx+'"]');
+
+  const reply={
+    by:currentData.name,
+    role:rl(currentData.role),
+    uid:currentData.uid,
+    text,
+    at:new Date().toISOString()
+  };
+
+  try{
+    // Update the specific timeline entry's replies array
+    const timeline=[...(p.timeline||[])];
+    if(!timeline[timelineIdx]) return;
+    if(!timeline[timelineIdx].replies) timeline[timelineIdx].replies=[];
+    timeline[timelineIdx].replies.push(reply);
+
+    await updateDoc(doc(db,'permits',permitId),{timeline});
+
+    // Notify relevant parties
+    const notifyUids=new Set();
+    // Notify original entry author
+    const tl=p.timeline[timelineIdx];
+    if(tl.uid&&tl.uid!==currentData.uid) notifyUids.add(tl.uid);
+    // Notify permit submitter
+    if(p.submittedBy&&p.submittedBy!==currentData.uid) notifyUids.add(p.submittedBy);
+    // Notify previous repliers
+    (tl.replies||[]).forEach(function(r){if(r.uid&&r.uid!==currentData.uid)notifyUids.add(r.uid)});
+
+    await Promise.all([...notifyUids].map(function(uid){
+      return sendNotif(uid,
+        '↩ '+(lang==='bm'?'Balasan Baru — ':'New Reply — ')+p.permitNo,
+        currentData.name+': '+text.substring(0,80)+(text.length>80?'...':'')
+      );
+    }));
+
+    // Hide reply box and clear input
+    const replyBox=document.getElementById('reply-box-'+timelineIdx);
+    if(replyBox) replyBox.style.display='none';
+    document.getElementById(inputId).value='';
+
+    // Refresh the detail modal
+    viewPermit(permitId);
+    showToast(lang==='bm'?'✓ Balasan dihantar.':'✓ Reply sent.','success');
+  }catch(e){
+    console.error(e);
+    showToast(lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.','error');
+  }
 };
 
 
