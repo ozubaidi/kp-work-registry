@@ -1145,8 +1145,8 @@ function renderFormStep(step){formStep=step;['stp1','stp2','stp3'].forEach((id,i
     s1+='<div class="form-row">';
     s1+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Tarikh Shift Pertama':'First Shift Date')+' <span class="req">*</span></label>';
     s1+='<input class="form-input" type="date" id="pf-shift-date" value="'+(draft.shiftStartDate||draft.startDate||'')+'"></div>';
-    s1+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Nama Kapal':'Vessel Name')+' <span class="req">*</span></label>';
-    s1+='<input class="form-input" id="pf-vessel-name" placeholder="MV Ocean Star" value="'+(draft.vesselName||'')+'"></div></div>';
+    s1+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Keterangan Kargo':'Cargo Description')+' <span class="req">*</span></label>';
+    s1+='<input class="form-input" id="pf-cargo-desc" placeholder="'+(lang==='bm'?'Cth: Arang Batu, Steel Product, Steel Pipe...':'e.g. Coal, Steel Product, Steel Pipe...')+'" value="'+(draft.cargoDesc||'')+'"></div></div>';
   }
 
   s1+='<div class="form-row"><div class="form-group"><label class="form-label">'+(lang==='bm'?'Lokasi':'Location')+' <span class="req">*</span></label>';
@@ -1236,7 +1236,7 @@ if(step===2){
       s2+='<textarea class="form-input" id="pf-doc-notes" style="min-height:60px" placeholder="'+(lang==='bm'?'Nyatakan sebab atau maklumat tambahan...':'State reason or additional information...')+'">'+(draft.docNotes||'')+'</textarea></div>';
     }
     document.getElementById('pf-content').innerHTML=s2;
-    document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Submit &#10140;':'Submit &#10140;';
+    document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Submit ➔':'Submit ➔';
   } else {
     const tt=Object.entries(PTYPES).filter(([,v])=>v.track===tr);
     document.getElementById('pf-content').innerHTML='<p style="font-size:12px;color:var(--text3);margin-bottom:14px">'+(lang==='bm'?'Jenis Aktiviti':'Activity Types')+' &mdash; Track '+tr+'</p>'
@@ -1320,15 +1320,18 @@ if(step===3){
 
 window.toggleAct=function(k,el){if(!draft.activityTypes)draft.activityTypes=[];const i=draft.activityTypes.indexOf(k);if(i>-1)draft.activityTypes.splice(i,1);else draft.activityTypes.push(k);el.classList.toggle('selected',draft.activityTypes.includes(k));el.querySelector('.check-icon').textContent=draft.activityTypes.includes(k)?'✓':''};
 
-window.submitPermitForm=async function(){if(formStep===1){const name=document.getElementById('pf-name')?.value.trim(),loc=document.getElementById('pf-loc')?.value,start=document.getElementById('pf-start')?.value,pic=document.getElementById('pf-pic')?.value.trim();if(!name)return showToast(lang==='bm'?'Sila masukkan nama.':'Please enter name.','error');if(!loc)return showToast(lang==='bm'?'Sila pilih lokasi.':'Please select location.','error');if(!start)return showToast(lang==='bm'?'Sila pilih tarikh mula.':'Please select start date.','error');if(!pic)return showToast(lang==='bm'?'Sila masukkan PIC.':'Please enter PIC.','error');const iS=draft.track==='B'||draft.track==='C';if(iS)draft.vesselName=name;else draft.projectName=name;draft.location=loc;draft.startDate=start;draft.endDate=document.getElementById('pf-end')?.value||'';draft.workers=document.getElementById('pf-workers')?.value||'';draft.pic=pic;if(iS){
+window.submitPermitForm=async function(){
+  const iS=draft.track==='B'||draft.track==='C';
+  if(formStep===1){const name=document.getElementById('pf-name')?.value.trim(),loc=document.getElementById('pf-loc')?.value,start=document.getElementById('pf-start')?.value,pic=document.getElementById('pf-pic')?.value.trim();if(!name)return showToast(lang==='bm'?'Sila masukkan nama.':'Please enter name.','error');if(!loc)return showToast(lang==='bm'?'Sila pilih lokasi.':'Please select location.','error');if(!start)return showToast(lang==='bm'?'Sila pilih tarikh mula.':'Please select start date.','error');if(!pic)return showToast(lang==='bm'?'Sila masukkan PIC.':'Please enter PIC.','error');if(iS)draft.vesselName=name;else draft.projectName=name;draft.location=loc;draft.startDate=start;draft.endDate=document.getElementById('pf-end')?.value||'';draft.workers=document.getElementById('pf-workers')?.value||'';draft.pic=pic;if(iS){
     draft.stevType=document.getElementById('pf-stev-type')?.value||'';
     draft.cargoType=document.getElementById('pf-cargo-type')?.value||'';
-    draft.vesselName=document.getElementById('pf-vessel-name')?.value.trim()||name;
+    draft.cargoDesc=document.getElementById('pf-cargo-desc')?.value.trim()||'';
     draft.shiftCount=parseInt(document.getElementById('pf-shift-count')?.value)||6;
     draft.firstShift=document.getElementById('pf-first-shift')?.value||'';
     draft.shiftStartDate=document.getElementById('pf-shift-date')?.value||draft.startDate||'';
     if(!draft.stevType) return showToast(lang==='bm'?'Sila pilih jenis aktiviti.':'Please select activity type.','error');
     if(!draft.cargoType) return showToast(lang==='bm'?'Sila pilih jenis kargo.':'Please select cargo type.','error');
+    if(!draft.cargoDesc) return showToast(lang==='bm'?'Sila masukkan keterangan kargo.':'Please enter cargo description.','error');
     if(!draft.shiftCount||draft.shiftCount<1) return showToast(lang==='bm'?'Sila masukkan anggaran bilangan shift.':'Please enter estimated shifts.','error');
     if(!draft.firstShift) return showToast(lang==='bm'?'Sila pilih shift pertama.':'Please select first shift.','error');
   }
