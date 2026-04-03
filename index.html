@@ -1730,27 +1730,59 @@ function renderInspectionPage(){
   if(!inspectable.length){
     html=`<div class="data-table"><div class="table-empty"><span class="em-icon">📋</span>${lang==='bm'?'Tiada permit aktif untuk inspection':'No active permits for inspection'}</div></div>`;
   } else {
-    html+=`<div class="data-table">
-      <div class="table-head" style="grid-template-columns:130px 1fr 110px 100px 130px 130px">
-        <div>No. Permit</div><div>${lang==='bm'?'Projek/Kapal':'Project/Vessel'}</div>
-        <div>${lang==='bm'?'Lokasi':'Location'}</div><div>Track</div>
-        <div>Inspector 1</div><div>Inspector 2 (HSE)</div>
-      </div>`;
-    inspectable.forEach(p=>{
+    html+='<div class="data-table">'
+      +'<div class="table-head" style="grid-template-columns:130px 1fr 110px 100px 120px 120px 90px">'
+      +'<div>No. Permit</div><div>'+(lang==='bm'?'Projek/Kapal':'Project/Vessel')+'</div>'
+      +'<div>'+(lang==='bm'?'Lokasi':'Location')+'</div><div>Track</div>'
+      +'<div>'+(lang==='bm'?'Shift Inspected':'Shift Inspected')+'</div>'
+      +'<div>Isu/Flags</div>'
+      +'<div>Report</div>'
+      +'</div>';
+    inspectable.forEach(function(p){
       const insp=p.inspections||{};
-      const i1Done=insp.inspector1?.post?.submittedAt;
-      const i2Done=insp.inspector2?.post?.submittedAt;
-      const i1Pre=insp.inspector1?.pre?.submittedAt;
-      const i2Pre=insp.inspector2?.pre?.submittedAt;
+      const isStev=(p.track==='B'||p.track==='C')&&p.shiftSchedule&&p.shiftSchedule.length;
       const canInspect=(r==='hse'||r==='supervisor'||r==='admin');
-      html+=`<div class="table-row" style="grid-template-columns:130px 1fr 110px 100px 130px 130px" onclick="${canInspect?`openInspection('${p.id}')`:''}" ${!canInspect?'style="cursor:default"':''}>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">${p.permitNo||'—'}</div>
-        <div><div style="font-size:13px;font-weight:500">${p.projectName||p.vesselName||'—'}</div><div style="font-size:11px;color:var(--text3)">${p.submittedByName||''}</div></div>
-        <div style="font-size:12px;color:var(--text2)">${p.location||'—'}</div>
-        <div><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span></div>
-        <div>${renderInspBadge(insp.inspector1,i1Pre,i1Done)}</div>
-        <div>${renderInspBadge(insp.inspector2,i2Pre,i2Done,true)}</div>
-      </div>`;
+      const canView=(r==='hod'||r==='management');
+
+      if(isStev){
+        // Stevedore: show shift inspection summary
+        const shifts=p.shiftSchedule||[];
+        const allRounds=[
+          ...((insp.inspector1&&Array.isArray(insp.inspector1.during))?insp.inspector1.during:[]),
+          ...((insp.inspector2&&Array.isArray(insp.inspector2.during))?insp.inspector2.during:[]),
+        ];
+        const inspectedShifts=new Set(allRounds.map(function(rd){return rd.shiftIdx;}));
+        const flaggedShifts=allRounds.filter(function(rd){return rd.hasIssues;}).length;
+        const totalShifts=shifts.length;
+        const doneShifts=inspectedShifts.size;
+
+        var stClickAttr=canInspect?' class="insp-row-stev" data-pid="'+p.id+'"':canView?' class="insp-report-row" data-pid="'+p.id+'"':'';
+        html+='<div class="table-row" style="grid-template-columns:130px 1fr 110px 100px 120px 120px 90px;cursor:'+(canInspect||canView?'pointer':'default')+'"'+stClickAttr+'>';
+        html+='<div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">'+(p.permitNo||'—')+'</div>';
+        html+='<div><div style="font-size:13px;font-weight:500">'+(p.vesselName||p.projectName||'—')+'</div>'
+          +'<div style="font-size:11px;color:var(--text3)">'+(p.cargoType||'')+(p.cargoDesc?' · '+p.cargoDesc:'')+'</div></div>';
+        html+='<div style="font-size:12px;color:var(--text2)">'+(p.location||'—')+'</div>';
+        html+='<div><span class="track-b">Track B</span></div>';
+        html+='<div><span style="font-size:12px;color:'+(doneShifts===totalShifts?'var(--success)':'var(--accent2)')+'">'+doneShifts+'/'+totalShifts+' shift</span></div>';
+        html+='<div>'+(flaggedShifts>0?'<span style="color:var(--danger);font-weight:600">🚩 '+flaggedShifts+' isu</span>':'<span style="color:var(--success);font-size:12px">&#10003; OK</span>')+'</div>';
+        html+='<div><button class="insp-report-btn" data-pid="'+p.id+'" style="height:24px;padding:0 8px;font-size:10px;border:1px solid var(--border2);background:transparent;color:var(--accent2);border-radius:4px;cursor:pointer">'+(lang==='bm'?'Laporan':'Report')+'</button></div>';
+        html+='</div>';
+      } else {
+        // Contractor/Track A: show pre/during/post
+        const i1Done=insp.inspector1&&insp.inspector1.post&&insp.inspector1.post.submittedAt;
+        const i2Done=insp.inspector2&&insp.inspector2.post&&insp.inspector2.post.submittedAt;
+        const i1Pre=insp.inspector1&&insp.inspector1.pre&&insp.inspector1.pre.submittedAt;
+        const i2Pre=insp.inspector2&&insp.inspector2.pre&&insp.inspector2.pre.submittedAt;
+        var aClickAttr=canInspect?' class="insp-row-a" data-pid="'+p.id+'"':canView?' class="insp-report-row" data-pid="'+p.id+'"':'';
+        html+='<div class="table-row" style="grid-template-columns:130px 1fr 110px 100px 130px 130px;cursor:'+(canInspect||canView?'pointer':'default')+'"'+aClickAttr+'>';
+        html+='<div style="font-family:var(--mono);font-size:11px;color:var(--accent2)">'+(p.permitNo||'—')+'</div>';
+        html+='<div><div style="font-size:13px;font-weight:500">'+(p.projectName||p.vesselName||'—')+'</div><div style="font-size:11px;color:var(--text3)">'+(p.submittedByName||'')+'</div></div>';
+        html+='<div style="font-size:12px;color:var(--text2)">'+(p.location||'—')+'</div>';
+        html+='<div><span class="track-'+(p.track||'a').toLowerCase()+'">Track '+(p.track||'A')+'</span></div>';
+        html+='<div>'+renderInspBadge(insp.inspector1,i1Pre,i1Done)+'</div>';
+        html+='<div>'+renderInspBadge(insp.inspector2,i2Pre,i2Done,true)+'</div>';
+        html+='</div>';
+      }
     });
     html+='</div>';
   }
@@ -1767,8 +1799,13 @@ function renderInspBadge(insp,hasPre,hasDone,isHSE=false){
 window.openInspection=function(permitId){
   const p=allPermits.find(x=>x.id===permitId);
   if(!p)return;
-  // Determine which inspector slot current user fills
   const r=currentData?.role;
+  // HOD & Management = read-only report
+  if(r==='hod'||r==='management'){openInspectionReport(permitId);return;}
+  // Stevedore Track B/C with shift schedule = shift-based inspection
+  if((p.track==='B'||p.track==='C')&&p.shiftSchedule&&p.shiftSchedule.length){
+    openShiftInspectionSelector(permitId);return;
+  }
   const isHSE=r==='hse';
   const insp=p.inspections||{};
 
@@ -3293,6 +3330,19 @@ window.openNewPermitByRole=function(){
     openPermitForm();
   }
 };
+
+
+// Inspection row + report delegation
+document.addEventListener('click',function(e){
+  var rptBtn=e.target.classList&&e.target.classList.contains('insp-report-btn');
+  if(rptBtn){e.stopPropagation();openInspectionReport(e.target.dataset.pid);return;}
+  var stev=e.target.closest&&e.target.closest('.insp-row-stev');
+  if(stev&&stev.dataset.pid){openInspection(stev.dataset.pid);return;}
+  var trackA=e.target.closest&&e.target.closest('.insp-row-a');
+  if(trackA&&trackA.dataset.pid){openInspection(trackA.dataset.pid);return;}
+  var rptRow=e.target.closest&&e.target.closest('.insp-report-row');
+  if(rptRow&&rptRow.dataset.pid){openInspectionReport(rptRow.dataset.pid);return;}
+});
 
 
 onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data());renderApp(data)}}}});
