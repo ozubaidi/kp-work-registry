@@ -1,4 +1,52 @@
-<!DOCTYPE html>
+${isS?`
+<div class="form-row">
+  <div class="form-group">
+    <label class="form-label">${lang==='bm'?'Jenis Aktiviti':'Activity Type'} <span class="req">*</span></label>
+    <select class="form-input" id="pf-stev-type" onchange="updateStevedoreTitle(this.value)">
+      <option value="">-- ${lang==='bm'?'Pilih':'Select'} --</option>
+      <option value="routine" ${draft.stevType==='routine'?'selected':''}>Routine</option>
+      <option value="non-routine" ${draft.stevType==='non-routine'?'selected':''}>Non-Routine</option>
+      <option value="emergency" ${draft.stevType==='emergency'?'selected':''}>Emergency</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label class="form-label">${lang==='bm'?'Jenis Kargo':'Cargo Type'} <span class="req">*</span></label>
+    <select class="form-input" id="pf-cargo-type">
+      <option value="">-- ${lang==='bm'?'Pilih':'Select'} --</option>
+      <option value="breakbulk" ${draft.cargoType==='breakbulk'?'selected':''}>Breakbulk</option>
+      <option value="drybulk" ${draft.cargoType==='drybulk'?'selected':''}>Drybulk</option>
+      <option value="liquid-bulk" ${draft.cargoType==='liquid-bulk'?'selected':''}>Liquid Bulk</option>
+      <option value="container" ${draft.cargoType==='container'?'selected':''}>Container</option>
+      <option value="roro" ${draft.cargoType==='roro'?'selected':''}>RoRo</option>
+      <option value="other" ${draft.cargoType==='other'?'selected':''}>Other</option>
+    </select>
+  </div>
+</div>
+<div class="form-row">
+  <div class="form-group">
+    <label class="form-label">${lang==='bm'?'Anggaran Bilangan Shift':'Est. No. of Shifts'} <span class="req">*</span></label>
+    <input class="form-input" type="number" id="pf-shift-count" min="1" max="30" placeholder="cth: 6" value="${draft.shiftCount||''}">
+    <div style="font-size:11px;color:var(--text3);margin-top:3px">${lang==='bm'?'Boleh dikemaskini kemudian':'Can be updated later'}</div>
+  </div>
+  <div class="form-group">
+    <label class="form-label">${lang==='bm'?'Shift Pertama':'First Shift'} <span class="req">*</span></label>
+    <select class="form-input" id="pf-first-shift">
+      <option value="">-- ${lang==='bm'?'Pilih Shift':'Select Shift'} --</option>
+      ${SHIFTS.map(s=>`<option value="${s.id}" ${draft.firstShift===s.id?'selected':''}>${s.label} (${s.time})</option>`).join('')}
+    </select>
+  </div>
+</div>
+<div class="form-row">
+  <div class="form-group">
+    <label class="form-label">${lang==='bm'?'Tarikh Shift Pertama':'First Shift Date'} <span class="req">*</span></label>
+    <input class="form-input" type="date" id="pf-shift-date" value="${draft.shiftStartDate||draft.startDate||''}">
+  </div>
+  <div class="form-group">
+    <label class="form-label">${lang==='bm'?'Nama Kapal':'Vessel Name'} <span class="req">*</span></label>
+    <input class="form-input" id="pf-vessel-name" placeholder="MV Ocean Star" value="${draft.vesselName||''}">
+  </div>
+</div>
+`:''}<!DOCTYPE html>
 <html lang="ms">
 <head>
 <meta charset="UTF-8">
@@ -112,6 +160,8 @@ select.form-input option{background:var(--bg2)}
 .s-onhold{background:rgba(245,158,11,.1);color:#d97706}.s-onhold::before{background:#d97706}
 .s-pending-closure-hod{background:rgba(139,92,246,.15);color:#a78bfa}.s-pending-closure-hod::before{background:#a78bfa}
 .s-pending-closure-hse{background:rgba(251,146,60,.15);color:#fb923c}.s-pending-closure-hse::before{background:#fb923c}
+.s-pending-op-s{background:rgba(139,92,246,.15);color:#a78bfa}.s-pending-op-s::before{background:#a78bfa}
+.s-pending-hse-s{background:rgba(37,99,235,.15);color:#60a5fa}.s-pending-hse-s::before{background:#60a5fa}
 .track-a{background:rgba(37,99,235,.15);color:#60a5fa;padding:2px 8px;border-radius:4px;font-size:10px;font-family:var(--mono);font-weight:500}
 .track-b{background:rgba(16,185,129,.15);color:#34d399;padding:2px 8px;border-radius:4px;font-size:10px;font-family:var(--mono);font-weight:500}
 .track-c{background:rgba(245,158,11,.15);color:#fbbf24;padding:2px 8px;border-radius:4px;font-size:10px;font-family:var(--mono);font-weight:500}
@@ -432,7 +482,7 @@ async function loadSystemConfig(){
     }
   }catch(e){console.log('Config load:',e.code);}
 }
-const SL={bm:{draft:'Draf',submitted:'Dihantar',approved:'Diluluskan',rejected:'Ditolak',pending_hod:'Pending HOD',pending_hse:'Pending HSE',pending_op:'Pending Operasi',onhold:'Ditangguhkan',closed:'Ditutup',expired:'Tamat Tempoh',extended:'Dilanjutkan',pending_closure_hod:'Pending Closure — HOD',pending_closure_hse:'Pending Closure — HSE'},en:{draft:'Draft',submitted:'Submitted',approved:'Approved',rejected:'Rejected',pending_hod:'Pending HOD',pending_hse:'Pending HSE',pending_op:'Pending Ops',onhold:'On Hold',closed:'Closed',expired:'Expired',extended:'Extended',pending_closure_hod:'Pending Closure — HOD',pending_closure_hse:'Pending Closure — HSE'}};
+const SL={bm:{draft:'Draf',submitted:'Dihantar',approved:'Diluluskan',rejected:'Ditolak',pending_hod:'Pending HOD',pending_hse:'Pending HSE',pending_op:'Pending Operasi',onhold:'Ditangguhkan',closed:'Ditutup',expired:'Tamat Tempoh',extended:'Dilanjutkan',pending_closure_hod:'Pending Closure — HOD',pending_closure_hse:'Pending Closure — HSE',pending_op_s:'Pending Op',pending_hse_s:'Pending HSE Stev'},en:{draft:'Draft',submitted:'Submitted',approved:'Approved',rejected:'Rejected',pending_hod:'Pending HOD',pending_hse:'Pending HSE',pending_op:'Pending Ops',onhold:'On Hold',closed:'Closed',expired:'Expired',extended:'Extended',pending_closure_hod:'Pending Closure — HOD',pending_closure_hse:'Pending Closure — HSE',pending_op_s:'Pending Op',pending_hse_s:'Pending HSE'}};
 const RL={admin:'Admin KP',hse:'HSE Officer',hod:'HOD/Executive',contractor:'Kontraktor',stevedore:'Stevedore Rep',management:'Management',supervisor:'Supervisor'};
 function sl(s){return(SL[lang]||SL.bm)[s]||s}
 function rl(r){return RL[r]||r}
@@ -567,7 +617,11 @@ window.toggleNotif=function(){const p=document.getElementById('notif-panel');p.c
 document.addEventListener('click',e=>{const p=document.getElementById('notif-panel'),b=document.getElementById('notif-btn');if(p&&b&&!p.contains(e.target)&&!b.contains(e.target))p.classList.remove('show')});
 async function sendNotif(toUid,title,message){try{await addDoc(collection(db,'notifications'),{toUid,title,message,read:false,createdAt:new Date().toISOString()})}catch(e){}}
 
-function updateBadges(){const r=currentData?.role;const pa=allPermits.filter(p=>(r==='hod'&&(p.status==='pending_hod'||p.status==='onhold'))||(r==='hse'&&(p.status==='pending_hse'||p.status==='onhold'))||(['admin'].includes(r)&&['submitted','pending_hod','pending_hse','pending_op','onhold'].includes(p.status))).length;const nb=document.getElementById('nb-approvals');if(nb){nb.textContent=pa||'';nb.classList.toggle('show',pa>0)}const pu=allUsers.filter(u=>u.status==='pending').length;const nbu=document.getElementById('nb-users');if(nbu){nbu.textContent=pu||'';nbu.classList.toggle('show',pu>0)}}
+function updateBadges(){const r=currentData?.role;const pa=allPermits.filter(p=>
+    (( r==='hod'||r==='supervisor')&&(p.status==='pending_hod'||p.status==='pending_op_s'||p.status==='onhold'))||
+    (r==='hse'&&(p.status==='pending_hse'||p.status==='pending_hse_s'||p.status==='onhold'))||
+    (r==='admin'&&['submitted','pending_hod','pending_hse','pending_op','pending_op_s','pending_hse_s','onhold'].includes(p.status))
+  ).length;const nb=document.getElementById('nb-approvals');if(nb){nb.textContent=pa||'';nb.classList.toggle('show',pa>0)}const pu=allUsers.filter(u=>u.status==='pending').length;const nbu=document.getElementById('nb-users');if(nbu){nbu.textContent=pu||'';nbu.classList.toggle('show',pu>0)}}
 
 function buildContractorQA(){
   var p=allPermits.filter(function(x){return['submitted','pending_hod','pending_hse'].includes(x.status)}).length;
@@ -924,9 +978,13 @@ window.viewPermit=function(id){
 
 
 function renderApprovalsPage(){const r=currentData?.role;let pending=[];
-  if(r==='hod') pending=allPermits.filter(p=>p.status==='pending_hod'||(p.status==='onhold'&&p.timeline&&p.timeline.some(t=>t.role==='hod'||t.role==='hse')));
-  else if(r==='hse') pending=allPermits.filter(p=>p.status==='pending_hse'||p.status==='onhold');
-  else if(r==='admin') pending=allPermits.filter(p=>['submitted','pending_hod','pending_hse','pending_op','onhold'].includes(p.status));document.getElementById('approvals-body').innerHTML=pending.length?pending.map(p=>`<div class="data-table" style="margin-bottom:14px"><div class="table-toolbar"><div><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${p.permitNo||'—'}</span> · <span style="font-size:13px;font-weight:500">${p.projectName||p.vesselName||'—'}</span></div><div style="display:flex;gap:8px"><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span><span class="status s-${p.status.replace(/_/g,'-')}">${sl(p.status)}</span></div></div><div style="padding:12px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:12px;border-bottom:1px solid var(--border)"><div><span style="color:var(--text3)">${lang==='bm'?'Syarikat':'Company'}:</span> ${p.company||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Lokasi':'Location'}:</span> ${p.location||'—'}</div><div><span style="color:var(--text3)">PIC:</span> ${p.pic||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Tarikh Mula':'Start'}:</span> ${p.startDate||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Pekerja':'Workers'}:</span> ${p.workers||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Dihantar':'Submitted'}:</span> ${fmtDate(p.createdAt)}</div></div><div style="padding:10px 16px;display:flex;gap:8px;justify-content:flex-end"><button class="btn-sm btn-info" onclick="viewPermit('${p.id}')">${lang==='bm'?'Lihat Detail':'View Detail'}</button><button class="btn-sm btn-reject" onclick="openApproval('${p.id}','${r}')" style="background:rgba(239,68,68,.1);color:#f87171">${lang==='bm'?'Tolak':'Reject'}</button><button class="btn-sm ${p.status==='onhold'?'btn-warn':'btn-approve'}" onclick="openApproval('${p.id}','${r}')">${p.status==='onhold'?(lang==='bm'?'✏️ Semak Semula':'✏️ Review'):(lang==='bm'?'Lulus':'Approve')}</button></div></div>`).join(''):`<div class="data-table"><div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permit menunggu kelulusan':'No permits awaiting approval'}</div></div>`}
+  if(r==='hod'||r==='supervisor') pending=allPermits.filter(p=>
+    p.status==='pending_hod'||p.status==='pending_op_s'||
+    (p.status==='onhold'&&p.timeline&&p.timeline.some(function(t){return t.role==='hod'||t.role==='hse';})));
+  else if(r==='hse') pending=allPermits.filter(p=>
+    p.status==='pending_hse'||p.status==='pending_hse_s'||p.status==='onhold');
+  else if(r==='admin') pending=allPermits.filter(p=>
+    ['submitted','pending_hod','pending_hse','pending_op','pending_op_s','pending_hse_s','onhold'].includes(p.status));document.getElementById('approvals-body').innerHTML=pending.length?pending.map(p=>`<div class="data-table" style="margin-bottom:14px"><div class="table-toolbar"><div><span style="font-family:var(--mono);font-size:12px;color:var(--accent2)">${p.permitNo||'—'}</span> · <span style="font-size:13px;font-weight:500">${p.projectName||p.vesselName||'—'}</span></div><div style="display:flex;gap:8px"><span class="track-${(p.track||'a').toLowerCase()}">Track ${p.track}</span><span class="status s-${p.status.replace(/_/g,'-')}">${sl(p.status)}</span></div></div><div style="padding:12px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:12px;border-bottom:1px solid var(--border)"><div><span style="color:var(--text3)">${lang==='bm'?'Syarikat':'Company'}:</span> ${p.company||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Lokasi':'Location'}:</span> ${p.location||'—'}</div><div><span style="color:var(--text3)">PIC:</span> ${p.pic||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Tarikh Mula':'Start'}:</span> ${p.startDate||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Pekerja':'Workers'}:</span> ${p.workers||'—'}</div><div><span style="color:var(--text3)">${lang==='bm'?'Dihantar':'Submitted'}:</span> ${fmtDate(p.createdAt)}</div></div><div style="padding:10px 16px;display:flex;gap:8px;justify-content:flex-end"><button class="btn-sm btn-info" onclick="viewPermit('${p.id}')">${lang==='bm'?'Lihat Detail':'View Detail'}</button><button class="btn-sm btn-reject" onclick="openApproval('${p.id}','${r}')" style="background:rgba(239,68,68,.1);color:#f87171">${lang==='bm'?'Tolak':'Reject'}</button><button class="btn-sm ${p.status==='onhold'?'btn-warn':'btn-approve'}" onclick="openApproval('${p.id}','${r}')">${p.status==='onhold'?(lang==='bm'?'✏️ Semak Semula':'✏️ Review'):(lang==='bm'?'Lulus':'Approve')}</button></div></div>`).join(''):`<div class="data-table"><div class="table-empty"><span class="em-icon">✓</span>${lang==='bm'?'Tiada permit menunggu kelulusan':'No permits awaiting approval'}</div></div>`}
 
 window.openApproval=function(id,type){
   currentApprId=id;
@@ -1044,6 +1102,15 @@ window.submitApproval=async function(){
     if(p.status==='pending_hod') newStatus='pending_hse';
     else if(p.status==='pending_op') newStatus='pending_hse';
     else if(p.status==='pending_hse') newStatus='approved';
+    else if(p.status==='pending_op_s') newStatus='pending_hse_s';  // Stevedore: Op→HSE
+    else if(p.status==='pending_hse_s') newStatus='approved';       // Stevedore: HSE→Approved
+    else if(p.status==='onhold') {
+      // Re-approve from onhold - determine who approved last
+      const lastApproval=(p.timeline||[]).filter(function(t){return t.type==='approved'||t.type==='onhold';}).pop();
+      if(p.track==='B'||p.track==='C') newStatus='pending_hse_s';
+      else if(p.status==='pending_hod'||currentData.role==='hod') newStatus='pending_hse';
+      else newStatus='approved';
+    }
     else newStatus='approved';
   }
   try{
@@ -1084,7 +1151,12 @@ window.submitApproval=async function(){
 window.closePermit=async function(id){const p=allPermits.find(x=>x.id===id);if(!p)return;const tl={type:'closed',label:lang==='bm'?'Permit ditutup':'Permit closed',by:currentData.name,at:new Date().toISOString(),remark:''};await updateDoc(doc(db,'permits',id),{status:'closed',closedAt:new Date().toISOString(),timeline:[...(p.timeline||[]),tl]});closeModal('modal-detail');showToast(lang==='bm'?'Permit telah ditutup.':'Permit has been closed.','info')};
 
 window.openPermitForm=function(){draft={track:'A',activityTypes:[]};document.getElementById('pf-title').textContent=lang==='bm'?'Submit Permit Baru':'Submit New Permit';renderFormStep(1);openModal('modal-permit-form')};
-window.openActivityForm=function(track){draft={track,activityTypes:[]};document.getElementById('pf-title').textContent=track==='B'?(lang==='bm'?'Daftar Aktiviti Rutin':'Register Routine Activity'):(lang==='bm'?'Daftar Aktiviti Non-Rutin':'Register Non-Routine Activity');renderFormStep(1);openModal('modal-permit-form')};
+window.openActivityForm=function(track){
+  draft={track:'B',activityTypes:[],stevType:'',cargoType:''};
+  document.getElementById('pf-title').textContent=lang==='bm'?'Daftar Aktiviti Stevedoring':'Register Stevedoring Activity';
+  renderFormStep(1);
+  openModal('modal-permit-form');
+};
 
 function renderFormStep(step){formStep=step;['stp1','stp2','stp3'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.className='step'+(i+1<step?' done':i+1===step?' active':'')});const tr=draft.track||'A',isS=tr==='B'||tr==='C';if(step===1){document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Maklumat Asas':'Basic Information'}</p><div class="form-group"><label class="form-label">${isS?(lang==='bm'?'Nama Kapal':'Vessel Name'):(lang==='bm'?'Nama Projek':'Project Name')} <span class="req">*</span></label><input class="form-input" id="pf-name" placeholder="${isS?'MV Ocean Star':'Nama projek...'}" value="${draft.projectName||draft.vesselName||''}"></div>${isS?`<div class="form-row">
   <div class="form-group"><label class="form-label">${lang==='bm'?'Jenis Kargo':'Cargo Type'}</label><input class="form-input" id="pf-cargo" placeholder="Clinker, Coal, Breakbulk..." value="${draft.cargo||''}"></div>
@@ -1106,22 +1178,74 @@ function renderFormStep(step){formStep=step;['stp1','stp2','stp3'].forEach((id,i
 </div>`:''}<div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Lokasi':'Location'} <span class="req">*</span></label><select class="form-input" id="pf-loc"><option value="">--</option>${LOCS.map(l=>`<option${draft.location===l?' selected':''}>${l}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">${lang==='bm'?'Bil. Pekerja':'No. Workers'}</label><input class="form-input" type="number" id="pf-workers" min="1" placeholder="10" value="${draft.workers||''}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Mula':'Start Date'} <span class="req">*</span></label><input class="form-input" type="date" id="pf-start" value="${draft.startDate||''}"></div><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Tamat':'End Date'}</label><input class="form-input" type="date" id="pf-end" value="${draft.endDate||''}"></div></div><div class="form-group"><label class="form-label">PIC <span class="req">*</span></label><input class="form-input" id="pf-pic" placeholder="${lang==='bm'?'Nama pegawai':'Officer name'}" value="${draft.pic||''}"></div>`;document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →'}
 if(step===2){
   if(isS){
-    // Stevedore step 2: work scope & safety declaration
+    const stevType=draft.stevType||'routine';
+    const isRoutine=stevType==='routine';
+    const isEmergency=stevType==='emergency';
+    
+    // Build checklist based on type
+    const cargoLabel=draft.cargoType==='breakbulk'?'Breakbulk':draft.cargoType==='drybulk'?'Drybulk':draft.cargoType||'—';
+    
+    let checklistHTML='';
+    if(isRoutine){
+      // Routine: self-declaration checklist, auto-approve
+      checklistHTML=`
+        <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--success)">
+          ✓ ${lang==='bm'?'Routine — Terus diluluskan selepas self-declaration. Inspection oleh HSE & Supervisor.':'Routine — Auto-approved after self-declaration. Inspection by HSE & Supervisor.'}
+        </div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px">${lang==='bm'?'Self-Declaration — Sila sahkan semua item:':'Self-Declaration — Please confirm all items:'}</div>
+        <div id="stev-checklist" style="display:flex;flex-direction:column;gap:8px">
+          ${[
+            {id:'sc1',bm:'Updated Risk Assessment (HIRARC) telah disediakan',en:'Updated Risk Assessment (HIRARC) has been prepared'},
+            {id:'sc2',bm:'Updated Environmental Aspect Impact (EAI) telah disediakan',en:'Updated Environmental Aspect Impact (EAI) has been prepared'},
+            {id:'sc3',bm:'Semua pekerja terlatih & mempunyai rekod Latihan dan Penilaian',en:'All workers trained & have Training and Assessment records'},
+            {id:'sc4',bm:'Kaedah kerja (Method) telah dipersetujui oleh klien',en:'Work method has been agreed upon by client'},
+            {id:'sc5',bm:'Telah disemak dan diluluskan oleh Operasi',en:'Reviewed and approved by Operations'},
+            {id:'sc6',bm:'Semua peralatan dalam keadaan baik (ada rekod penyelenggaraan)',en:'All equipment in good condition (maintenance records available)'},
+            {id:'sc7',bm:'Lifting equipment telah disahkan (jika berkaitan)',en:'Lifting equipment verified (if applicable)',optional:true},
+          ].map(item=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px" id="stev-item-${item.id}">
+            <div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px">
+              <button class="stev-yes" data-iid="${item.id}" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer">Ya</button>
+              <button class="stev-no" data-iid="${item.id}" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer">Tidak</button>
+            </div>
+            <div>
+              <div style="font-size:13px;color:var(--text)">${lang==='bm'?item.bm:item.en}</div>
+              <div style="font-size:11px;color:var(--text3)">${lang==='bm'?item.en:item.bm}</div>
+              ${item.optional?'<span style="font-size:10px;color:var(--text3)">(Optional)</span>':''}
+            </div>
+          </div>`).join('')}
+        </div>`;
+    } else {
+      // Non-Routine / Emergency: document submission status
+      checklistHTML=`
+        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#fbbf24">
+          ${isEmergency?'⚡ Emergency':'⚠ Non-Routine'} — ${lang==='bm'?'Memerlukan kelulusan Operasi dan HSE.':'Requires Operations and HSE approval.'}
+        </div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px">${lang==='bm'?'Status Dokumen — Sila nyatakan:':'Document Status — Please indicate:'}</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          ${[
+            {id:'doc1',bm:'Risk Assessment (HIRARC)',en:'Risk Assessment (HIRARC)'},
+            {id:'doc2',bm:'Environmental Aspect Impact (EAI)',en:'Environmental Aspect Impact (EAI)'},
+            {id:'doc3',bm:'Method Statement',en:'Method Statement'},
+          ].map(doc=>`<div style="padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
+            <div style="font-size:13px;color:var(--text);margin-bottom:8px">${lang==='bm'?doc.bm:doc.en}</div>
+            <div style="display:flex;gap:8px">
+              <button class="doc-status-btn" data-doc="${doc.id}" data-val="submitted" style="height:28px;padding:0 12px;border-radius:6px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;transition:all .2s">✓ ${lang==='bm'?'Telah Dihantar':'Submitted'}</button>
+              <button class="doc-status-btn" data-doc="${doc.id}" data-val="pending" style="height:28px;padding:0 12px;border-radius:6px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;transition:all .2s">⏳ ${lang==='bm'?'Belum Dihantar':'Not Yet Submitted'}</button>
+            </div>
+          </div>`).join('')}
+        </div>
+        <div class="form-group" style="margin-top:12px">
+          <label class="form-label">${lang==='bm'?'Catatan / Justifikasi':'Notes / Justification'}</label>
+          <textarea class="form-input" id="pf-doc-notes" style="min-height:60px" placeholder="${lang==='bm'?'Nyatakan sebab atau maklumat tambahan...':'State reason or additional information...'}">${draft.docNotes||''}</textarea>
+        </div>`;
+    }
+    
     document.getElementById('pf-content').innerHTML=`
-      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Maklumat Kerja':'Work Information'} — Track ${tr}</p>
-      <div class="form-group">
-        <label class="form-label">${lang==='bm'?'Skop Kerja / Keterangan Aktiviti':'Scope of Work / Activity Description'}</label>
-        <textarea class="form-input" id="pf-scope" style="min-height:80px" placeholder="${lang==='bm'?'Huraikan aktiviti stevedoring yang akan dilaksanakan...':'Describe the stevedoring activity to be performed...'}">${draft.scope||''}</textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">${lang==='bm'?'Nama Kapal / Muatan':'Vessel / Cargo Details'}</label>
-        <input class="form-input" id="pf-vessel-detail" placeholder="${lang==='bm'?'Cth: MV Ocean Star — Clinker 5,000MT':'e.g. MV Ocean Star — Clinker 5,000MT'}" value="${draft.vesselDetail||''}">
-      </div>
-      <div class="form-group">
-        <label class="form-label">${lang==='bm'?'Bilangan Pekerja':'No. of Workers'}</label>
-        <input class="form-input" type="number" id="pf-workers" placeholder="10" value="${draft.workers||''}">
-      </div>`;
-    document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →';
+      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">
+        ${lang==='bm'?'Perisytiharan':'Declaration'} — ${stevType.charAt(0).toUpperCase()+stevType.slice(1)} · ${cargoLabel}
+      </p>
+      ${checklistHTML}`;
+    document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Submit →':'Submit →';
   } else {
     const tt=Object.entries(PTYPES).filter(([,v])=>v.track===tr);
     document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Jenis Aktiviti':'Activity Types'} — Track ${tr}</p><div class="check-grid">${tt.map(([k,v])=>`<div class="check-item${(draft.activityTypes||[]).includes(k)?' selected':''}" onclick="toggleAct('${k}',this)"><div class="check-icon">${(draft.activityTypes||[]).includes(k)?'✓':''}</div><span>${lang==='bm'?v.bm:v.en}</span>${v.hr?'<span style="font-size:9px;color:var(--danger);margin-left:auto">⚠</span>':''}</div>`).join('')}</div>`;
@@ -1202,20 +1326,35 @@ if(step===3){
 window.toggleAct=function(k,el){if(!draft.activityTypes)draft.activityTypes=[];const i=draft.activityTypes.indexOf(k);if(i>-1)draft.activityTypes.splice(i,1);else draft.activityTypes.push(k);el.classList.toggle('selected',draft.activityTypes.includes(k));el.querySelector('.check-icon').textContent=draft.activityTypes.includes(k)?'✓':''};
 
 window.submitPermitForm=async function(){if(formStep===1){const name=document.getElementById('pf-name')?.value.trim(),loc=document.getElementById('pf-loc')?.value,start=document.getElementById('pf-start')?.value,pic=document.getElementById('pf-pic')?.value.trim();if(!name)return showToast(lang==='bm'?'Sila masukkan nama.':'Please enter name.','error');if(!loc)return showToast(lang==='bm'?'Sila pilih lokasi.':'Please select location.','error');if(!start)return showToast(lang==='bm'?'Sila pilih tarikh mula.':'Please select start date.','error');if(!pic)return showToast(lang==='bm'?'Sila masukkan PIC.':'Please enter PIC.','error');const iS=draft.track==='B'||draft.track==='C';if(iS)draft.vesselName=name;else draft.projectName=name;draft.location=loc;draft.startDate=start;draft.endDate=document.getElementById('pf-end')?.value||'';draft.workers=document.getElementById('pf-workers')?.value||'';draft.pic=pic;if(iS){
-    draft.cargo=document.getElementById('pf-cargo')?.value||'';
+    draft.stevType=document.getElementById('pf-stev-type')?.value||'';
+    draft.cargoType=document.getElementById('pf-cargo-type')?.value||'';
+    draft.vesselName=document.getElementById('pf-vessel-name')?.value.trim()||name;
     draft.shiftCount=parseInt(document.getElementById('pf-shift-count')?.value)||6;
     draft.firstShift=document.getElementById('pf-first-shift')?.value||'';
     draft.shiftStartDate=document.getElementById('pf-shift-date')?.value||draft.startDate||'';
-    if(!draft.shiftCount||draft.shiftCount<1)return showToast(lang==='bm'?'Sila masukkan anggaran bilangan shift.':'Please enter estimated shifts.','error');
-    if(!draft.firstShift)return showToast(lang==='bm'?'Sila pilih shift pertama.':'Please select first shift.','error');
+    if(!draft.stevType) return showToast(lang==='bm'?'Sila pilih jenis aktiviti.':'Please select activity type.','error');
+    if(!draft.cargoType) return showToast(lang==='bm'?'Sila pilih jenis kargo.':'Please select cargo type.','error');
+    if(!draft.shiftCount||draft.shiftCount<1) return showToast(lang==='bm'?'Sila masukkan anggaran bilangan shift.':'Please enter estimated shifts.','error');
+    if(!draft.firstShift) return showToast(lang==='bm'?'Sila pilih shift pertama.':'Please select first shift.','error');
   }
   renderFormStep(2);
 }else if(formStep===2){
   if(iS){
-    draft.scope=document.getElementById('pf-scope')?.value.trim()||'';
-    draft.vesselDetail=document.getElementById('pf-vessel-detail')?.value.trim()||'';
-    draft.workers=document.getElementById('pf-workers')?.value||'';
-    renderFormStep(3);
+    const stevType=draft.stevType||'routine';
+    if(stevType==='routine'){
+      // Save checklist answers
+      draft.selfDeclChecklist=Object.assign({},_stevCheck);
+      // All mandatory items must be answered
+      const mandatory=['sc1','sc2','sc3','sc4','sc5','sc6'];
+      const missing=mandatory.filter(function(id){return _stevCheck[id]===undefined;});
+      if(missing.length) return showToast(lang==='bm'?'Sila jawab semua item wajib.':'Please answer all mandatory items.','error');
+    } else {
+      draft.docStatus=Object.assign({},_docStatus);
+      draft.docNotes=document.getElementById('pf-doc-notes')?.value.trim()||'';
+    }
+    // For stevedore, skip step 3, submit directly
+    await _submitStevedorePermit();
+    return;
   } else {
     if(!draft.activityTypes?.length)return showToast(lang==='bm'?'Pilih sekurang-kurangnya satu aktiviti.':'Select at least one activity.','error');
     renderFormStep(3);
@@ -2430,6 +2569,167 @@ document.addEventListener('click',function(e){
   }
 });
 
+
+// Stevedore form helpers
+var _stevCheck={};
+var _docStatus={};
+
+window.updateStevedoreTitle=function(type){
+  draft.stevType=type;
+  var titles={routine:'Routine Stevedoring','non-routine':'Non-Routine Stevedoring',emergency:'Emergency Stevedoring'};
+  var el=document.getElementById('pf-title');
+  if(el) el.textContent=titles[type]||(lang==='bm'?'Daftar Aktiviti Stevedoring':'Register Stevedoring Activity');
+};
+
+// Event delegation for stevedore checklist buttons
+document.addEventListener('click',function(e){
+  // Routine self-declaration Ya/Tidak
+  if(e.target.classList.contains('stev-yes')||e.target.classList.contains('stev-no')){
+    var iid=e.target.dataset.iid;
+    var isYes=e.target.classList.contains('stev-yes');
+    _stevCheck[iid]=isYes;
+    // Update button styles
+    var wrap=document.getElementById('stev-item-'+iid);
+    if(wrap){
+      wrap.querySelectorAll('.stev-yes,.stev-no').forEach(function(b){
+        b.style.background='transparent';b.style.borderColor='var(--border)';b.style.color='var(--text2)';
+      });
+      e.target.style.background=isYes?'rgba(16,185,129,.15)':'rgba(239,68,68,.1)';
+      e.target.style.borderColor=isYes?'var(--success)':'var(--danger)';
+      e.target.style.color=isYes?'var(--success)':'var(--danger)';
+    }
+  }
+  // Non-routine document status
+  if(e.target.classList.contains('doc-status-btn')){
+    var doc=e.target.dataset.doc;
+    var val=e.target.dataset.val;
+    _docStatus[doc]=val;
+    var parent=e.target.parentElement;
+    if(parent){
+      parent.querySelectorAll('.doc-status-btn').forEach(function(b){
+        b.style.background='transparent';b.style.borderColor='var(--border)';b.style.color='var(--text2)';
+      });
+      e.target.style.background=val==='submitted'?'rgba(16,185,129,.15)':'rgba(245,158,11,.1)';
+      e.target.style.borderColor=val==='submitted'?'var(--success)':'var(--warning)';
+      e.target.style.color=val==='submitted'?'var(--success)':'#fbbf24';
+    }
+  }
+});
+
+
+async function _submitStevedorePermit(){
+  const btn=document.getElementById('btn-pf-submit');
+  if(btn){btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';}
+
+  const stevType=draft.stevType||'routine';
+  const isRoutine=stevType==='routine';
+  const isEmergency=stevType==='emergency';
+
+  // Determine initial status & approval flow
+  let initialStatus, approvalNote;
+  if(isRoutine){
+    initialStatus='approved';  // Auto-approved
+    approvalNote=lang==='bm'?'Aktiviti rutin — diluluskan secara automatik':'Routine activity — auto-approved';
+  } else if(isEmergency){
+    initialStatus='pending_op_s';  // HOD/Exec Op first
+    approvalNote=lang==='bm'?'Aktiviti emergency — menunggu kelulusan HOD/Exec Operasi':'Emergency activity — pending HOD/Exec Operations approval';
+  } else {
+    initialStatus='pending_op_s';  // Operation first
+    approvalNote=lang==='bm'?'Aktiviti non-routine — menunggu kelulusan Operasi':'Non-routine activity — pending Operations approval';
+  }
+
+  // Build shift schedule
+  var shiftSchedule=[];
+  if(draft.firstShift&&draft.shiftCount){
+    const shiftOrder=['shift1','shift2','shift3'];
+    const firstIdx=shiftOrder.indexOf(draft.firstShift);
+    for(var i=0;i<draft.shiftCount;i++){
+      const si=(firstIdx+i)%3;
+      const sh=SHIFTS[si];
+      const d=new Date(draft.shiftStartDate||draft.startDate||new Date());
+      d.setDate(d.getDate()+Math.floor((firstIdx+i)/3));
+      shiftSchedule.push({shiftNum:i+1,shiftId:sh.id,shiftLabel:sh.label,shiftTime:sh.time,
+        date:d.toISOString().slice(0,10),status:'scheduled'});
+    }
+  }
+
+  const pn=genPermitNo('B');
+  const now=new Date().toISOString();
+  const ea=null;
+
+  const tl=[{type:'submitted',label:lang==='bm'?'Aktiviti didaftarkan':'Activity registered',
+    by:currentData.name,at:now,remark:approvalNote}];
+  if(isRoutine){
+    tl.push({type:'approved',label:lang==='bm'?'Diluluskan secara automatik (Aktiviti Rutin)':'Auto-approved (Routine Activity)',
+      by:'System',at:now,remark:''});
+  }
+
+  const pd={
+    permitNo:pn,track:'B',
+    stevType,
+    cargoType:draft.cargoType||'',
+    vesselName:draft.vesselName||draft.projectName||'',
+    location:draft.location||'',
+    startDate:draft.startDate||'',
+    endDate:draft.endDate||'',
+    workers:draft.workers||'',
+    pic:draft.pic||'',
+    shiftCount:draft.shiftCount||6,
+    firstShift:draft.firstShift||'',
+    shiftStartDate:draft.shiftStartDate||'',
+    selfDeclChecklist:draft.selfDeclChecklist||{},
+    docStatus:draft.docStatus||{},
+    docNotes:draft.docNotes||'',
+    status:initialStatus,
+    submittedBy:currentData.uid,
+    submittedByName:currentData.name,
+    company:currentData.company||'',
+    createdAt:now,
+    timeline:tl,
+    expiryAt:ea,
+    shiftSchedule,
+  };
+
+  try{
+    await addDoc(collection(db,'permits'),pd);
+
+    // Notify relevant parties
+    if(!isRoutine){
+      // Notify HOD/Operation
+      const ops=allUsers.filter(function(u){return (u.role==='hod'||u.role==='supervisor')&&u.status==='active';});
+      await Promise.all(ops.map(function(u){
+        return sendNotif(u.uid,
+          (isEmergency?'⚡':'⚠')+' '+(lang==='bm'?'Aktiviti Stevedoring Baru':'New Stevedoring Activity')+' — '+pn,
+          stevType.charAt(0).toUpperCase()+stevType.slice(1)+' · '+(draft.cargoType||'')+' · '+(draft.vesselName||'')
+        );
+      }));
+    } else {
+      // Notify HSE for inspection
+      const hses=allUsers.filter(function(u){return u.role==='hse'&&u.status==='active';});
+      await Promise.all(hses.map(function(u){
+        return sendNotif(u.uid,
+          '📋 '+(lang==='bm'?'Aktiviti Rutin Baru — Inspection Diperlukan':'New Routine Activity — Inspection Required'),
+          pn+' · '+(draft.cargoType||'')+' · '+(draft.vesselName||'')
+        );
+      }));
+    }
+
+    closeModal('modal-permit-form');
+    draft={};
+    _stevCheck={};
+    _docStatus={};
+    showToast(isRoutine
+      ?(lang==='bm'?'✓ Aktiviti rutin berjaya didaftarkan.':'✓ Routine activity registered successfully.')
+      :(lang==='bm'?'✓ Dihantar. Menunggu kelulusan Operasi.':'✓ Submitted. Awaiting Operations approval.'),
+      'success');
+  }catch(e){
+    console.error(e);
+    showToast(lang==='bm'?'Ralat. Cuba lagi.':'Error. Try again.','error');
+    if(btn){btn.disabled=false;btn.innerHTML='<span id="btn-pf-txt">Submit →</span>';}
+  }
+}
+
+// Update renderApprovalsPage to include pending_op_s and pending_hse_s
 
 onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data());renderApp(data)}}}});
 </script>
