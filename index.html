@@ -1669,7 +1669,29 @@ const CHECKLISTS = {
       {id:'a_post_7', item:'Site supervisor sign-off obtained', itemBM:'Pengesahan supervisor tapak telah diperoleh', type:'yn'},
     ]
   }
-};
+,
+  trackA:{
+    pre:[
+      {id:'ta-p1',item:'Permit to Work issued and signed',itemBM:'Permit to Work telah dikeluarkan dan ditandatangani',type:'yn'},
+      {id:'ta-p2',item:'Latest HIRARC available at worksite',itemBM:'HIRARC terkini tersedia di tapak kerja',type:'yn'},
+      {id:'ta-p3',item:'All workers briefed on hazards',itemBM:'Semua pekerja telah dibriefkan tentang bahaya',type:'yn'},
+      {id:'ta-p4',item:'Appropriate PPE provided and worn',itemBM:'PPE yang sesuai disediakan dan dipakai',type:'yn'},
+      {id:'ta-p5',item:'Work area zoned/barricaded',itemBM:'Kawasan kerja telah dizonkan/dipagari',type:'yn'},
+    ],
+    during:[
+      {id:'ta-d1',item:'Workers complying with safety procedures',itemBM:'Pekerja mematuhi prosedur keselamatan',type:'status',options:['OK','NC','Attention']},
+      {id:'ta-d2',item:'PPE worn correctly throughout',itemBM:'PPE dipakai dengan betul sepanjang masa',type:'status',options:['OK','NC','Attention']},
+      {id:'ta-d3',item:'Work area clean and tidy',itemBM:'Kawasan kerja kemas dan teratur',type:'status',options:['OK','NC','Attention']},
+      {id:'ta-d4',item:'No uncontrolled hazardous activities',itemBM:'Tiada aktiviti berbahaya yang tidak terkawal',type:'status',options:['OK','NC','Attention']},
+      {id:'ta-d5',item:'Equipment in good and safe condition',itemBM:'Peralatan dalam keadaan baik dan selamat',type:'status',options:['OK','NC','Attention']},
+    ],
+    post:[
+      {id:'ta-po1',item:'Work area fully cleaned up',itemBM:'Kawasan kerja telah dibersihkan sepenuhnya',type:'yn'},
+      {id:'ta-po2',item:'All equipment returned/stored',itemBM:'Semua peralatan telah dipulangkan/disimpan',type:'yn'},
+      {id:'ta-po3',item:'No hazardous materials remaining on site',itemBM:'Tiada bahan berbahaya berbaki di tapak',type:'yn'},
+      {id:'ta-po4',item:'Work confirmed complete by PIC',itemBM:'Kerja telah disahkan selesai oleh PIC',type:'yn'},
+    ],
+  }};
 
 // ── CONTRACTOR SELF-DECLARATION (Track A — submit masa PTW) ──
 const CONTRACTOR_DECL = {
@@ -2184,10 +2206,13 @@ window.submitShiftInspection=async function(permitId,inspKey,shiftIdx){
     shiftLabel:shift?.shiftLabel||'',
     shiftTime:shift?.shiftTime||'',
     shiftDate:shift?.date||'',
-    items:itemResults,overallRemark,hasIssues,
+    items:itemResults,
+    results:itemResults,
+    overallRemark,hasIssues,
     submittedAt:new Date().toISOString(),
     submittedBy:currentData.name,
-    submittedByRole:currentData.role
+    submittedByRole:currentData.role,
+    inspectorKey:inspKey,
   };
   rounds.push(roundData);
 
@@ -2942,18 +2967,82 @@ window.openInspectionReport=function(permitId){
 
   let body='';
 
-  // Inspector 1
-  const i1Label=p.track==='A'?(lang==='bm'?'Inspector 1 — Supervisor':'Inspector 1 — Supervisor'):(lang==='bm'?'Inspector 1 — Wakil Operasi':'Inspector 1 — Operations Rep');
-  body+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
-  body+='<div style="font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">'+i1Label+'</div>';
-  body+=buildInspectorReport(insp.inspector1||null,'inspector1');
-  body+='</div>';
+  const isStev=(p.track==='B'||p.track==='C')&&p.shiftSchedule&&p.shiftSchedule.length;
 
-  // Inspector 2 — HSE
-  body+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">';
-  body+='<div style="font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">Inspector 2 — HSE Officer</div>';
-  body+=buildInspectorReport(insp.inspector2||null,'inspector2');
-  body+='</div>';
+  if(isStev){
+    // ── STEVEDORE: Shift-based inspection report ──
+    const shifts=p.shiftSchedule||[];
+    const allRounds=[
+      ...((insp.inspector1&&Array.isArray(insp.inspector1.during))?insp.inspector1.during:[]),
+      ...((insp.inspector2&&Array.isArray(insp.inspector2.during))?insp.inspector2.during:[]),
+    ];
+
+    // Permit summary info
+    body+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px">';
+    body+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">';
+    body+='<div><span style="color:var(--text3)">'+(lang==='bm'?'Jenis Aktiviti':'Activity Type')+':</span> <strong>'+((p.stevType||'').charAt(0).toUpperCase()+(p.stevType||'').slice(1))+'</strong></div>';
+    body+='<div><span style="color:var(--text3)">'+(lang==='bm'?'Jenis Kargo':'Cargo Type')+':</span> <strong>'+(p.cargoType||'—')+'</strong></div>';
+    body+='<div><span style="color:var(--text3)">'+(lang==='bm'?'Keterangan':'Description')+':</span> <strong>'+(p.cargoDesc||'—')+'</strong></div>';
+    body+='<div><span style="color:var(--text3)">'+(lang==='bm'?'Kapal':'Vessel')+':</span> <strong>'+(p.vesselName||'—')+'</strong></div>';
+    body+='<div><span style="color:var(--text3)">'+(lang==='bm'?'Shift Dijadual':'Scheduled Shifts')+':</span> <strong>'+shifts.length+'</strong></div>';
+    body+='<div><span style="color:var(--text3)">'+(lang==='bm'?'Shift Diinspect':'Inspected Shifts')+':</span> <strong>'+allRounds.length+'</strong></div>';
+    body+='</div></div>';
+
+    // Shift-by-shift report
+    shifts.forEach(function(sh,idx){
+      var shiftRounds=allRounds.filter(function(rd){return rd.shiftIdx===idx;});
+      var hasIssue=shiftRounds.some(function(rd){return rd.hasIssues;});
+      body+='<div style="background:var(--bg2);border:1px solid '+(hasIssue?'rgba(239,68,68,.3)':'var(--border)')+';border-radius:10px;padding:14px;margin-bottom:10px">';
+      body+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border)">';
+      body+='<div style="font-size:13px;font-weight:600">Shift '+(idx+1)+' — '+sh.shiftLabel+' <span style="font-size:11px;color:var(--text3);">('+sh.shiftTime+')</span></div>';
+      body+='<div style="display:flex;gap:8px;align-items:center">';
+      body+='<span style="font-size:11px;color:var(--text3)">'+sh.date+'</span>';
+      body+='<span class="status s-'+(sh.status==='completed'?'approved':sh.status==='cancelled'?'rejected':'pending')+'">'+sl(sh.status)+'</span>';
+      if(hasIssue) body+='<span style="color:var(--danger);font-size:12px;font-weight:600">🚩 '+(lang==='bm'?'Ada Isu':'Has Issues')+'</span>';
+      body+='</div></div>';
+
+      if(!shiftRounds.length){
+        body+='<div style="font-size:12px;color:var(--text3);font-style:italic">'+(lang==='bm'?'Belum ada inspection untuk shift ini.':'No inspection done for this shift yet.')+'</div>';
+      } else {
+        shiftRounds.forEach(function(rd){
+          body+='<div style="margin-bottom:10px;padding:10px;background:var(--bg3);border-radius:8px">';
+          body+='<div style="font-size:11px;color:var(--text3);margin-bottom:6px">'+rd.submittedBy+' ('+rl(rd.inspectorKey==='inspector2'?'hse':'supervisor')+') · '+new Date(rd.submittedAt).toLocaleString(lang==='bm'?'ms-MY':'en-MY')+'</div>';
+          // Show checklist results
+          var itemData=rd.results||rd.items||{};
+          if(itemData&&Object.keys(itemData).length){
+            body+='<div style="display:flex;flex-direction:column;gap:4px">';
+            Object.keys(itemData).forEach(function(itemId){
+              var entry=itemData[itemId];
+              var res=typeof entry==='string'?entry:(entry&&entry.result?entry.result:'');
+              var col=res==='ok'?'var(--success)':res==='nc'?'var(--danger)':res==='attention'?'#fbbf24':'var(--text3)';
+              var remark=typeof entry==='object'&&entry.remark?entry.remark:'';
+              var label=res==='ok'?'OK':res==='nc'?'NC':res==='attention'?'⚠ Attention':'N/A';
+              body+='<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)">';
+              body+='<span style="color:var(--text2)">'+itemId+'</span>';
+              body+='<span style="color:'+col+';font-weight:600">'+label+'</span>';
+              body+='</div>';
+            });
+            body+='</div>';
+          }
+          if(rd.overallRemark) body+='<div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic">"'+rd.overallRemark+'"</div>';
+          body+='</div>';
+        });
+      }
+      body+='</div>';
+    });
+
+  } else {
+    // ── TRACK A: Inspector 1 + Inspector 2 Pre/During/Post ──
+    const i1Label=lang==='bm'?'Inspector 1 — Supervisor':'Inspector 1 — Supervisor';
+    body+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
+    body+='<div style="font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">'+i1Label+'</div>';
+    body+=buildInspectorReport(insp.inspector1||null,'inspector1');
+    body+='</div>';
+    body+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">';
+    body+='<div style="font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">Inspector 2 — HSE Officer</div>';
+    body+=buildInspectorReport(insp.inspector2||null,'inspector2');
+    body+='</div>';
+  }
 
   overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:700px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
     +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
@@ -3343,6 +3432,8 @@ document.addEventListener('click',function(e){
   var rptRow=e.target.closest&&e.target.closest('.insp-report-row');
   if(rptRow&&rptRow.dataset.pid){openInspectionReport(rptRow.dataset.pid);return;}
 });
+
+
 
 
 onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data());renderApp(data)}}}});
