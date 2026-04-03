@@ -1,52 +1,4 @@
-${isS?`
-<div class="form-row">
-  <div class="form-group">
-    <label class="form-label">${lang==='bm'?'Jenis Aktiviti':'Activity Type'} <span class="req">*</span></label>
-    <select class="form-input" id="pf-stev-type" onchange="updateStevedoreTitle(this.value)">
-      <option value="">-- ${lang==='bm'?'Pilih':'Select'} --</option>
-      <option value="routine" ${draft.stevType==='routine'?'selected':''}>Routine</option>
-      <option value="non-routine" ${draft.stevType==='non-routine'?'selected':''}>Non-Routine</option>
-      <option value="emergency" ${draft.stevType==='emergency'?'selected':''}>Emergency</option>
-    </select>
-  </div>
-  <div class="form-group">
-    <label class="form-label">${lang==='bm'?'Jenis Kargo':'Cargo Type'} <span class="req">*</span></label>
-    <select class="form-input" id="pf-cargo-type">
-      <option value="">-- ${lang==='bm'?'Pilih':'Select'} --</option>
-      <option value="breakbulk" ${draft.cargoType==='breakbulk'?'selected':''}>Breakbulk</option>
-      <option value="drybulk" ${draft.cargoType==='drybulk'?'selected':''}>Drybulk</option>
-      <option value="liquid-bulk" ${draft.cargoType==='liquid-bulk'?'selected':''}>Liquid Bulk</option>
-      <option value="container" ${draft.cargoType==='container'?'selected':''}>Container</option>
-      <option value="roro" ${draft.cargoType==='roro'?'selected':''}>RoRo</option>
-      <option value="other" ${draft.cargoType==='other'?'selected':''}>Other</option>
-    </select>
-  </div>
-</div>
-<div class="form-row">
-  <div class="form-group">
-    <label class="form-label">${lang==='bm'?'Anggaran Bilangan Shift':'Est. No. of Shifts'} <span class="req">*</span></label>
-    <input class="form-input" type="number" id="pf-shift-count" min="1" max="30" placeholder="cth: 6" value="${draft.shiftCount||''}">
-    <div style="font-size:11px;color:var(--text3);margin-top:3px">${lang==='bm'?'Boleh dikemaskini kemudian':'Can be updated later'}</div>
-  </div>
-  <div class="form-group">
-    <label class="form-label">${lang==='bm'?'Shift Pertama':'First Shift'} <span class="req">*</span></label>
-    <select class="form-input" id="pf-first-shift">
-      <option value="">-- ${lang==='bm'?'Pilih Shift':'Select Shift'} --</option>
-      ${SHIFTS.map(s=>`<option value="${s.id}" ${draft.firstShift===s.id?'selected':''}>${s.label} (${s.time})</option>`).join('')}
-    </select>
-  </div>
-</div>
-<div class="form-row">
-  <div class="form-group">
-    <label class="form-label">${lang==='bm'?'Tarikh Shift Pertama':'First Shift Date'} <span class="req">*</span></label>
-    <input class="form-input" type="date" id="pf-shift-date" value="${draft.shiftStartDate||draft.startDate||''}">
-  </div>
-  <div class="form-group">
-    <label class="form-label">${lang==='bm'?'Nama Kapal':'Vessel Name'} <span class="req">*</span></label>
-    <input class="form-input" id="pf-vessel-name" placeholder="MV Ocean Star" value="${draft.vesselName||''}">
-  </div>
-</div>
-`:''}<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ms">
 <head>
 <meta charset="UTF-8">
@@ -1158,97 +1110,138 @@ window.openActivityForm=function(track){
   openModal('modal-permit-form');
 };
 
-function renderFormStep(step){formStep=step;['stp1','stp2','stp3'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.className='step'+(i+1<step?' done':i+1===step?' active':'')});const tr=draft.track||'A',isS=tr==='B'||tr==='C';if(step===1){document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Maklumat Asas':'Basic Information'}</p><div class="form-group"><label class="form-label">${isS?(lang==='bm'?'Nama Kapal':'Vessel Name'):(lang==='bm'?'Nama Projek':'Project Name')} <span class="req">*</span></label><input class="form-input" id="pf-name" placeholder="${isS?'MV Ocean Star':'Nama projek...'}" value="${draft.projectName||draft.vesselName||''}"></div>${isS?`<div class="form-row">
-  <div class="form-group"><label class="form-label">${lang==='bm'?'Jenis Kargo':'Cargo Type'}</label><input class="form-input" id="pf-cargo" placeholder="Clinker, Coal, Breakbulk..." value="${draft.cargo||''}"></div>
-  <div class="form-group"><label class="form-label">${lang==='bm'?'Anggaran Bilangan Shift':'Est. No. of Shifts'} <span class="req">*</span></label>
-    <input class="form-input" type="number" id="pf-shift-count" min="1" max="30" placeholder="cth: 6" value="${draft.shiftCount||''}">
-    <div style="font-size:11px;color:var(--text3);margin-top:3px">${lang==='bm'?'Boleh dikemaskini kemudian':'Can be updated later'}</div>
-  </div>
-</div>
-<div class="form-row">
-  <div class="form-group"><label class="form-label">${lang==='bm'?'Shift Pertama':'First Shift'} <span class="req">*</span></label>
-    <select class="form-input" id="pf-first-shift">
-      <option value="">-- ${lang==='bm'?'Pilih Shift':'Select Shift'} --</option>
-      ${SHIFTS.map(s=>`<option value="${s.id}" ${draft.firstShift===s.id?'selected':''}>${s.label} (${s.time})</option>`).join('')}
-    </select>
-  </div>
-  <div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Shift Pertama':'First Shift Date'} <span class="req">*</span></label>
-    <input class="form-input" type="date" id="pf-shift-date" value="${draft.shiftStartDate||draft.startDate||''}">
-  </div>
-</div>`:''}<div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Lokasi':'Location'} <span class="req">*</span></label><select class="form-input" id="pf-loc"><option value="">--</option>${LOCS.map(l=>`<option${draft.location===l?' selected':''}>${l}</option>`).join('')}</select></div><div class="form-group"><label class="form-label">${lang==='bm'?'Bil. Pekerja':'No. Workers'}</label><input class="form-input" type="number" id="pf-workers" min="1" placeholder="10" value="${draft.workers||''}"></div></div><div class="form-row"><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Mula':'Start Date'} <span class="req">*</span></label><input class="form-input" type="date" id="pf-start" value="${draft.startDate||''}"></div><div class="form-group"><label class="form-label">${lang==='bm'?'Tarikh Tamat':'End Date'}</label><input class="form-input" type="date" id="pf-end" value="${draft.endDate||''}"></div></div><div class="form-group"><label class="form-label">PIC <span class="req">*</span></label><input class="form-input" id="pf-pic" placeholder="${lang==='bm'?'Nama pegawai':'Officer name'}" value="${draft.pic||''}"></div>`;document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →'}
+function renderFormStep(step){formStep=step;['stp1','stp2','stp3'].forEach((id,i)=>{const el=document.getElementById(id);if(el)el.className='step'+(i+1<step?' done':i+1===step?' active':'')});const tr=draft.track||'A',isS=tr==='B'||tr==='C';if(step===1){
+  var s1='<p style="font-size:12px;color:var(--text3);margin-bottom:14px">'+(lang==='bm'?'Maklumat Asas':'Basic Information')+'</p>';
+  s1+='<div class="form-group"><label class="form-label">'+(isS?(lang==='bm'?'Nama Kapal':'Vessel Name'):(lang==='bm'?'Nama Projek':'Project Name'))+' <span class="req">*</span></label>';
+  s1+='<input class="form-input" id="pf-name" placeholder="'+(isS?'MV Ocean Star':'Nama projek...')+'" value="'+(draft.projectName||draft.vesselName||'')+'"></div>';
+
+  if(isS){
+    // Stevedore specific fields
+    s1+='<div class="form-row">';
+    s1+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Jenis Aktiviti':'Activity Type')+' <span class="req">*</span></label>';
+    s1+='<select class="form-input" id="pf-stev-type">';
+    s1+='<option value="">-- '+(lang==='bm'?'Pilih':'Select')+' --</option>';
+    s1+='<option value="routine"'+(draft.stevType==='routine'?' selected':'')+'>Routine</option>';
+    s1+='<option value="non-routine"'+(draft.stevType==='non-routine'?' selected':'')+'>Non-Routine</option>';
+    s1+='<option value="emergency"'+(draft.stevType==='emergency'?' selected':'')+'>Emergency</option>';
+    s1+='</select></div>';
+    s1+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Jenis Kargo':'Cargo Type')+' <span class="req">*</span></label>';
+    s1+='<select class="form-input" id="pf-cargo-type">';
+    s1+='<option value="">-- '+(lang==='bm'?'Pilih':'Select')+' --</option>';
+    ['Breakbulk','Drybulk','Liquid Bulk','Container','RoRo','Other'].forEach(function(ct){
+      var val=ct.toLowerCase().replace(' ','-');
+      s1+='<option value="'+val+'"'+(draft.cargoType===val?' selected':'')+'>'+ct+'</option>';
+    });
+    s1+='</select></div></div>';
+    s1+='<div class="form-row">';
+    s1+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Anggaran Bilangan Shift':'Est. No. of Shifts')+' <span class="req">*</span></label>';
+    s1+='<input class="form-input" type="number" id="pf-shift-count" min="1" max="30" placeholder="cth: 6" value="'+(draft.shiftCount||'')+'"></div>';
+    s1+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Shift Pertama':'First Shift')+' <span class="req">*</span></label>';
+    s1+='<select class="form-input" id="pf-first-shift"><option value="">-- '+(lang==='bm'?'Pilih Shift':'Select Shift')+' --</option>';
+    SHIFTS.forEach(function(sh){ s1+='<option value="'+sh.id+'"'+(draft.firstShift===sh.id?' selected':'')+'>'+sh.label+' ('+sh.time+')</option>'; });
+    s1+='</select></div></div>';
+    s1+='<div class="form-row">';
+    s1+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Tarikh Shift Pertama':'First Shift Date')+' <span class="req">*</span></label>';
+    s1+='<input class="form-input" type="date" id="pf-shift-date" value="'+(draft.shiftStartDate||draft.startDate||'')+'"></div>';
+    s1+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Nama Kapal':'Vessel Name')+' <span class="req">*</span></label>';
+    s1+='<input class="form-input" id="pf-vessel-name" placeholder="MV Ocean Star" value="'+(draft.vesselName||'')+'"></div></div>';
+  }
+
+  s1+='<div class="form-row"><div class="form-group"><label class="form-label">'+(lang==='bm'?'Lokasi':'Location')+' <span class="req">*</span></label>';
+  s1+='<select class="form-input" id="pf-loc"><option value="">--</option>';
+  LOCS.forEach(function(l){ s1+='<option'+(draft.location===l?' selected':'')+'>'+l+'</option>'; });
+  s1+='</select></div>';
+  s1+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Bil. Pekerja':'Workers')+'</label>';
+  s1+='<input class="form-input" type="number" id="pf-workers" placeholder="10" value="'+(draft.workers||'')+'"></div></div>';
+  s1+='<div class="form-row"><div class="form-group"><label class="form-label">'+(lang==='bm'?'Tarikh Mula':'Start Date')+' <span class="req">*</span></label>';
+  s1+='<input class="form-input" type="date" id="pf-start" value="'+(draft.startDate||'')+'"></div>';
+  s1+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Tarikh Tamat':'End Date')+'</label>';
+  s1+='<input class="form-input" type="date" id="pf-end" value="'+(draft.endDate||'')+'"></div></div>';
+  if(!isS){
+    s1+='<div class="form-row"><div class="form-group"><label class="form-label">'+(lang==='bm'?'Jenis Kerja':'Work Type')+'</label>';
+    s1+='<input class="form-input" id="pf-work-type" placeholder="'+(lang==='bm'?'Cth: Pembaikan':'e.g. Repair')+'" value="'+(draft.workType||'')+'"></div>';
+    s1+='<div class="form-group"><label class="form-label">PIC <span class="req">*</span></label>';
+    s1+='<input class="form-input" id="pf-pic" placeholder="'+(lang==='bm'?'Nama pegawai':'Officer name')+'" value="'+(draft.pic||'')+'"></div></div>';
+  } else {
+    s1+='<div class="form-group"><label class="form-label">PIC <span class="req">*</span></label>';
+    s1+='<input class="form-input" id="pf-pic" placeholder="'+(lang==='bm'?'Nama pegawai':'Officer name')+'" value="'+(draft.pic||'')+'"></div>';
+  }
+  document.getElementById('pf-content').innerHTML=s1;
+  document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →';
+}
 if(step===2){
   if(isS){
-    const stevType=draft.stevType||'routine';
-    const isRoutine=stevType==='routine';
-    const isEmergency=stevType==='emergency';
-    
-    // Build checklist based on type
-    const cargoLabel=draft.cargoType==='breakbulk'?'Breakbulk':draft.cargoType==='drybulk'?'Drybulk':draft.cargoType||'—';
-    
-    let checklistHTML='';
+    var stevType=draft.stevType||'routine';
+    var isRoutine=stevType==='routine';
+    var isEmergency=stevType==='emergency';
+    var cargoLabel=draft.cargoType==='breakbulk'?'Breakbulk':draft.cargoType==='drybulk'?'Drybulk':(draft.cargoType||'—');
+    var s2='<p style="font-size:12px;color:var(--text3);margin-bottom:14px">'
+      +(lang==='bm'?'Perisytiharan':'Declaration')+' — '
+      +stevType.charAt(0).toUpperCase()+stevType.slice(1)+' &middot; '+cargoLabel+'</p>';
+
     if(isRoutine){
-      // Routine: self-declaration checklist, auto-approve
-      checklistHTML=`
-        <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--success)">
-          ✓ ${lang==='bm'?'Routine — Terus diluluskan selepas self-declaration. Inspection oleh HSE & Supervisor.':'Routine — Auto-approved after self-declaration. Inspection by HSE & Supervisor.'}
-        </div>
-        <div style="font-size:13px;font-weight:600;margin-bottom:10px">${lang==='bm'?'Self-Declaration — Sila sahkan semua item:':'Self-Declaration — Please confirm all items:'}</div>
-        <div id="stev-checklist" style="display:flex;flex-direction:column;gap:8px">
-          ${[
-            {id:'sc1',bm:'Updated Risk Assessment (HIRARC) telah disediakan',en:'Updated Risk Assessment (HIRARC) has been prepared'},
-            {id:'sc2',bm:'Updated Environmental Aspect Impact (EAI) telah disediakan',en:'Updated Environmental Aspect Impact (EAI) has been prepared'},
-            {id:'sc3',bm:'Semua pekerja terlatih & mempunyai rekod Latihan dan Penilaian',en:'All workers trained & have Training and Assessment records'},
-            {id:'sc4',bm:'Kaedah kerja (Method) telah dipersetujui oleh klien',en:'Work method has been agreed upon by client'},
-            {id:'sc5',bm:'Telah disemak dan diluluskan oleh Operasi',en:'Reviewed and approved by Operations'},
-            {id:'sc6',bm:'Semua peralatan dalam keadaan baik (ada rekod penyelenggaraan)',en:'All equipment in good condition (maintenance records available)'},
-            {id:'sc7',bm:'Lifting equipment telah disahkan (jika berkaitan)',en:'Lifting equipment verified (if applicable)',optional:true},
-          ].map(item=>`<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px" id="stev-item-${item.id}">
-            <div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px">
-              <button class="stev-yes" data-iid="${item.id}" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer">Ya</button>
-              <button class="stev-no" data-iid="${item.id}" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer">Tidak</button>
-            </div>
-            <div>
-              <div style="font-size:13px;color:var(--text)">${lang==='bm'?item.bm:item.en}</div>
-              <div style="font-size:11px;color:var(--text3)">${lang==='bm'?item.en:item.bm}</div>
-              ${item.optional?'<span style="font-size:10px;color:var(--text3)">(Optional)</span>':''}
-            </div>
-          </div>`).join('')}
-        </div>`;
+      s2+='<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--success)">'
+        +'&#10003; '+(lang==='bm'?'Routine — Terus diluluskan selepas self-declaration. Inspection oleh HSE &amp; Supervisor.':'Routine — Auto-approved after self-declaration. Inspection by HSE &amp; Supervisor.')
+        +'</div>';
+      s2+='<div style="font-size:13px;font-weight:600;margin-bottom:10px">'+(lang==='bm'?'Self-Declaration — Sila sahkan semua item:':'Self-Declaration — Please confirm all items:')+'</div>';
+      s2+='<div id="stev-checklist" style="display:flex;flex-direction:column;gap:8px">';
+      var items=[
+        {id:'sc1',bm:'Updated Risk Assessment (HIRARC) telah disediakan',en:'Updated Risk Assessment (HIRARC) has been prepared'},
+        {id:'sc2',bm:'Updated Environmental Aspect Impact (EAI) telah disediakan',en:'Updated Environmental Aspect Impact (EAI) has been prepared'},
+        {id:'sc3',bm:'Semua pekerja terlatih & mempunyai rekod Latihan dan Penilaian',en:'All workers trained & have Training and Assessment records'},
+        {id:'sc4',bm:'Kaedah kerja (Method) telah dipersetujui oleh klien',en:'Work method has been agreed by client'},
+        {id:'sc5',bm:'Telah disemak dan diluluskan oleh Operasi',en:'Reviewed and approved by Operations'},
+        {id:'sc6',bm:'Semua peralatan dalam keadaan baik (ada rekod penyelenggaraan)',en:'All equipment in good condition (maintenance records available)'},
+        {id:'sc7',bm:'Lifting equipment telah disahkan (jika berkaitan — Breakbulk)',en:'Lifting equipment verified (if applicable — Breakbulk)',optional:true},
+      ];
+      items.forEach(function(item){
+        var prevYes=_stevCheck[item.id]===true;
+        var prevNo=_stevCheck[item.id]===false;
+        s2+='<div style="display:flex;align-items:flex-start;gap:10px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:8px" id="stev-item-'+item.id+'">';
+        s2+='<div style="display:flex;gap:6px;flex-shrink:0;margin-top:2px">';
+        s2+='<button class="stev-yes" data-iid="'+item.id+'" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid '+(prevYes?'var(--success)':'var(--border)')+';background:'+(prevYes?'rgba(16,185,129,.15)':'transparent')+';color:'+(prevYes?'var(--success)':'var(--text2)')+';font-size:11px;font-weight:600;cursor:pointer">Ya</button>';
+        s2+='<button class="stev-no" data-iid="'+item.id+'" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid '+(prevNo?'var(--danger)':'var(--border)')+';background:'+(prevNo?'rgba(239,68,68,.1)':'transparent')+';color:'+(prevNo?'var(--danger)':'var(--text2)')+';font-size:11px;font-weight:600;cursor:pointer">Tidak</button>';
+        s2+='</div><div>';
+        s2+='<div style="font-size:13px;color:var(--text)">'+(lang==='bm'?item.bm:item.en)+'</div>';
+        s2+='<div style="font-size:11px;color:var(--text3)">'+(lang==='bm'?item.en:item.bm)+'</div>';
+        if(item.optional) s2+='<span style="font-size:10px;color:var(--text3)">(Optional)</span>';
+        s2+='</div></div>';
+      });
+      s2+='</div>';
     } else {
-      // Non-Routine / Emergency: document submission status
-      checklistHTML=`
-        <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#fbbf24">
-          ${isEmergency?'⚡ Emergency':'⚠ Non-Routine'} — ${lang==='bm'?'Memerlukan kelulusan Operasi dan HSE.':'Requires Operations and HSE approval.'}
-        </div>
-        <div style="font-size:13px;font-weight:600;margin-bottom:10px">${lang==='bm'?'Status Dokumen — Sila nyatakan:':'Document Status — Please indicate:'}</div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          ${[
-            {id:'doc1',bm:'Risk Assessment (HIRARC)',en:'Risk Assessment (HIRARC)'},
-            {id:'doc2',bm:'Environmental Aspect Impact (EAI)',en:'Environmental Aspect Impact (EAI)'},
-            {id:'doc3',bm:'Method Statement',en:'Method Statement'},
-          ].map(doc=>`<div style="padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">
-            <div style="font-size:13px;color:var(--text);margin-bottom:8px">${lang==='bm'?doc.bm:doc.en}</div>
-            <div style="display:flex;gap:8px">
-              <button class="doc-status-btn" data-doc="${doc.id}" data-val="submitted" style="height:28px;padding:0 12px;border-radius:6px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;transition:all .2s">✓ ${lang==='bm'?'Telah Dihantar':'Submitted'}</button>
-              <button class="doc-status-btn" data-doc="${doc.id}" data-val="pending" style="height:28px;padding:0 12px;border-radius:6px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;transition:all .2s">⏳ ${lang==='bm'?'Belum Dihantar':'Not Yet Submitted'}</button>
-            </div>
-          </div>`).join('')}
-        </div>
-        <div class="form-group" style="margin-top:12px">
-          <label class="form-label">${lang==='bm'?'Catatan / Justifikasi':'Notes / Justification'}</label>
-          <textarea class="form-input" id="pf-doc-notes" style="min-height:60px" placeholder="${lang==='bm'?'Nyatakan sebab atau maklumat tambahan...':'State reason or additional information...'}">${draft.docNotes||''}</textarea>
-        </div>`;
+      s2+='<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#fbbf24">'
+        +(isEmergency?'&#9889; Emergency':'&#9888; Non-Routine')+' &mdash; '
+        +(lang==='bm'?'Memerlukan kelulusan Operasi dan HSE.':'Requires Operations and HSE approval.')
+        +'</div>';
+      s2+='<div style="font-size:13px;font-weight:600;margin-bottom:10px">'+(lang==='bm'?'Status Dokumen:':'Document Status:')+'</div>';
+      s2+='<div style="display:flex;flex-direction:column;gap:10px">';
+      var docs=[
+        {id:'doc1',bm:'Risk Assessment (HIRARC)',en:'Risk Assessment (HIRARC)'},
+        {id:'doc2',bm:'Environmental Aspect Impact (EAI)',en:'Environmental Aspect Impact (EAI)'},
+        {id:'doc3',bm:'Method Statement',en:'Method Statement'},
+      ];
+      docs.forEach(function(doc){
+        var prev=_docStatus[doc.id]||'';
+        s2+='<div style="padding:12px 14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px">';
+        s2+='<div style="font-size:13px;color:var(--text);margin-bottom:8px">'+(lang==='bm'?doc.bm:doc.en)+'</div>';
+        s2+='<div style="display:flex;gap:8px">';
+        s2+='<button class="doc-status-btn" data-doc="'+doc.id+'" data-val="submitted" style="height:28px;padding:0 12px;border-radius:6px;border:1.5px solid '+(prev==='submitted'?'var(--success)':'var(--border)')+';background:'+(prev==='submitted'?'rgba(16,185,129,.15)':'transparent')+';color:'+(prev==='submitted'?'var(--success)':'var(--text2)')+';font-size:11px;cursor:pointer">&#10003; '+(lang==='bm'?'Telah Dihantar':'Submitted')+'</button>';
+        s2+='<button class="doc-status-btn" data-doc="'+doc.id+'" data-val="pending" style="height:28px;padding:0 12px;border-radius:6px;border:1.5px solid '+(prev==='pending'?'var(--warning)':'var(--border)')+';background:'+(prev==='pending'?'rgba(245,158,11,.1)':'transparent')+';color:'+(prev==='pending'?'#fbbf24':'var(--text2)')+';font-size:11px;cursor:pointer">&#9203; '+(lang==='bm'?'Belum Dihantar':'Not Yet Submitted')+'</button>';
+        s2+='</div></div>';
+      });
+      s2+='</div>';
+      s2+='<div class="form-group" style="margin-top:12px"><label class="form-label">'+(lang==='bm'?'Catatan / Justifikasi':'Notes / Justification')+'</label>';
+      s2+='<textarea class="form-input" id="pf-doc-notes" style="min-height:60px" placeholder="'+(lang==='bm'?'Nyatakan sebab atau maklumat tambahan...':'State reason or additional information...')+'">'+(draft.docNotes||'')+'</textarea></div>';
     }
-    
-    document.getElementById('pf-content').innerHTML=`
-      <p style="font-size:12px;color:var(--text3);margin-bottom:14px">
-        ${lang==='bm'?'Perisytiharan':'Declaration'} — ${stevType.charAt(0).toUpperCase()+stevType.slice(1)} · ${cargoLabel}
-      </p>
-      ${checklistHTML}`;
-    document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Submit →':'Submit →';
+    document.getElementById('pf-content').innerHTML=s2;
+    document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Submit &#10140;':'Submit &#10140;';
   } else {
     const tt=Object.entries(PTYPES).filter(([,v])=>v.track===tr);
-    document.getElementById('pf-content').innerHTML=`<p style="font-size:12px;color:var(--text3);margin-bottom:14px">${lang==='bm'?'Jenis Aktiviti':'Activity Types'} — Track ${tr}</p><div class="check-grid">${tt.map(([k,v])=>`<div class="check-item${(draft.activityTypes||[]).includes(k)?' selected':''}" onclick="toggleAct('${k}',this)"><div class="check-icon">${(draft.activityTypes||[]).includes(k)?'✓':''}</div><span>${lang==='bm'?v.bm:v.en}</span>${v.hr?'<span style="font-size:9px;color:var(--danger);margin-left:auto">⚠</span>':''}</div>`).join('')}</div>`;
+    document.getElementById('pf-content').innerHTML='<p style="font-size:12px;color:var(--text3);margin-bottom:14px">'+(lang==='bm'?'Jenis Aktiviti':'Activity Types')+' &mdash; Track '+tr+'</p>'
+      +'<div class="check-grid">'+tt.map(function([k,v]){
+        var sel=(draft.activityTypes||[]).includes(k);
+        return '<div class="check-item'+(sel?' selected':'')+'" data-act="'+k+'" class2="check-toggle"><div class="check-icon">'+(sel?'&#10003;':'')+'</div><span>'+(lang==='bm'?v.bm:v.en)+'</span>'+(v.hr?'<span style="font-size:9px;color:var(--danger);margin-left:auto">&#9888;</span>':'')+'</div>';
+      }).join('')+'</div>';
     document.getElementById('btn-pf-txt').textContent=lang==='bm'?'Seterusnya →':'Next →';
   }
 }
@@ -2525,6 +2518,9 @@ document.addEventListener('click',function(e){
     viewDuringRound(e.target.dataset.pid,e.target.dataset.ikey,parseInt(e.target.dataset.ridx));
   } else if(e.target.classList.contains('reply-submit-btn')){
     submitReply(e.target.dataset.permitId,parseInt(e.target.dataset.tidx),e.target.dataset.inputId);
+  } else if(e.target.closest('.check-item[data-act]')){
+    var actEl=e.target.closest('.check-item[data-act]');
+    if(actEl) toggleAct(actEl.dataset.act, actEl);
   } else if(e.target.classList.contains('sel-result-btn')){
     selectResult(e.target.dataset.itemId,e.target.dataset.val,e.target);
   } else if(e.target.classList.contains('open-shift-insp-btn')){
@@ -2731,6 +2727,560 @@ async function _submitStevedorePermit(){
 
 // Update renderApprovalsPage to include pending_op_s and pending_hse_s
 
+
+window.openClosureFlow=function(permitId){
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+  const r=currentData?.role;
+
+  // Determine which closure step this user is doing
+  let step, checklist, title, btnLabel, nextStatus;
+  if(p.status==='approved'&&(p.submittedBy===currentData?.uid||r==='contractor'||r==='stevedore')){
+    step='contractor';
+    checklist=SITE_CLEARANCE_CHECKLIST;
+    title=lang==='bm'?'Perisytiharan Kerja Selesai (Site Clearance)':'Work Completion Declaration (Site Clearance)';
+    btnLabel=lang==='bm'?'✓ Hantar Perisytiharan':'✓ Submit Declaration';
+    nextStatus='pending_closure_hod';
+  } else if(p.status==='pending_closure_hod'&&(r==='hod'||r==='admin')){
+    step='hod';
+    checklist=HOD_CLOSURE_CHECKLIST;
+    title=lang==='bm'?'Post Inspection — HOD/Process Owner':'Post Inspection — HOD/Process Owner';
+    btnLabel=lang==='bm'?'✓ Acknowledge & Hantar ke HSE':'✓ Acknowledge & Forward to HSE';
+    nextStatus='pending_closure_hse';
+  } else if(p.status==='pending_closure_hse'&&(r==='hse'||r==='admin')){
+    step='hse';
+    checklist=HSE_CLOSURE_CHECKLIST;
+    title=lang==='bm'?'Final Acknowledgement — HSE Officer':'Final Acknowledgement — HSE Officer';
+    btnLabel=lang==='bm'?'🔒 Tutup Permit Secara Rasmi':'🔒 Officially Close Permit';
+    nextStatus='closed';
+  } else return;
+
+  const overlay=document.createElement('div');
+  overlay.id='closure-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+
+  // Previous closure entries for context
+  const prevClosure=p.closure||{};
+  let contextHtml='';
+  if(step==='hod'&&prevClosure.contractor){
+    contextHtml+='<div style="background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:12px 14px;margin-bottom:16px">'
+      +'<div style="font-size:11px;color:var(--success);font-family:var(--mono);margin-bottom:6px">✓ PERISYTIHARAN KONTRAKTOR — '+(prevClosure.contractor.submittedBy||'')+' · '+fmtDate(prevClosure.contractor.at)+'</div>'
+      +SITE_CLEARANCE_CHECKLIST.map(function(item){
+        const ans=(prevClosure.contractor.items||{})[item.id];
+        return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px"><span style="color:var(--text2)">'+(lang==='bm'?item.bm:item.en)+'</span><span style="color:'+(ans?'var(--success)':'var(--danger)')+';font-weight:600">'+(ans?'✓ Ya':'✗ Tidak')+'</span></div>';
+      }).join('')
+      +(prevClosure.contractor.remarks?'<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">Remarks: '+prevClosure.contractor.remarks+'</div>':'')
+      +'</div>';
+  }
+  if(step==='hse'&&prevClosure.hod){
+    contextHtml+='<div style="background:rgba(37,99,235,.05);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:12px 14px;margin-bottom:16px">'
+      +'<div style="font-size:11px;color:var(--accent2);font-family:var(--mono);margin-bottom:6px">✓ POST INSPECTION HOD — '+(prevClosure.hod.submittedBy||'')+' · '+fmtDate(prevClosure.hod.at)+'</div>'
+      +HOD_CLOSURE_CHECKLIST.map(function(item){
+        const ans=(prevClosure.hod.items||{})[item.id];
+        return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12px"><span style="color:var(--text2)">'+(lang==='bm'?item.bm:item.en)+'</span><span style="color:'+(ans?'var(--success)':'var(--danger)')+';font-weight:600">'+(ans?'✓ Ya':'✗ Tidak')+'</span></div>';
+      }).join('')
+      +(prevClosure.hod.remarks?'<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">Remarks: '+prevClosure.hod.remarks+'</div>':'')
+      +'</div>';
+  }
+
+  // Build checklist
+  const checklistHtml=checklist.map(function(item){
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="display:flex;gap:6px;margin-top:2px">'
+      +'<button class="cls-yes" data-iid="'+item.id+'" id="cls-yes-'+item.id+'" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">Ya</button>'
+      +'<button class="cls-no" data-iid="'+item.id+'" id="cls-no-'+item.id+'" style="height:26px;padding:0 10px;border-radius:4px;border:1.5px solid var(--border);background:transparent;color:var(--text2);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s">Tidak</button>'
+      +'</div>'
+      +'<div><div style="font-size:13px;color:var(--text)">'+(lang==='bm'?item.bm:item.en)+'</div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+(lang==='bm'?item.en:item.bm)+'</div></div>'
+      +'</div>';
+  }).join('');
+
+  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:600px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
+    +'<div><div style="font-size:15px;font-weight:600">'+title+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.permitNo||'—')+' — '+(p.projectName||p.vesselName||'—')+'</div></div>'
+    +'<button id="btn-close-closure" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">✕</button>'
+    +'</div>'
+    +'<div style="padding:20px">'
+    +contextHtml
+    +(step!=='contractor'?'':'<div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#fbbf24">⚠ '+(lang==='bm'?'Pastikan semua kerja pembersihan dan pemulihan tapak telah selesai sebelum menghantar perisytiharan ini.':'Ensure all site cleanup and restoration work is complete before submitting this declaration.')+'</div>')
+    +'<div id="closure-checklist">'+checklistHtml+'</div>'
+    +'<div class="form-group" style="margin-top:16px">'
+    +'<label class="form-label">'+(lang==='bm'?'Remarks / Catatan':'Remarks / Notes')+' <span style="color:var(--text3);font-weight:400">('+( lang==='bm'?'pilihan':'optional')+')</span></label>'
+    +'<textarea class="form-input" id="closure-remarks" style="min-height:80px" placeholder="'+(lang==='bm'?'Tambah catatan jika perlu...':'Add notes if needed...')+'"></textarea>'
+    +'</div>'
+    +'<div id="closure-err" class="alert alert-error" style="display:none;margin-top:8px"></div>'
+    +'</div>'
+    +'<div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end">'
+    +'<button id="btn-cancel-closure" style="height:38px;padding:0 16px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">'+(lang==='bm'?'Batal':'Cancel')+'</button>'
+    +'<button id="btn-submit-closure" style="height:38px;padding:0 20px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">'+btnLabel+'</button>'
+    +'</div>'
+    +'</div>';
+
+  document.body.appendChild(overlay);
+
+  // Wire buttons
+  document.getElementById('btn-close-closure').onclick=function(){overlay.remove();};
+  document.getElementById('btn-cancel-closure').onclick=function(){overlay.remove();};
+  document.getElementById('btn-submit-closure').onclick=function(){submitClosure(permitId,step,checklist,nextStatus,overlay);};
+};
+
+window.openInspectionReport=function(permitId){
+  const p=allPermits.find(x=>x.id===permitId);
+  if(!p)return;
+  const insp=p.inspections||{};
+  const cl=getChecklistForPermit(p);
+
+  const buildStageReport=function(stageData,stageName,items){
+    if(!stageData||!stageData.submittedAt) return '<div style="font-size:12px;color:var(--text3);padding:8px 0">'+(lang==='bm'?'Belum dibuat':'Not completed yet')+'</div>';
+    let h='<div style="margin-bottom:8px;font-size:11px;color:var(--text3)">'
+      +stageData.submittedBy+' · '+new Date(stageData.submittedAt).toLocaleString(lang==='bm'?'ms-MY':'en-MY',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
+      +(stageData.hasIssues?' <span style="color:var(--danger)">🚩 '+(lang==='bm'?'Ada Isu':'Issues Found')+'</span>':'')+'</div>';
+    if(stageData.overallRemark) h+='<div style="background:rgba(37,99,235,.08);border-left:3px solid var(--accent);border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text2)">📝 '+stageData.overallRemark+'</div>';
+    h+='<div style="display:flex;flex-direction:column;gap:6px">';
+    items.forEach(function(item){
+      const res=(stageData.items&&stageData.items[item.id])||{};
+      const col=res.result==='ok'?'#34d399':res.result==='nc'?'#f87171':res.result==='attention'?'#fbbf24':'#64748b';
+      const bg=res.result==='nc'?'rgba(239,68,68,.06)':res.result==='attention'?'rgba(245,158,11,.06)':res.result==='ok'?'rgba(16,185,129,.04)':'var(--bg2)';
+      h+='<div style="background:'+bg+';border:1px solid var(--border);border-radius:6px;padding:8px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px">';
+      h+='<div style="flex:1"><div style="font-size:12px;color:var(--text)">'+(lang==='bm'?item.itemBM:item.item)+'</div>';
+      if(res.remark) h+='<div style="font-size:11px;color:var(--warning);margin-top:3px;font-style:italic">⚠ '+res.remark+'</div>';
+      h+='</div>';
+      if(res.result) h+='<span style="color:'+col+';font-size:10px;font-weight:600;font-family:var(--mono);white-space:nowrap;flex-shrink:0">'+res.result.toUpperCase()+'</span>';
+      h+='</div>';
+    });
+    h+='</div>';
+    return h;
+  }
+
+  const buildInspectorReport=function(inspData,label){
+    if(!inspData)return'<div style="font-size:12px;color:var(--text3);padding:10px">'+(lang==='bm'?'Tiada data inspection':'No inspection data')+'</div>';
+    const rounds=Array.isArray(inspData.during)?inspData.during:[];
+    let h='';
+
+    // Pre-Work
+    h+='<div style="margin-bottom:14px">';
+    h+='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">';
+    h+=INSP_STAGE_LABELS[lang].pre+(inspData.pre?.submittedAt?'<span class="status s-approved" style="font-size:10px">✓</span>':'<span style="font-size:10px;color:var(--text3)">'+(lang==='bm'?'Belum':'Pending')+'</span>')+'</div>';
+    h+=buildStageReport(inspData.pre,'pre',cl.pre||[]);
+    h+='</div>';
+
+    // During — all rounds
+    h+='<div style="margin-bottom:14px">';
+    h+='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px">'+INSP_STAGE_LABELS[lang].during+' ('+rounds.length+' '+(lang==='bm'?'rondaan':'rounds')+')</div>';
+    if(rounds.length){
+      rounds.forEach(function(rd,i){
+        const hasIssue=rd.hasIssues;
+        h+='<div style="border:1px solid '+(hasIssue?'rgba(239,68,68,.3)':'var(--border)')+';border-radius:8px;margin-bottom:10px;overflow:hidden">';
+        h+='<div style="padding:8px 12px;background:'+(hasIssue?'rgba(239,68,68,.06)':'var(--bg3)')+';display:flex;align-items:center;justify-content:space-between">';
+        h+='<div style="font-size:12px;font-weight:600">'+(lang==='bm'?'Rondaan':'Round')+' '+(i+1)+(hasIssue?' 🚩':'')+'</div>';
+        h+='<div style="font-size:11px;color:var(--text3)">'+(rd.submittedBy||'')+' · '+(rd.submittedAt?new Date(rd.submittedAt).toLocaleString(lang==='bm'?'ms-MY':'en-MY',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'')+'</div>';
+        h+='</div>';
+        h+='<div style="padding:10px 12px">'+buildStageReport(rd,'during',cl.during||[])+'</div>';
+        h+='</div>';
+      });
+    } else {
+      h+='<div style="font-size:12px;color:var(--text3);padding:8px 0">'+(lang==='bm'?'Belum ada rondaan':'No rounds yet')+'</div>';
+    }
+    h+='</div>';
+
+    // Post-Work
+    h+='<div style="margin-bottom:14px">';
+    h+='<div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:8px;display:flex;align-items:center;gap:6px">';
+    h+=INSP_STAGE_LABELS[lang].post+(inspData.post?.submittedAt?'<span class="status s-approved" style="font-size:10px">✓</span>':'<span style="font-size:10px;color:var(--text3)">'+(lang==='bm'?'Belum':'Pending')+'</span>')+'</div>';
+    h+=buildStageReport(inspData.post,'post',cl.post||[]);
+    h+='</div>';
+    return h;
+  }
+
+  // Build full report overlay
+  const overlay=document.createElement('div');
+  overlay.id='insp-report-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+
+  let body='';
+
+  // Inspector 1
+  const i1Label=p.track==='A'?(lang==='bm'?'Inspector 1 — Supervisor':'Inspector 1 — Supervisor'):(lang==='bm'?'Inspector 1 — Wakil Operasi':'Inspector 1 — Operations Rep');
+  body+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px">';
+  body+='<div style="font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">'+i1Label+'</div>';
+  body+=buildInspectorReport(insp.inspector1||null,'inspector1');
+  body+='</div>';
+
+  // Inspector 2 — HSE
+  body+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px">';
+  body+='<div style="font-size:13px;font-weight:600;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">Inspector 2 — HSE Officer</div>';
+  body+=buildInspectorReport(insp.inspector2||null,'inspector2');
+  body+='</div>';
+
+  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:700px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
+    +'<div><div style="font-size:15px;font-weight:600">&#128203; Inspection Report &#8212; '+(p.permitNo||'&#8212;')+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.projectName||p.vesselName||'&#8212;')+' &#183; '+(p.location||'&#8212;')+'</div></div>'
+    +'<button id="btn-close-report" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">&#10005;</button>'
+    +'</div>'
+    +'<div style="padding:12px 20px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">'
+    +'<div style="font-size:12px;color:var(--text3)">'+(lang==='bm'?'Laporan Inspection Permit':'Permit Inspection Report')+' — '+(new Date().toLocaleDateString(lang==='bm'?'ms-MY':'en-MY',{day:'2-digit',month:'long',year:'numeric'}))+'</div>'
+    +'<button id="btn-pdf-report" style="height:32px;padding:0 14px;background:var(--danger);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px">&#128196; '+(lang==='bm'?'Muat Turun PDF':'Download PDF')+'</button>'
+    +'</div>'
+    +'<div style="padding:20px" id="insp-report-body">'+body+'</div>'
+    +'</div>';
+
+  document.body.appendChild(overlay);
+  var closeBtn=document.getElementById('btn-close-report');
+  if(closeBtn) closeBtn.onclick=function(){var o=document.getElementById('insp-report-overlay');if(o)o.remove();};
+  // Add PDF download button
+  var pdfBtn=document.getElementById('btn-pdf-report');
+  if(pdfBtn) pdfBtn.onclick=function(){downloadInspectionPDF(permitId);};
+};
+
+function buildShiftTable(p){
+  const shifts=p.shiftSchedule||[];
+  if(!shifts.length) return '';
+  const completed=shifts.filter(s=>s.status==='completed').length;
+  const canManage=(p.submittedBy===currentData?.uid||['admin','hse'].includes(currentData?.role));
+
+  let html='<div class="detail-item detail-full">'
+    +'<div class="detail-label" style="margin-bottom:8px">'
+    +(lang==='bm'?'Jadual Shift Operasi':'Operation Shift Schedule')
+    +' <span style="font-size:10px;color:var(--text3)">('+completed+'/'+shifts.length+' '+(lang==='bm'?'selesai':'completed')+')</span>'
+    +'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:4px">';
+
+  shifts.forEach(function(s,i){
+    const isDone=s.status==='completed';
+    const isCancelled=s.status==='cancelled';
+    const bg=isDone?'rgba(16,185,129,.06)':isCancelled?'rgba(148,163,184,.05)':'var(--bg3)';
+    const border=isDone?'rgba(16,185,129,.2)':isCancelled?'var(--border)':'var(--border)';
+    html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:'+bg+';border:1px solid '+border+';border-radius:6px">'
+      +'<span style="font-size:11px;font-family:var(--mono);color:var(--text3);width:16px">'+s.shiftNum+'</span>'
+      +'<span style="font-size:11px;font-weight:500;color:var(--text);flex:1">'+s.shiftLabel+' <span style="color:var(--text3)">'+s.shiftTime+'</span></span>'
+      +'<span style="font-size:11px;color:var(--text3);font-family:var(--mono)">'+s.date+'</span>'
+      +'<span style="font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;'
+        +(isDone?'background:rgba(16,185,129,.15);color:var(--success)':isCancelled?'background:rgba(148,163,184,.1);color:var(--text3)':'background:rgba(37,99,235,.1);color:var(--accent2)')+'">'+
+        (isDone?(lang==='bm'?'Selesai':'Done'):isCancelled?(lang==='bm'?'Dibatal':'Cancelled'):(lang==='bm'?'Dijadualkan':'Scheduled'))+'</span>'
+      +(canManage&&!isDone&&!isCancelled?'<button class="shift-done-btn" data-pid="'+p.id+'" data-sidx="'+i+'" style="height:22px;padding:0 8px;border:none;background:rgba(16,185,129,.15);color:var(--success);border-radius:4px;cursor:pointer;font-size:10px">✓</button>':'')
+      +(canManage&&!isCancelled?'<button class="shift-cancel-btn" data-pid="'+p.id+'" data-sidx="'+i+'" style="height:22px;padding:0 8px;border:none;background:rgba(239,68,68,.1);color:var(--danger);border-radius:4px;cursor:pointer;font-size:10px">✕</button>':'')
+      +'</div>';
+  });
+
+  // Add shift button
+  if(canManage){
+    html+='<button class="add-shift-btn" data-pid="'+p.id+'" style="margin-top:6px;width:100%;height:32px;border:1px dashed var(--border2);background:transparent;color:var(--accent2);border-radius:6px;cursor:pointer;font-size:12px">+ '+(lang==='bm'?'Tambah Shift':'Add Shift')+'</button>';
+  }
+  html+='</div></div>';
+  return html;
+}
+
+
+window.openLocationConfig=function(){
+  const overlay=document.createElement('div');
+  overlay.id='loc-config-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+
+  const listHtml=LOCS.map(function(loc,i){
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px">'
+      +'<span style="flex:1;font-size:13px;color:var(--text)">'+loc+'</span>'
+      +'<button data-loc-idx="'+i+'" class="loc-del-btn" style="height:24px;padding:0 8px;border:none;background:rgba(239,68,68,.1);color:#f87171;border-radius:4px;cursor:pointer;font-size:11px">✕</button>'
+      +'</div>';
+  }).join('');
+
+  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.5)">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)">'
+    +'<span style="font-size:15px;font-weight:600">📍 '+(lang==='bm'?'Konfigurasi Lokasi':'Location Configuration')+'</span>'
+    +'<button id="btn-close-loc" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer">✕</button>'
+    +'</div>'
+    +'<div style="padding:16px 20px;max-height:400px;overflow-y:auto">'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+(lang==='bm'?'Senarai lokasi yang tersedia dalam borang permit:':'List of locations available in permit forms:')+'</div>'
+    +'<div id="loc-list">'+listHtml+'</div>'
+    +'<div style="display:flex;gap:8px;margin-top:12px">'
+    +'<input class="form-input" id="loc-new-input" placeholder="'+(lang==='bm'?'Nama lokasi baru...':'New location name...')+'" style="height:36px;font-size:13px">'
+    +'<button id="btn-add-loc" style="height:36px;padding:0 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap">+ '+(lang==='bm'?'Tambah':'Add')+'</button>'
+    +'</div>'
+    +'</div>'
+    +'<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end">'
+    +'<button id="btn-reset-loc" style="height:36px;padding:0 14px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:12px">'+(lang==='bm'?'Reset Default':'Reset Default')+'</button>'
+    +'<button id="btn-save-loc" style="height:36px;padding:0 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">✓ '+(lang==='bm'?'Simpan':'Save')+'</button>'
+    +'</div>'
+    +'</div>';
+
+  document.body.appendChild(overlay);
+
+  // Wire buttons
+  document.getElementById('btn-close-loc').onclick=function(){overlay.remove();};
+
+  document.getElementById('btn-add-loc').onclick=function(){
+    const input=document.getElementById('loc-new-input');
+    const val=input.value.trim();
+    if(!val)return;
+    LOCS.push(val);
+    refreshLocList();
+    input.value='';
+  };
+
+  document.getElementById('btn-reset-loc').onclick=function(){
+    if(confirm(lang==='bm'?'Reset kepada senarai lokasi default?':'Reset to default location list?')){
+      LOCS=[...DEFAULT_LOCS];
+      refreshLocList();
+    }
+  };
+
+  document.getElementById('btn-save-loc').onclick=async function(){
+    const btn=document.getElementById('btn-save-loc');
+    btn.disabled=true;btn.textContent=lang==='bm'?'Menyimpan...':'Saving...';
+    try{
+      await setDoc(doc(db,'config','locations'),{list:LOCS,updatedBy:currentData.name,updatedAt:new Date().toISOString()});
+      overlay.remove();
+      showToast(lang==='bm'?'✓ Senarai lokasi disimpan.':'✓ Location list saved.','success');
+    }catch(e){
+      btn.disabled=false;btn.textContent='✓ '+(lang==='bm'?'Simpan':'Save');
+      showToast('Error saving','error');
+    }
+  };
+
+  // Event delegation for delete buttons
+  document.getElementById('loc-list').addEventListener('click',function(e){
+    if(e.target.classList.contains('loc-del-btn')){
+      const idx=parseInt(e.target.dataset.locIdx);
+      LOCS.splice(idx,1);
+      refreshLocList();
+    }
+  });
+
+  function refreshLocList(){
+    document.getElementById('loc-list').innerHTML=LOCS.map(function(loc,i){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;margin-bottom:6px">'
+        +'<span style="flex:1;font-size:13px;color:var(--text)">'+loc+'</span>'
+        +'<button data-loc-idx="'+i+'" class="loc-del-btn" style="height:24px;padding:0 8px;border:none;background:rgba(239,68,68,.1);color:#f87171;border-radius:4px;cursor:pointer;font-size:11px">✕</button>'
+        +'</div>';
+    }).join('');
+  }
+};
+
+window.markShiftDone=async function(permitId,shiftIdx){
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const schedule=[...(p.shiftSchedule||[])];
+  schedule[shiftIdx]={...schedule[shiftIdx],status:'completed',completedAt:new Date().toISOString(),completedBy:currentData.name};
+  await updateDoc(doc(db,'permits',permitId),{shiftSchedule:schedule});
+  viewPermit(permitId);
+  showToast(lang==='bm'?'✓ Shift ditanda selesai.':'✓ Shift marked complete.','success');
+};
+
+window.cancelShift=async function(permitId,shiftIdx){
+  if(!confirm(lang==='bm'?'Batalkan shift ini?':'Cancel this shift?'))return;
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const schedule=[...(p.shiftSchedule||[])];
+  schedule[shiftIdx]={...schedule[shiftIdx],status:'cancelled'};
+  await updateDoc(doc(db,'permits',permitId),{shiftSchedule:schedule});
+  viewPermit(permitId);
+  showToast(lang==='bm'?'Shift dibatalkan.':'Shift cancelled.','info');
+};
+
+window.addShiftToPermit=async function(permitId){
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const schedule=[...(p.shiftSchedule||[])];
+  const lastShift=schedule[schedule.length-1];
+  const shiftOrder=['shift1','shift2','shift3'];
+  const lastIdx=shiftOrder.indexOf(lastShift?.shiftId||'shift1');
+  const nextIdx=(lastIdx+1)%3;
+  const sh=SHIFTS[nextIdx];
+  const lastDate=new Date(lastShift?.date||new Date());
+  if(nextIdx<=lastIdx) lastDate.setDate(lastDate.getDate()+1);
+  const newShift={
+    shiftNum:schedule.length+1,
+    shiftId:sh.id,shiftLabel:sh.label,shiftTime:sh.time,
+    date:lastDate.toISOString().slice(0,10),
+    status:'scheduled'
+  };
+  schedule.push(newShift);
+  await updateDoc(doc(db,'permits',permitId),{shiftSchedule:schedule,shiftCount:schedule.length});
+  viewPermit(permitId);
+  showToast(lang==='bm'?'✓ Shift baru ditambah.':'✓ Shift added.','success');
+};
+
+window.openShiftInspection=function(permitId,shiftIdx){
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const shift=(p.shiftSchedule||[])[shiftIdx];if(!shift)return;
+  const r=currentData?.role;
+  const isHSE=r==='hse';
+  const inspKey=isHSE?'inspector2':'inspector1';
+
+  // Check if this shift already inspected
+  const insp=p.inspections||{};
+  const myInsp=insp[inspKey]||{};
+  const shiftInspections=Array.isArray(myInsp.during)?myInsp.during:[];
+  const alreadyInspected=shiftInspections.find(function(rd){return rd.shiftIdx===shiftIdx;});
+  const alreadyInspectedIdx=alreadyInspectedIdx;
+
+  // Open inspection with shift context
+  const overlay=document.createElement('div');
+  overlay.id='insp-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+
+  const cl=getChecklistForPermit(p);
+  const items=cl.during||[];
+
+  let checklistHtml='<div style="background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.2);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--accent2)">'
+    +'📅 '+shift.shiftLabel+' ('+shift.shiftTime+') — '+shift.date
+    +(alreadyInspected?' <span style="color:var(--warning)">⚠ '+(lang==='bm'?'Sudah diinspect':'Already inspected')+'</span>':'')
+    +'</div>';
+
+  if(alreadyInspected){
+    checklistHtml+='<div style="text-align:center;padding:20px;color:var(--text3);">';
+    checklistHtml+=(lang==='bm'?'Inspection untuk shift ini sudah dilakukan oleh ':'Inspection for this shift already done by ');
+    checklistHtml+=alreadyInspected.submittedBy+' pada '+fmtDate(alreadyInspected.submittedAt);
+    checklistHtml+='</div>';
+    checklistHtml+='<div style="text-align:center;margin-top:12px">';
+    checklistHtml+='<button id="btn-view-already-insp" style="height:36px;padding:0 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px">&#128065; '+(lang==='bm'?'Lihat Hasil':'View Result')+'</button>';
+    checklistHtml+='</div>';
+  } else {
+    items.forEach(function(item){
+      checklistHtml+='<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px">'
+        +'<div style="font-size:13px;font-weight:500;margin-bottom:4px">'+(lang==='bm'?item.itemBM:item.item)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+(lang==='bm'?item.item:item.itemBM)+'</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'
+        +[{v:'ok',label:item.options?.[0]||'OK',c:'#34d399',bg:'rgba(16,185,129,.15)'},{v:'nc',label:item.options?.[1]||'Tidak',c:'#f87171',bg:'rgba(239,68,68,.15)'},{v:'attention',label:'⚠',c:'#fbbf24',bg:'rgba(245,158,11,.15)'},{v:'na',label:'N/A',c:'#64748b',bg:'rgba(148,163,184,.1)'}].map(function(opt){return '<button class="sel-result-btn" data-item-id="'+item.id+'" data-val="'+opt.v+'" id="btn-res-'+item.id+'-'+opt.v+'" style="padding:5px 12px;border-radius:6px;border:2px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;transition:all .2s">'+opt.label+'</button>';}).join('')
+        +'</div>'
+        +'<div id="remark-wrap-'+item.id+'" style="display:none"><input class="form-input" id="remark-'+item.id+'" placeholder="'+(lang==='bm'?'Nyatakan pemerhatian...':'State observation...')+'" style="height:36px;font-size:12px"></div>'
+        +'</div>';
+    });
+    checklistHtml+='<div class="form-group"><label class="form-label">'+(lang==='bm'?'Catatan Umum':'General Remarks')+'</label>'
+      +'<textarea class="form-input" id="insp-overall-remark" style="min-height:60px" placeholder="'+(lang==='bm'?'Catatan keseluruhan...':'Overall notes...')+'"></textarea></div>'
+      +'<div style="display:flex;gap:8px;margin-top:12px">'
+      +'<button id="btn-insp-cancel" style="flex:1;height:40px;border:1px solid var(--border2);background:transparent;color:var(--text2);border-radius:8px;cursor:pointer;font-size:13px">'+(lang==='bm'?'Batal':'Cancel')+'</button>'
+      +'<button id="btn-submit-stage" class="btn-submit-shift-insp" data-pid="\'+permitId+\'" data-ikey="\'+inspKey+\'" data-sidx="\'+shiftIdx+\'" style="flex:2;height:40px;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600">&#10003; \'+(lang===\'bm\'?\'Submit Inspection Shift \'+shift.shiftNum:\'Submit Shift \'+shift.shiftNum+\' Inspection\')+\'</button>'
+      +'</div>';
+  }
+
+  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:640px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
+    +'<div><div style="font-size:15px;font-weight:600">📋 '+shift.shiftLabel+' Inspection — '+(p.permitNo||'—')+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.vesselName||'—')+' · '+(p.location||'—')+'</div></div>'
+    +'<button id="btn-close-insp-overlay" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer">✕</button>'
+    +'</div>'
+    +'<div style="padding:20px">'+checklistHtml+'</div>'
+    +'</div>';
+
+  document.body.appendChild(overlay);
+  // Wire the view-already-inspection button
+  setTimeout(function(){
+    var vBtn=document.getElementById('btn-view-already-insp');
+    if(vBtn) vBtn.onclick=function(){
+      var ov=document.getElementById('insp-overlay');if(ov)ov.remove();
+      viewDuringRound(permitId,inspKey,alreadyInspectedIdx);
+    };
+    var cBtn=document.getElementById('btn-insp-cancel');
+    if(cBtn) cBtn.onclick=function(){var ov=document.getElementById('insp-overlay');if(ov)ov.remove();};
+    var sBtn=document.getElementById('btn-submit-stage');
+    if(sBtn) sBtn.onclick=function(){submitShiftInspection(sBtn.dataset.pid,sBtn.dataset.ikey,parseInt(sBtn.dataset.sidx));};
+  },50);
+};
+
+window.openShiftInspectionSelector=function(permitId){
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const r=currentData?.role;
+  const isHSE=r==='hse';
+  const inspKey=isHSE?'inspector2':'inspector1';
+  const insp=p.inspections||{};
+  const myInsp=insp[inspKey]||{};
+  const rounds=Array.isArray(myInsp.during)?myInsp.during:[];
+
+  const overlay=document.createElement('div');
+  overlay.id='insp-overlay';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(4px);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto';
+
+  const shifts=p.shiftSchedule||[];
+  const shiftsHtml=shifts.map(function(s,i){
+    const inspected=rounds.find(function(rd){return rd.shiftIdx===i;});
+    const isDone=s.status==='completed';
+    const isCancelled=s.status==='cancelled';
+    const bg=inspected?'rgba(16,185,129,.06)':isCancelled?'rgba(148,163,184,.05)':'var(--bg2)';
+    const border=inspected?'rgba(16,185,129,.2)':isCancelled?'var(--border)':'var(--border)';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:'+bg+';border:1px solid '+border+';border-radius:8px;margin-bottom:8px;cursor:'+(isCancelled?'default':'pointer')+'"'
+      +(isCancelled?'':' class="open-shift-insp-btn" data-pid="'+permitId+'" data-sidx="'+i+'"')+'>'  
+      +'<div style="width:32px;height:32px;border-radius:50%;background:'+(inspected?'rgba(16,185,129,.2)':isCancelled?'var(--bg3)':'rgba(37,99,235,.15)')+';display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">'+(inspected?'✅':isCancelled?'✕':'👁')+'</div>'
+      +'<div style="flex:1">'
+      +'<div style="font-size:13px;font-weight:500;color:var(--text)">'+s.shiftLabel+' <span style="font-size:11px;font-weight:400;color:var(--text3)">'+s.shiftTime+'</span></div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+s.date+(inspected?' · Inspected by '+inspected.submittedBy:'')+'</div>'
+      +(inspected&&inspected.hasIssues?'<div style="font-size:11px;color:var(--danger);margin-top:2px">🚩 '+(lang==='bm'?'Ada Isu Ditemui':'Issues Found')+'</div>':'')
+      +'</div>'
+      +'<span style="font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600;background:'+(inspected?'rgba(16,185,129,.15)':isCancelled?'rgba(148,163,184,.1)':'rgba(37,99,235,.1)')+';color:'+(inspected?'var(--success)':isCancelled?'var(--text3)':'var(--accent2)')+'">'+
+      (inspected?(lang==='bm'?'Selesai':'Done'):isCancelled?(lang==='bm'?'Dibatal':'Cancelled'):(lang==='bm'?'Buat Sekarang':'Inspect Now'))+'</span>'
+      +'</div>';
+  }).join('');
+
+  overlay.innerHTML='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;width:100%;max-width:560px;box-shadow:0 20px 60px rgba(0,0,0,.5);margin:auto">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card);border-radius:16px 16px 0 0;z-index:1">'
+    +'<div><div style="font-size:15px;font-weight:600">📋 '+(lang==='bm'?'Pilih Shift untuk Inspection':'Select Shift to Inspect')+'</div>'
+    +'<div style="font-size:12px;color:var(--text2);margin-top:2px">'+(p.vesselName||'—')+' — '+(p.permitNo||'—')+'</div></div>'
+    +'<button id="btn-close-shift-sel" style="width:28px;height:28px;border-radius:6px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;font-size:14px">&#10005;</button>'
+    +'</div>'
+    +'<div style="padding:20px">'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:12px">'+rounds.length+' / '+shifts.length+' '+(lang==='bm'?'shift telah diinspect':'shifts inspected')+'</div>'
+    +shiftsHtml
+    +'<button id="btn-view-full-report" style="margin-top:12px;width:100%;height:36px;border:1px solid var(--border2);background:transparent;color:var(--accent2);border-radius:8px;cursor:pointer;font-size:12px">&#128203; View Full Report / Lihat Laporan</button>'
+    +'</div></div>';
+
+  document.body.appendChild(overlay);
+  setTimeout(function(){
+    var r=document.getElementById('btn-view-full-report');
+    if(r) r.onclick=function(){openInspectionReport(permitId);};
+  },50);
+};
+
+window.submitShiftInspection=async function(permitId,inspKey,shiftIdx){
+  const p=allPermits.find(x=>x.id===permitId);if(!p)return;
+  const cl=getChecklistForPermit(p);
+  const items=cl.during||[];
+  const shift=(p.shiftSchedule||[])[shiftIdx];
+
+  const btn=document.getElementById('btn-submit-stage');
+  if(btn){btn.disabled=true;btn.textContent=lang==='bm'?'Menyimpan...':'Saving...';}
+
+  const itemResults={};let hasIssues=false;
+  items.forEach(function(item){
+    let result='';
+    document.querySelectorAll('[id^="btn-res-'+item.id+'-"]').forEach(function(b){if(b.dataset.selected==='true')result=b.dataset.val;});
+    const remark=document.getElementById('remark-'+item.id)?.value||'';
+    itemResults[item.id]={result,remark};
+    if(result==='nc'||result==='attention')hasIssues=true;
+  });
+
+  const overallRemark=document.getElementById('insp-overall-remark')?.value||'';
+  const myInsp=(p.inspections||{})[inspKey]||{};
+  const rounds=Array.isArray(myInsp.during)?[...myInsp.during]:[];
+
+  const roundData={
+    round:rounds.length+1,
+    shiftIdx,
+    shiftLabel:shift?.shiftLabel||'',
+    shiftTime:shift?.shiftTime||'',
+    shiftDate:shift?.date||'',
+    items:itemResults,overallRemark,hasIssues,
+    submittedAt:new Date().toISOString(),
+    submittedBy:currentData.name,
+    submittedByRole:currentData.role
+  };
+  rounds.push(roundData);
+
+  const tl={type:'inspection',label:INSP_STAGE_LABELS[lang].during+' inspection — '+(shift?.shiftLabel||'')+(hasIssues?' [🚩 '+(lang==='bm'?'Ada Isu':'Issues Found')+']':''),by:currentData.name,role:currentData.role,at:new Date().toISOString(),remark:overallRemark};
+
+  try{
+    const updateData={timeline:[...(p.timeline||[]),tl]};
+    updateData['inspections.'+inspKey+'.during']=rounds;
+    await updateDoc(doc(db,'permits',permitId),updateData);
+    if(hasIssues){
+      const hses=allUsers.filter(function(u){return u.role==='hse'&&u.status==='active';});
+      await Promise.all(hses.map(function(u){return sendNotif(u.uid,'🚩 Inspection Issues — '+(p.permitNo||''),p.vesselName+' · '+(shift?.shiftLabel||''));;}));
+    }
+    showToast(lang==='bm'?'✓ Inspection shift disimpan.':'✓ Shift inspection saved.','success');
+    document.getElementById('insp-overlay')?.remove();
+    renderInspectionPage();
+  }catch(e){
+    console.error(e);showToast('Error saving','error');
+    if(btn){btn.disabled=false;btn.textContent='Cuba Lagi';}
+  }
+};
 onAuthStateChanged(auth,async user=>{if(user){const snap=await getDoc(doc(db,'users',user.uid));if(snap.exists()){const data=snap.data();if(data.status==='active'){currentUser=user;currentData=data;const us=await getDocs(collection(db,'users'));allUsers=us.docs.map(d=>d.data());renderApp(data)}}}});
 </script>
 
