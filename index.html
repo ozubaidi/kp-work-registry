@@ -399,15 +399,32 @@
                     links.push({ id: 'all-permits', icon: 'list-alt', text: 'Semua Data Permit' });
                 }
 
-                nav.innerHTML = links.map(link => `
+                // Kira jumlah notifikasi untuk setiap nav item
+                const badgeCounts = {
+                    users: State.users.filter(u => u.status === 'Pending').length,
+                    approvals: role === 'Supervisor Operasi'
+                        ? State.permits.filter(p => p.status === 'Pending HOD' || (p.type === 'Track B - Non-Rutin' && p.status === 'Pending Ops')).length
+                        : role === 'HSE Officer'
+                        ? State.permits.filter(p => p.status === 'Pending HSE').length
+                        : role === 'HOD / Exec Operasi'
+                        ? State.permits.filter(p => p.type === 'Track B - Kecemasan' && p.status === 'Pending HOD').length
+                        : 0,
+                    'all-permits': State.permits.filter(p => p.status.includes('Pending')).length
+                };
+
+                nav.innerHTML = links.map(link => {
+                    const count = badgeCounts[link.id] || 0;
+                    return `
                     <a href="#" onclick="App.navigate('${link.id}', '${link.text}'); return false;" 
                        class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-all font-medium nav-item group" data-id="${link.id}">
                         <div class="w-8 flex justify-center group-hover:text-primary group-[.active]:text-primary transition-colors">
                             <i class="fas fa-${link.icon} text-lg"></i>
                         </div>
-                        <span>${link.text}</span>
+                        <span class="flex-1">${link.text}</span>
+                        ${count > 0 ? `<span class="bg-red-500 text-white text-[10px] font-bold min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center">${count}</span>` : ''}
                     </a>
-                `).join('');
+                `;
+                }).join('');
             }
         };
 
@@ -518,12 +535,13 @@
             navigate: async (viewId, title) => {
                 App.currentView = viewId;
                 document.getElementById('page-title').innerText = title;
+                if(window.innerWidth < 768) UI.toggleMobileSidebar();
+                await App.refreshData();
+                UI.updateNavigation();
                 document.querySelectorAll('.nav-item').forEach(el => {
                     el.classList.remove('active', 'bg-gray-800', 'text-white');
                     if (el.dataset.id === viewId) el.classList.add('active', 'bg-gray-800', 'text-white');
                 });
-                if(window.innerWidth < 768) UI.toggleMobileSidebar();
-                await App.refreshData();
                 App.renderView(viewId);
             },
             renderView: (viewId) => {
