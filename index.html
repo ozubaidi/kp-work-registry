@@ -239,7 +239,6 @@
         // ==========================================
         // 1. SUPABASE CONFIGURATION & ADAPTER
         // ==========================================
-        
         const SUPABASE_URL = 'https://rxjgjrnnlrqslkkmjzpa.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_lAK40J5hzmzE9LnkfSJhew_H-_s0glJ';
         
@@ -261,6 +260,7 @@
         };
 
         if (isSupabaseConfigured) {
+            // Initialize official Supabase Client
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         } else {
             console.log("Running in Demo Mode: Using Local Storage Database Adapter.");
@@ -654,7 +654,7 @@
                 const permit = State.permits.find(p => p.id === id); let html = '';
                 if(permit.type === 'Track A') { html = `<div class="space-y-3">${['Pre-Work', 'During-Work', 'Post-Work'].map(stage => `<button onclick="Modals.renderChecklist('${id}', '${stage}')" class="w-full p-4 border rounded-xl text-left hover:border-primary flex justify-between items-center bg-white group"><div class="font-bold text-gray-800 group-hover:text-primary">${stage} Stage</div><i class="fas fa-arrow-right text-gray-300 group-hover:text-primary"></i></button>`).join('')}</div>`; } 
                 else { html = `<div class="grid grid-cols-2 gap-3">${permit.shifts.map((s, idx) => { const isDone = State.inspections.some(i => i.permitId === id && i.type === `Shift ${idx+1}`); return `<button onclick="Modals.renderChecklist('${id}', 'Shift ${idx+1}')" class="p-3 border rounded-xl text-left hover:border-primary ${isDone ? 'bg-emerald-50 border-emerald-200' : 'bg-white'} relative"><div class="font-bold text-sm text-gray-800">${s.type}</div><div class="text-[10px] text-gray-500">${s.date}</div>${isDone ? '<div class="absolute top-2 right-2 text-success"><i class="fas fa-check-circle"></i></div>' : ''}</button>`}).join('')}</div>`; }
-                UI.openModal('Pilih Peringkat Inspection', html);
+                UI.openModal('Pilih Pilih Peringkat Inspection', html);
             },
             renderChecklist: (permitId, stageType) => {
                 const items = ["PPE mematuhi SOP", "Peralatan selamat", "Kawasan bebas halangan", "Komunikasi jelas"];
