@@ -316,7 +316,7 @@
         // ==========================================
         // 2. GLOBAL STATE & UTILITIES
         // ==========================================
-        window.State = { currentUser: null, users: [], permits: [], locations: [], inspections: [] };
+        window.State = { currentUser: null, users: [], permits: [], locations: [], inspections: [], formOptions: [] };
 
         window.Utils = {
             generateId: () => Math.random().toString(36).substr(2, 9).toUpperCase(),
@@ -396,6 +396,7 @@
                 else if (role === 'Admin') {
                     links.push({ id: 'users', icon: 'users', text: 'Pengguna Sistem' });
                     links.push({ id: 'locations', icon: 'map-location-dot', text: 'Lokasi Pelabuhan' });
+                    links.push({ id: 'form-settings', icon: 'sliders', text: 'Tetapan Borang' });
                     links.push({ id: 'all-permits', icon: 'list-alt', text: 'Semua Data Permit' });
                 }
 
@@ -523,13 +524,14 @@
             currentView: 'dashboard',
             refreshData: async () => {
                 try {
-                    const [uRes, pRes, lRes, iRes] = await Promise.all([
-                        DB.from('users').select(), DB.from('permits').select(), DB.from('locations').select(), DB.from('inspections').select()
+                    const [uRes, pRes, lRes, iRes, fRes] = await Promise.all([
+                        DB.from('users').select(), DB.from('permits').select(), DB.from('locations').select(), DB.from('inspections').select(), DB.from('form_options').select()
                     ]);
                     State.users = uRes.data || [];
                     State.permits = pRes.data || [];
                     State.locations = lRes.data || [];
                     State.inspections = iRes.data || [];
+                    State.formOptions = fRes.data || [];
                 } catch(e) { console.error(e); }
             },
             navigate: async (viewId, title) => {
@@ -550,6 +552,7 @@
                     case 'dashboard': content.innerHTML = Views.Dashboard(); break;
                     case 'users': content.innerHTML = Views.Users(); break;
                     case 'locations': content.innerHTML = Views.Locations(); break;
+                    case 'form-settings': content.innerHTML = Views.FormSettings(); break;
                     case 'permits': 
                     case 'stevedoring': 
                     case 'all-permits': content.innerHTML = Views.PermitList(viewId); break;
@@ -634,6 +637,24 @@
                     <div class="max-w-2xl bg-white rounded-2xl shadow-sm border border-gray-100 p-6 fade-in">
                         <div class="flex justify-between items-center mb-6"><h3 class="font-bold text-gray-800 text-lg">Lokasi Pelabuhan</h3><button onclick="Forms.addLocation()" class="bg-primary hover:bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm flex items-center gap-2"><i class="fas fa-plus"></i> Tambah</button></div>
                         <div>${rows.length ? rows : '<div class="p-8 text-center text-gray-400 border-2 border-dashed rounded-xl">Tiada lokasi didaftarkan.</div>'}</div>
+                    </div>`;
+            },
+            FormSettings: () => {
+                const trackAOptions = State.formOptions.filter(o => o.category === 'track_a_activity');
+                let rows = trackAOptions.map(o => `
+                    <div class="flex justify-between items-center p-4 border border-gray-100 rounded-xl mb-3 bg-white shadow-sm">
+                        <span class="font-semibold text-gray-700 flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-primary"><i class="fas fa-square-check"></i></div>
+                            ${o.label} ${o.has_warning ? '<span class="text-accent">⚠</span>' : ''}
+                        </span>
+                        <button onclick="Actions.deleteFormOption('${o.id}')" class="text-gray-400 hover:text-danger hover:bg-red-50 p-2 rounded-lg"><i class="fas fa-trash"></i></button>
+                    </div>
+                `).join('');
+                return `
+                    <div class="max-w-2xl bg-white rounded-2xl shadow-sm border border-gray-100 p-6 fade-in">
+                        <div class="flex justify-between items-center mb-2"><h3 class="font-bold text-gray-800 text-lg">Jenis Aktiviti (Track A)</h3><button onclick="Forms.addFormOption('track_a_activity')" class="bg-primary hover:bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-sm flex items-center gap-2"><i class="fas fa-plus"></i> Tambah</button></div>
+                        <p class="text-xs text-gray-400 mb-6">Senarai ni terus muncul sebagai pilihan checkbox dalam borang "Mohon Permit (Track A)".</p>
+                        <div>${rows.length ? rows : '<div class="p-8 text-center text-gray-400 border-2 border-dashed rounded-xl">Tiada jenis aktiviti didaftarkan.</div>'}</div>
                     </div>`;
             },
             PermitList: (mode) => {
@@ -780,6 +801,12 @@
                     await App.refreshData(); App.renderView('locations');
                 }
             },
+            deleteFormOption: async (id) => {
+                if(confirm("Padam jenis aktiviti ini? Ia akan hilang daripada borang permit.")) {
+                    await DB.from('form_options').delete().eq('id', id);
+                    await App.refreshData(); App.renderView('form-settings');
+                }
+            },
             submitDecision: async (permitId, decision) => {
                 const remarks = document.getElementById('approval-remarks').value;
                 if(decision !== 'Approved' && !remarks) return Utils.showToast("Catatan wajib jika menolak/menangguh.", "error");
@@ -803,6 +830,13 @@
                     await App.refreshData(); App.renderView('locations');
                 }
             },
+            addFormOption: async (category) => {
+                const label = prompt("Nama Jenis Aktiviti Baru:");
+                if(!label || !label.trim()) return;
+                const hasWarning = confirm("Perlukan ikon amaran ⚠ (untuk aktiviti berisiko tinggi)?\n\nKlik OK untuk YA, Cancel untuk TIDAK.");
+                await DB.from('form_options').insert({ id: Utils.generateId(), category, label: label.trim(), has_warning: hasWarning });
+                await App.refreshData(); App.renderView('form-settings');
+            },
             getLocOptions: () => State.locations.map(l => `<option value="${l.name}">${l.name}</option>`).join(''),
             newPermitTrackA: () => {
                 const html = `
@@ -817,10 +851,9 @@
                         </div>
                         <div><h4 class="font-bold text-gray-800 mb-2 text-sm">Jenis Aktiviti</h4>
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                                <label class="flex items-center gap-2 p-2.5 border rounded-lg bg-gray-50"><input type="checkbox" name="ta-type" value="Hot Work"> Hot Work ⚠</label>
-                                <label class="flex items-center gap-2 p-2.5 border rounded-lg bg-gray-50"><input type="checkbox" name="ta-type" value="Confined Space"> Confined Space ⚠</label>
-                                <label class="flex items-center gap-2 p-2.5 border rounded-lg bg-gray-50"><input type="checkbox" name="ta-type" value="Working at Height"> Working at Height ⚠</label>
-                                <label class="flex items-center gap-2 p-2.5 border rounded-lg bg-gray-50"><input type="checkbox" name="ta-type" value="Lifting"> Lifting</label>
+                                ${State.formOptions.filter(o => o.category === 'track_a_activity').map(o => `
+                                <label class="flex items-center gap-2 p-2.5 border rounded-lg bg-gray-50"><input type="checkbox" name="ta-type" value="${o.label}"> ${o.label} ${o.has_warning ? '⚠' : ''}</label>
+                                `).join('') || '<p class="text-xs text-gray-400 col-span-2">Tiada jenis aktiviti disetkan. Admin boleh tambah di menu "Tetapan Borang".</p>'}
                             </div>
                         </div>
                         <div><label class="text-xs font-semibold text-gray-600 block mb-1">Penerangan</label><textarea id="ta-desc" rows="3" required class="w-full border rounded-lg p-3 text-sm outline-none"></textarea></div>
