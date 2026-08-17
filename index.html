@@ -268,7 +268,7 @@
                         return { data: [item], error: null };
                     }
                 },
-                update: async (payload) => {
+                update: (payload) => {
                     if (isSupabaseConfigured) {
                         return {
                             eq: async (column, value) => {
@@ -291,7 +291,7 @@
                         };
                     }
                 },
-                delete: async () => {
+                delete: () => {
                      if (isSupabaseConfigured) {
                         return {
                             eq: async (column, value) => {
