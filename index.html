@@ -8,9 +8,11 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
-…        };
-
-        window.onload = Auth.init;
-    </script>
-</body>
-</html>
+…
+                    const userData = {
+                        id: 'USR_' + Utils.generateId(), email: email, password: document.getElementById('reg-password').value, name: document.getElementById('reg-name').value, phone: document.getElementById('reg-phone').value, role: document.getElementById('reg-role').value, company: document.getElementById('reg-company').value, status: 'Pending',
+                    };
+                    await DB.from('users').insert(userData);
+                    await App.refreshData();
+                    Utils.showLoader(false);
+                    Utils.showToast("Pendaftaran berjaya! Akaun sedang diproses
