@@ -83,10 +83,8 @@
         <div class="absolute inset-0 bg-primary/90 backdrop-blur-sm"></div>
         
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden slide-up relative z-10">
-            <div class="p-8 text-center bg-gray-50 border-b border-gray-100">
-                <div class="w-16 h-16 bg-gradient-to-br from-primary to-secondary text-white rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl shadow-lg transform rotate-3">
-                    <i class="fas fa-anchor -rotate-3"></i>
-                </div>
+            <div class="p-8 text-center bg-gray-50 border-b border-gray-100 flex flex-col items-center">
+                <img src="KP logo white.png" alt="Kuantan Port Logo" class="h-16 w-auto mb-4 bg-primary p-2 rounded-xl shadow-lg transform hover:scale-105 transition-transform">
                 <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">KP Work Registry</h1>
                 <p class="text-sm text-gray-500 mt-2 font-medium">Sistem e-Permit to Work (ePTW)</p>
             </div>
@@ -109,11 +107,7 @@
                         </div>
                     </div>
                     
-                    <div id="db-status-warning" class="hidden bg-amber-50 text-amber-800 text-xs p-3 rounded-lg border border-amber-200">
-                        <i class="fas fa-info-circle mr-1"></i> Menggunakan Local Database untuk demo. Untuk penggunaan sebenar, masukkan kunci Supabase anda di dalam kod sumber.
-                    </div>
-
-                    <button type="submit" class="w-full bg-primary hover:bg-blue-900 text-white font-semibold py-3 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2">
+                    <button type="submit" class="w-full bg-primary hover:bg-blue-900 text-white font-semibold py-3 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2 mt-4">
                         Log Masuk <i class="fas fa-arrow-right text-sm"></i>
                     </button>
                     <div class="text-center mt-6">
@@ -174,12 +168,9 @@
     <div id="app-view" class="hidden flex-1 flex h-screen overflow-hidden bg-gray-50">
         
         <!-- Sidebar -->
-        <aside class="w-64 bg-dark text-white flex flex-col hidden md:flex transition-all duration-300 z-20 shadow-xl border-r border-gray-800" id="sidebar">
+        <aside class="w-64 bg-dark text-white flex flex-col hidden md:flex transition-all duration-300 z-20 shadow-xl border-r border-gray-800 shrink-0" id="sidebar">
             <div class="h-16 flex items-center px-6 border-b border-gray-800 bg-gray-900">
-                <div class="w-8 h-8 bg-gradient-to-br from-primary to-secondary text-white rounded-lg flex items-center justify-center mr-3 shadow-md">
-                    <i class="fas fa-anchor text-sm"></i>
-                </div>
-                <span class="font-bold text-lg tracking-wide">ePTW Kuantan</span>
+                <img src="KP logo white.png" alt="Kuantan Port Logo" class="h-8 w-auto mr-3">
             </div>
             
             <!-- User Profile Snippet -->
@@ -205,9 +196,9 @@
         </aside>
 
         <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
             <!-- Topbar -->
-            <header class="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 z-10">
+            <header class="h-16 bg-white shadow-sm border-b border-gray-200 flex items-center justify-between px-4 lg:px-8 z-10 shrink-0">
                 <div class="flex items-center">
                     <button class="md:hidden text-gray-500 hover:text-primary mr-4 p-2 rounded-lg hover:bg-gray-100 transition-colors" onclick="UI.toggleMobileSidebar()">
                         <i class="fas fa-bars text-lg"></i>
@@ -215,9 +206,6 @@
                     <h2 class="text-xl font-bold text-gray-800 tracking-tight" id="page-title">Dashboard</h2>
                 </div>
                 <div class="flex items-center gap-5">
-                    <div id="connection-status" class="text-xs font-semibold text-gray-600 hidden sm:flex items-center bg-gray-100 px-3 py-1.5 rounded-full border border-gray-200">
-                        <i id="connection-icon" class="fas fa-database text-gray-400 mr-2"></i> <span id="db-mode-text">Local Demo Mode</span>
-                    </div>
                     <div class="relative cursor-pointer hover:bg-gray-50 p-2 rounded-full transition-colors" onclick="UI.showNotifications()">
                         <i class="fas fa-bell text-gray-500 text-xl"></i>
                         <span id="notif-badge" class="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center hidden border-2 border-white shadow-sm">0</span>
@@ -226,7 +214,7 @@
             </header>
 
             <!-- Dynamic Content Container -->
-            <main class="flex-1 overflow-y-auto p-4 lg:p-8 hide-scroll relative" id="main-content">
+            <main class="flex-1 overflow-y-auto p-4 lg:p-8 hide-scroll" id="main-content">
                 <!-- Views will be injected here -->
             </main>
         </div>
@@ -236,122 +224,44 @@
     <div id="mobile-overlay" class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-10 hidden md:hidden transition-opacity" onclick="UI.toggleMobileSidebar()"></div>
 
     <script type="text/javascript">
-        // ==========================================
-        // 1. SUPABASE CONFIGURATION & ADAPTER
-        // ==========================================
         const SUPABASE_URL = 'https://rxjgjrnnlrqslkkmjzpa.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_lAK40J5hzmzE9LnkfSJhew_H-_s0glJ';
         
-        const isSupabaseConfigured = SUPABASE_URL !== 'YOUR_SUPABASE_URL';
-        let supabaseClient = null;
+        let supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        // UI Updater for Connection Status
-        const updateConnectionUI = () => {
-            const statusEl = document.getElementById('connection-status');
-            const textEl = document.getElementById('db-mode-text');
-            const iconEl = document.getElementById('connection-icon');
-            if(statusEl && textEl && iconEl) {
-                if (isSupabaseConfigured) {
-                    statusEl.className = 'text-xs font-semibold text-emerald-700 hidden sm:flex items-center bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200';
-                    iconEl.className = 'fas fa-cloud text-emerald-500 mr-2';
-                    textEl.innerText = 'Supabase Connected';
-                }
-            }
-        };
-
-        if (isSupabaseConfigured) {
-            // Initialize official Supabase Client
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } else {
-            console.log("Running in Demo Mode: Using Local Storage Database Adapter.");
-            document.addEventListener('DOMContentLoaded', () => {
-                const warning = document.getElementById('db-status-warning');
-                if(warning) warning.classList.remove('hidden');
-            });
-        }
-        
-        document.addEventListener('DOMContentLoaded', updateConnectionUI);
-
-        // --- Database Adapter ---
         const DB = {
-            _local: {
-                users: JSON.parse(localStorage.getItem('kp_users') || '[]'),
-                permits: JSON.parse(localStorage.getItem('kp_permits') || '[]'),
-                locations: JSON.parse(localStorage.getItem('kp_locations') || '[]'),
-                inspections: JSON.parse(localStorage.getItem('kp_inspections') || '[]')
-            },
-            _saveLocal: (table) => localStorage.setItem(`kp_${table}`, JSON.stringify(DB._local[table])),
-
             from: (table) => ({
                 select: async (query = '*') => {
-                    if (isSupabaseConfigured) {
-                        const { data, error } = await supabaseClient.from(table).select(query);
-                        if(error) throw error;
-                        return { data, error: null };
-                    } else {
-                        return { data: [...DB._local[table]], error: null };
-                    }
+                    const { data, error } = await supabaseClient.from(table).select(query);
+                    if(error) throw error;
+                    return { data, error: null };
                 },
                 insert: async (payload) => {
-                    if (isSupabaseConfigured) {
-                        const { data, error } = await supabaseClient.from(table).insert(payload).select();
-                        if(error) throw error;
-                        return { data, error: null };
-                    } else {
-                        const item = { ...payload, createdAt: payload.createdAt || new Date().toISOString() };
-                        DB._local[table].push(item);
-                        DB._saveLocal(table);
-                        return { data: [item], error: null };
-                    }
+                    const { data, error } = await supabaseClient.from(table).insert(payload).select();
+                    if(error) throw error;
+                    return { data, error: null };
                 },
                 update: async (payload) => {
-                    if (isSupabaseConfigured) {
-                        return {
-                            eq: async (column, value) => {
-                                const { data, error } = await supabaseClient.from(table).update(payload).eq(column, value).select();
-                                if(error) throw error;
-                                return { data, error: null };
-                            }
-                        };
-                    } else {
-                        return {
-                            eq: async (column, value) => {
-                                const index = DB._local[table].findIndex(item => item[column] === value);
-                                if (index !== -1) {
-                                    DB._local[table][index] = { ...DB._local[table][index], ...payload };
-                                    DB._saveLocal(table);
-                                    return { data: [DB._local[table][index]], error: null };
-                                }
-                                throw new Error("Record not found");
-                            }
-                        };
-                    }
+                    return {
+                        eq: async (column, value) => {
+                            const { data, error } = await supabaseClient.from(table).update(payload).eq(column, value).select();
+                            if(error) throw error;
+                            return { data, error: null };
+                        }
+                    };
                 },
                 delete: async () => {
-                     if (isSupabaseConfigured) {
-                        return {
-                            eq: async (column, value) => {
-                                const { error } = await supabaseClient.from(table).delete().eq(column, value);
-                                if(error) throw error;
-                                return { error: null };
-                            }
-                        };
-                    } else {
-                        return {
-                            eq: async (column, value) => {
-                                DB._local[table] = DB._local[table].filter(item => item[column] !== value);
-                                DB._saveLocal(table);
-                                return { error: null };
-                            }
-                        };
-                    }
+                    return {
+                        eq: async (column, value) => {
+                            const { error } = await supabaseClient.from(table).delete().eq(column, value);
+                            if(error) throw error;
+                            return { error: null };
+                        }
+                    };
                 }
             })
         };
 
-        // ==========================================
-        // 2. GLOBAL STATE & UTILITIES
-        // ==========================================
         window.State = { currentUser: null, users: [], permits: [], locations: [], inspections: [] };
 
         window.Utils = {
@@ -377,9 +287,6 @@
             }
         };
 
-        // ==========================================
-        // 3. UI CONTROLLER
-        // ==========================================
         window.UI = {
             toggleMobileSidebar: () => {
                 const sidebar = document.getElementById('sidebar');
@@ -423,12 +330,12 @@
                 else if (role === 'Admin') { links.push({ id: 'users', icon: 'users', text: 'Pengguna Sistem' }); links.push({ id: 'locations', icon: 'map-location-dot', text: 'Lokasi Pelabuhan' }); links.push({ id: 'all-permits', icon: 'list-alt', text: 'Semua Data Permit' }); }
 
                 nav.innerHTML = links.map(link => `<a href="#" onclick="App.navigate('${link.id}', '${link.text}'); return false;" class="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 transition-all font-medium nav-item group" data-id="${link.id}"><div class="w-8 flex justify-center group-hover:text-primary group-[.active]:text-primary transition-colors"><i class="fas fa-${link.icon} text-lg"></i></div><span>${link.text}</span></a>`).join('');
+            },
+            showNotifications: () => {
+                Utils.showToast("Tiada notifikasi baharu.", "info");
             }
         };
 
-        // ==========================================
-        // 4. AUTHENTICATION
-        // ==========================================
         window.Auth = {
             init: async () => {
                 document.getElementById('register-form').addEventListener('submit', Auth.handleRegister);
@@ -493,9 +400,6 @@
             logout: () => { State.currentUser = null; document.getElementById('app-view').classList.add('hidden'); document.getElementById('auth-view').classList.remove('hidden'); document.getElementById('login-form').reset(); }
         };
 
-        // ==========================================
-        // 5. APPLICATION CORE
-        // ==========================================
         window.App = {
             currentView: 'dashboard',
             refreshData: async () => {
@@ -518,9 +422,6 @@
             }
         };
 
-        // ==========================================
-        // 6. VIEWS & COMPONENTS
-        // ==========================================
         window.Views = {
             Dashboard: () => {
                 const role = State.currentUser.role; let html = `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 fade-in">`;
@@ -529,27 +430,27 @@
                 const pendingCount = State.permits.filter(p => p.status.includes('Pending')).length;
 
                 if (role === 'Kontraktor' || role === 'Stevedore') {
-                    html += `${Components.StatCard('Permit Aktif', myPermits.filter(p => p.status === 'Diluluskan').length, 'check-circle', 'text-success', 'bg-emerald-50')}${Components.StatCard('Dalam Proses', myPermits.filter(p => p.status.includes('Pending')).length, 'clock', 'text-accent', 'bg-amber-50')}${Components.StatCard('Jumlah Rekod', myPermits.length, 'folder', 'text-primary', 'bg-blue-50')}</div><div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"><div class="flex justify-between items-center mb-6"><h3 class="font-bold text-gray-800 text-lg">Permit Terkini Anda</h3><button onclick="App.navigate('${role==='Kontraktor'?'permits':'stevedoring'}', 'Permit')" class="text-secondary text-sm font-semibold hover:underline">Lihat Semua &rarr;</button></div>${Components.PermitTable(myPermits.slice(0,5), false)}</div>`;
+                    html += `${Components.StatCard('Permit Aktif', myPermits.filter(p => p.status === 'Diluluskan').length, 'check-circle', 'text-success', 'bg-emerald-50')}${Components.StatCard('Dalam Proses', myPermits.filter(p => p.status.includes('Pending')).length, 'clock', 'text-accent', 'bg-amber-50')}${Components.StatCard('Jumlah Rekod', myPermits.length, 'folder', 'text-primary', 'bg-blue-50')}</div><div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex-1 overflow-hidden flex flex-col"><div class="flex justify-between items-center mb-6 shrink-0"><h3 class="font-bold text-gray-800 text-lg">Permit Terkini Anda</h3><button onclick="App.navigate('${role==='Kontraktor'?'permits':'stevedoring'}', 'Permit')" class="text-secondary text-sm font-semibold hover:underline">Lihat Semua &rarr;</button></div><div class="overflow-x-auto">${Components.PermitTable(myPermits.slice(0,5), false)}</div></div>`;
                 } else {
-                    html += `${Components.StatCard('Permit Aktif Tapak', activeCount, 'bolt', 'text-success', 'bg-emerald-50')}${Components.StatCard('Perlu Kelulusan', pendingCount, 'clipboard-list', 'text-accent', 'bg-amber-50')}${Components.StatCard('Inspections (Hari Ini)', State.inspections.length, 'search', 'text-primary', 'bg-blue-50')}${Components.StatCard('Isu (Red Flags)', State.inspections.filter(i => i.hasRedFlag).length, 'flag', 'text-danger', 'bg-red-50')}</div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"><h3 class="font-bold text-gray-800 border-b border-gray-100 pb-3 mb-4">Aktiviti Pelabuhan Terkini</h3>${Components.PermitTable(State.permits.slice(0,5), true)}</div><div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6"><h3 class="font-bold text-gray-800 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2"><i class="fas fa-flag text-danger"></i> Laporan Red Flag</h3>${Components.RedFlagList()}</div></div>`;
+                    html += `${Components.StatCard('Permit Aktif Tapak', activeCount, 'bolt', 'text-success', 'bg-emerald-50')}${Components.StatCard('Perlu Kelulusan', pendingCount, 'clipboard-list', 'text-accent', 'bg-amber-50')}${Components.StatCard('Inspections (Hari Ini)', State.inspections.length, 'search', 'text-primary', 'bg-blue-50')}${Components.StatCard('Isu (Red Flags)', State.inspections.filter(i => i.hasRedFlag).length, 'flag', 'text-danger', 'bg-red-50')}</div><div class="grid grid-cols-1 lg:grid-cols-2 gap-6"><div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-x-auto"><h3 class="font-bold text-gray-800 border-b border-gray-100 pb-3 mb-4">Aktiviti Pelabuhan Terkini</h3>${Components.PermitTable(State.permits.slice(0,5), true)}</div><div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 overflow-x-auto"><h3 class="font-bold text-gray-800 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2"><i class="fas fa-flag text-danger"></i> Laporan Red Flag</h3>${Components.RedFlagList()}</div></div>`;
                 }
                 return html;
             },
             Users: () => {
-                let rows = State.users.map(u => `<tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"><td class="p-4"><div class="font-semibold text-gray-800">${u.name}</div><div class="text-xs text-gray-500 font-mono">${u.email}</div></td><td class="p-4"><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium">${u.role}</span></td><td class="p-4 text-sm text-gray-600">${u.company}</td><td class="p-4">${Components.Badge(u.status)}</td><td class="p-4 text-right">${u.status === 'Pending' ? `<button onclick="Actions.updateUser('${u.id}', 'Active')" class="text-success hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-emerald-200">Luluskan</button>` : ''}${u.status === 'Active' ? `<button onclick="Actions.updateUser('${u.id}', 'Suspended')" class="text-danger hover:bg-red-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Gantung</button>` : ''}${u.status === 'Suspended' ? `<button onclick="Actions.updateUser('${u.id}', 'Active')" class="text-primary hover:bg-blue-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Aktifkan</button>` : ''}</td></tr>`).join('');
-                return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden fade-in"><div class="p-5 border-b border-gray-100 bg-white flex justify-between items-center"><h3 class="font-bold text-gray-800 text-lg">Pengurusan Pengguna</h3></div><div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider"><tr><th class="p-4 font-semibold">Profil</th><th class="p-4 font-semibold">Peranan</th><th class="p-4 font-semibold">Syarikat</th><th class="p-4 font-semibold">Status</th><th class="p-4 font-semibold text-right">Tindakan</th></tr></thead><tbody>${rows.length ? rows : '<tr><td colspan="5" class="p-8 text-center text-gray-400">Tiada rekod.</td></tr>'}</tbody></table></div></div>`;
+                let rows = State.users.map(u => `<tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"><td class="p-4 whitespace-nowrap"><div class="font-semibold text-gray-800">${u.name}</div><div class="text-xs text-gray-500 font-mono">${u.email}</div></td><td class="p-4 whitespace-nowrap"><span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium">${u.role}</span></td><td class="p-4 text-sm text-gray-600 whitespace-nowrap">${u.company}</td><td class="p-4 whitespace-nowrap">${Components.Badge(u.status)}</td><td class="p-4 text-right whitespace-nowrap">${u.status === 'Pending' ? `<button onclick="Actions.updateUser('${u.id}', 'Active')" class="text-success hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-transparent hover:border-emerald-200">Luluskan</button>` : ''}${u.status === 'Active' ? `<button onclick="Actions.updateUser('${u.id}', 'Suspended')" class="text-danger hover:bg-red-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Gantung</button>` : ''}${u.status === 'Suspended' ? `<button onclick="Actions.updateUser('${u.id}', 'Active')" class="text-primary hover:bg-blue-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">Aktifkan</button>` : ''}</td></tr>`).join('');
+                return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden fade-in flex flex-col h-full"><div class="p-5 border-b border-gray-100 bg-white flex justify-between items-center shrink-0"><h3 class="font-bold text-gray-800 text-lg">Pengurusan Pengguna</h3></div><div class="overflow-x-auto flex-1"><table class="w-full text-left min-w-[600px]"><thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider sticky top-0"><tr><th class="p-4 font-semibold">Profil</th><th class="p-4 font-semibold">Peranan</th><th class="p-4 font-semibold">Syarikat</th><th class="p-4 font-semibold">Status</th><th class="p-4 font-semibold text-right">Tindakan</th></tr></thead><tbody>${rows.length ? rows : '<tr><td colspan="5" class="p-8 text-center text-gray-400">Tiada rekod.</td></tr>'}</tbody></table></div></div>`;
             },
             Locations: () => {
-                let rows = State.locations.map(loc => `<div class="flex justify-between items-center p-4 border border-gray-100 rounded-xl mb-3 hover:shadow-md transition-shadow bg-white"><span class="font-semibold text-gray-700 flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-primary"><i class="fas fa-map-pin"></i></div> ${loc.name}</span><button onclick="Actions.deleteLocation('${loc.id}')" class="text-gray-400 hover:text-danger hover:bg-red-50 p-2 rounded-lg transition-colors"><i class="fas fa-trash"></i></button></div>`).join('');
-                return `<div class="max-w-2xl bg-white rounded-2xl shadow-sm border border-gray-100 p-6 fade-in"><div class="flex justify-between items-center mb-6"><h3 class="font-bold text-gray-800 text-lg">Lokasi Operasi (Berth/Yard)</h3><button onclick="Forms.addLocation()" class="bg-primary hover:bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm flex items-center gap-2"><i class="fas fa-plus"></i> Tambah Lokasi</button></div><div>${rows.length ? rows : '<div class="p-8 text-center text-gray-400 border-2 border-dashed rounded-xl">Tiada lokasi didaftarkan.</div>'}</div></div>`;
+                let rows = State.locations.map(loc => `<div class="flex justify-between items-center p-4 border border-gray-100 rounded-xl mb-3 hover:shadow-md transition-shadow bg-white"><span class="font-semibold text-gray-700 flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-primary shrink-0"><i class="fas fa-map-pin"></i></div> ${loc.name}</span><button onclick="Actions.deleteLocation('${loc.id}')" class="text-gray-400 hover:text-danger hover:bg-red-50 p-2 rounded-lg transition-colors"><i class="fas fa-trash"></i></button></div>`).join('');
+                return `<div class="max-w-2xl bg-white rounded-2xl shadow-sm border border-gray-100 p-6 fade-in"><div class="flex justify-between items-center mb-6"><h3 class="font-bold text-gray-800 text-lg">Lokasi Operasi (Berth/Yard)</h3><button onclick="Forms.addLocation()" class="bg-primary hover:bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors shadow-sm flex items-center gap-2 whitespace-nowrap"><i class="fas fa-plus"></i> Tambah</button></div><div>${rows.length ? rows : '<div class="p-8 text-center text-gray-400 border-2 border-dashed rounded-xl">Tiada lokasi didaftarkan.</div>'}</div></div>`;
             },
             PermitList: (mode) => {
                 const role = State.currentUser.role; let permitsToDisplay = []; let title = "Rekod Permit"; let actionBtn = "";
-                if (mode === 'permits' && role === 'Kontraktor') { permitsToDisplay = State.permits.filter(p => p.applicantUid === State.currentUser.id && p.type === 'Track A'); actionBtn = `<button onclick="Forms.newPermitTrackA()" class="bg-primary hover:bg-blue-900 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2"><i class="fas fa-file-signature"></i> Mohon Permit</button>`; } 
-                else if (mode === 'stevedoring' && role === 'Stevedore') { permitsToDisplay = State.permits.filter(p => p.applicantUid === State.currentUser.id && p.type.includes('Track B')); actionBtn = `<button onclick="Forms.newActivityTrackB()" class="bg-secondary hover:bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2"><i class="fas fa-ship"></i> Daftar Aktiviti</button>`; } 
+                if (mode === 'permits' && role === 'Kontraktor') { permitsToDisplay = State.permits.filter(p => p.applicantUid === State.currentUser.id && p.type === 'Track A'); actionBtn = `<button onclick="Forms.newPermitTrackA()" class="bg-primary hover:bg-blue-900 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 whitespace-nowrap"><i class="fas fa-file-signature"></i> Mohon Permit</button>`; } 
+                else if (mode === 'stevedoring' && role === 'Stevedore') { permitsToDisplay = State.permits.filter(p => p.applicantUid === State.currentUser.id && p.type.includes('Track B')); actionBtn = `<button onclick="Forms.newActivityTrackB()" class="bg-secondary hover:bg-blue-600 text-white px-5 py-2.5 rounded-xl font-medium shadow-md transition-all flex items-center gap-2 whitespace-nowrap"><i class="fas fa-ship"></i> Daftar Aktiviti</button>`; } 
                 else { permitsToDisplay = State.permits; }
                 permitsToDisplay.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-                return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden fade-in flex flex-col h-[calc(100vh-140px)]"><div class="p-5 border-b border-gray-100 flex flex-wrap gap-4 justify-between items-center"><h3 class="font-bold text-gray-800 text-lg">${title}</h3>${actionBtn}</div><div class="p-4 bg-gray-50/50 border-b border-gray-100"><div class="relative max-w-md"><i class="fas fa-search absolute left-3.5 top-3 text-gray-400"></i><input type="text" placeholder="Cari permit atau lokasi..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-primary transition-all" onkeyup="Filter.table(this.value, 'permit-table')"></div></div><div class="overflow-x-auto flex-1 hide-scroll"><table class="w-full text-left" id="permit-table"><thead class="bg-white text-gray-500 text-xs uppercase tracking-wider sticky top-0 shadow-sm z-10"><tr><th class="p-4 font-semibold">ID / Kategori</th><th class="p-4 font-semibold">Keterangan</th><th class="p-4 font-semibold">Pemohon</th><th class="p-4 font-semibold">Status</th><th class="p-4 font-semibold text-right">Tindakan</th></tr></thead><tbody>${permitsToDisplay.map(p => Components.RenderPermitRow(p)).join('') || '<tr><td colspan="5" class="p-12 text-center text-gray-400">Tiada rekod dijumpai.</td></tr>'}</tbody></table></div></div>`;
+                return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden fade-in flex flex-col h-[calc(100vh-140px)]"><div class="p-5 border-b border-gray-100 flex flex-wrap gap-4 justify-between items-center shrink-0"><h3 class="font-bold text-gray-800 text-lg">${title}</h3>${actionBtn}</div><div class="p-4 bg-gray-50/50 border-b border-gray-100 shrink-0"><div class="relative max-w-md"><i class="fas fa-search absolute left-3.5 top-3 text-gray-400"></i><input type="text" placeholder="Cari permit atau lokasi..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm outline-none focus:border-primary transition-all bg-white" onkeyup="Filter.table(this.value, 'permit-table')"></div></div><div class="overflow-x-auto flex-1 hide-scroll"><table class="w-full text-left min-w-[700px]" id="permit-table"><thead class="bg-white text-gray-500 text-xs uppercase tracking-wider sticky top-0 shadow-sm z-10"><tr><th class="p-4 font-semibold">ID / Kategori</th><th class="p-4 font-semibold">Keterangan</th><th class="p-4 font-semibold">Pemohon</th><th class="p-4 font-semibold">Status</th><th class="p-4 font-semibold text-right">Tindakan</th></tr></thead><tbody>${permitsToDisplay.map(p => Components.RenderPermitRow(p)).join('') || '<tr><td colspan="5" class="p-12 text-center text-gray-400">Tiada rekod dijumpai.</td></tr>'}</tbody></table></div></div>`;
             },
             Approvals: () => {
                 const role = State.currentUser.role; let pending = [];
@@ -557,31 +458,25 @@
                 else if (role === 'HSE Officer') pending = State.permits.filter(p => p.status === 'Pending HSE');
                 else if (role === 'HOD / Exec Operasi') pending = State.permits.filter(p => p.type === 'Track B - Kecemasan' && p.status === 'Pending HOD');
 
-                return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden fade-in"><div class="p-5 border-b border-amber-100 bg-amber-50/50 flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-lg"><i class="fas fa-clipboard-check"></i></div><div><h3 class="font-bold text-amber-900">Menunggu Kelulusan Anda</h3><p class="text-xs text-amber-700 font-medium">SOP Seksyen 4.1</p></div></div><div class="overflow-x-auto p-2"><table class="w-full text-left"><tbody>${pending.map(p => `<tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors group"><td class="p-4"><div class="font-mono text-xs text-gray-400 mb-1">${p.id}</div><div class="font-bold text-gray-800">${p.type === 'Track A' ? p.projectName : p.vesselName}</div><div class="text-xs text-gray-500 mt-1"><i class="fas fa-map-pin mr-1"></i> ${p.location}</div></td><td class="p-4">${Components.TrackBadge(p.type)}</td><td class="p-4 text-sm text-gray-600 font-medium">${p.applicantName}</td><td class="p-4 text-right"><button onclick="Modals.viewApproval('${p.id}')" class="bg-accent hover:bg-amber-600 text-white px-4 py-2 rounded-xl shadow-sm text-sm font-semibold transition-all">Semak & Lulus</button></td></tr>`).join('') || '<tr><td colspan="4" class="p-12 text-center text-gray-400"><i class="fas fa-check-circle text-4xl mb-3 block text-gray-200"></i> Anda telah menyelesaikan semua tugas.</td></tr>'}</tbody></table></div></div>`;
+                return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden fade-in flex flex-col h-full"><div class="p-5 border-b border-amber-100 bg-amber-50/50 flex items-center gap-3 shrink-0"><div class="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center text-lg"><i class="fas fa-clipboard-check"></i></div><div><h3 class="font-bold text-amber-900">Menunggu Kelulusan Anda</h3></div></div><div class="overflow-x-auto p-2 flex-1"><table class="w-full text-left min-w-[600px]"><tbody>${pending.map(p => `<tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors group"><td class="p-4"><div class="font-mono text-xs text-gray-400 mb-1">${p.id}</div><div class="font-bold text-gray-800">${p.type === 'Track A' ? p.projectName : p.vesselName}</div><div class="text-xs text-gray-500 mt-1"><i class="fas fa-map-pin mr-1"></i> ${p.location}</div></td><td class="p-4 whitespace-nowrap">${Components.TrackBadge(p.type)}</td><td class="p-4 text-sm text-gray-600 font-medium whitespace-nowrap">${p.applicantName}</td><td class="p-4 text-right whitespace-nowrap"><button onclick="Modals.viewApproval('${p.id}')" class="bg-accent hover:bg-amber-600 text-white px-4 py-2 rounded-xl shadow-sm text-sm font-semibold transition-all">Semak & Lulus</button></td></tr>`).join('') || '<tr><td colspan="4" class="p-12 text-center text-gray-400"><i class="fas fa-check-circle text-4xl mb-3 block text-gray-200"></i> Anda telah menyelesaikan semua tugas.</td></tr>'}</tbody></table></div></div>`;
             },
             Inspections: () => {
                 let inspectable = State.permits.filter(p => p.status === 'Diluluskan');
-                return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden fade-in"><div class="p-5 border-b border-blue-100 bg-blue-50/50 flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-lg"><i class="fas fa-search"></i></div><div><h3 class="font-bold text-blue-900">Modul Inspection (Tapak Operasi)</h3></div></div><div class="overflow-x-auto p-2"><table class="w-full text-left"><thead class="text-xs text-gray-400 uppercase font-semibold border-b border-gray-100"><tr><th class="p-4">Aktiviti / Lokasi</th><th class="p-4">Jenis</th><th class="p-4">Status Pemeriksaan</th><th class="p-4 text-right">Tindakan</th></tr></thead><tbody>${inspectable.map(p => { const pInspections = State.inspections.filter(i => i.permitId === p.id); let statusTxt = p.type === 'Track A' ? `${pInspections.length}/3 Peringkat` : `${pInspections.length}/${p.shifts?p.shifts.length:0} Shift`; let progress = p.type === 'Track A' ? (pInspections.length/3)*100 : (pInspections.length/(p.shifts?p.shifts.length:1))*100; return `<tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50/50"><td class="p-4"><div class="font-bold text-gray-800">${p.type === 'Track A' ? p.projectName : p.vesselName} <span class="font-mono text-xs text-gray-400 font-normal ml-2">${p.id}</span></div><div class="text-xs text-gray-500 mt-1"><i class="fas fa-map-pin mr-1 text-gray-400"></i> ${p.location}</div></td><td class="p-4">${Components.TrackBadge(p.type)}</td><td class="p-4"><div class="flex items-center gap-2"><div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-full bg-success" style="width: ${progress}%"></div></div><span class="text-xs font-semibold text-gray-600">${statusTxt}</span></div></td><td class="p-4 text-right"><button onclick="Modals.startInspection('${p.id}')" class="bg-white border border-gray-200 hover:border-primary hover:text-primary text-gray-700 px-4 py-2 rounded-xl shadow-sm text-sm font-semibold transition-all">Buat Inspection</button></td></tr>`}).join('') || '<tr><td colspan="4" class="p-12 text-center text-gray-400">Tiada permit aktif untuk pemantauan.</td></tr>'}</tbody></table></div></div>`;
+                return `<div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden fade-in flex flex-col h-full"><div class="p-5 border-b border-blue-100 bg-blue-50/50 flex items-center gap-3 shrink-0"><div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-lg"><i class="fas fa-search"></i></div><div><h3 class="font-bold text-blue-900">Modul Inspection (Tapak Operasi)</h3></div></div><div class="overflow-x-auto p-2 flex-1"><table class="w-full text-left min-w-[600px]"><thead class="text-xs text-gray-400 uppercase font-semibold border-b border-gray-100 sticky top-0 bg-white"><tr><th class="p-4">Aktiviti / Lokasi</th><th class="p-4">Jenis</th><th class="p-4">Status Pemeriksaan</th><th class="p-4 text-right">Tindakan</th></tr></thead><tbody>${inspectable.map(p => { const pInspections = State.inspections.filter(i => i.permitId === p.id); let statusTxt = p.type === 'Track A' ? `${pInspections.length}/3 Peringkat` : `${pInspections.length}/${p.shifts?p.shifts.length:0} Shift`; let progress = p.type === 'Track A' ? (pInspections.length/3)*100 : (pInspections.length/(p.shifts?p.shifts.length:1))*100; return `<tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50/50"><td class="p-4"><div class="font-bold text-gray-800">${p.type === 'Track A' ? p.projectName : p.vesselName} <span class="font-mono text-xs text-gray-400 font-normal ml-2">${p.id}</span></div><div class="text-xs text-gray-500 mt-1"><i class="fas fa-map-pin mr-1 text-gray-400"></i> ${p.location}</div></td><td class="p-4 whitespace-nowrap">${Components.TrackBadge(p.type)}</td><td class="p-4 whitespace-nowrap"><div class="flex items-center gap-2"><div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-full bg-success" style="width: ${progress}%"></div></div><span class="text-xs font-semibold text-gray-600">${statusTxt}</span></div></td><td class="p-4 text-right whitespace-nowrap"><button onclick="Modals.startInspection('${p.id}')" class="bg-white border border-gray-200 hover:border-primary hover:text-primary text-gray-700 px-4 py-2 rounded-xl shadow-sm text-sm font-semibold transition-all">Buat Inspection</button></td></tr>`}).join('') || '<tr><td colspan="4" class="p-12 text-center text-gray-400">Tiada permit aktif untuk pemantauan.</td></tr>'}</tbody></table></div></div>`;
             }
         };
 
-        // ==========================================
-        // 7. COMPONENTS & HELPERS
-        // ==========================================
         window.Components = {
-            StatCard: (title, count, icon, iconColor, bgColor) => `<div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow relative overflow-hidden"><div class="absolute -right-4 -top-4 w-24 h-24 rounded-full ${bgColor} opacity-50"></div><div class="relative z-10"><p class="text-sm text-gray-500 font-semibold mb-1">${title}</p><h3 class="text-3xl font-black text-gray-800">${count}</h3></div><div class="w-14 h-14 rounded-2xl ${bgColor} flex items-center justify-center text-2xl ${iconColor} relative z-10"><i class="fas fa-${icon}"></i></div></div>`,
+            StatCard: (title, count, icon, iconColor, bgColor) => `<div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow relative overflow-hidden"><div class="absolute -right-4 -top-4 w-24 h-24 rounded-full ${bgColor} opacity-50"></div><div class="relative z-10"><p class="text-sm text-gray-500 font-semibold mb-1">${title}</p><h3 class="text-3xl font-black text-gray-800">${count}</h3></div><div class="w-14 h-14 rounded-2xl ${bgColor} flex items-center justify-center text-2xl ${iconColor} relative z-10 shrink-0"><i class="fas fa-${icon}"></i></div></div>`,
             Badge: (status) => { const maps = { 'Diluluskan': 'bg-emerald-100 text-emerald-700', 'Active': 'bg-emerald-100 text-emerald-700', 'Ditutup': 'bg-gray-100 text-gray-600', 'Ditolak': 'bg-red-100 text-red-700', 'Suspended': 'bg-red-100 text-red-700', 'Pending': 'bg-amber-100 text-amber-700' }; let color = maps[status] || (status.includes('Pending') ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'); return `<span class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${color}">${status}</span>`; },
             TrackBadge: (type) => { let color = type === 'Track A' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-cyan-50 text-cyan-700 border-cyan-200'; if(type.includes('Kecemasan')) color = 'bg-red-50 text-red-700 border-red-200 font-bold'; return `<span class="px-2.5 py-1 rounded-md border text-xs font-semibold ${color}">${type}</span>`; },
-            RenderPermitRow: (p) => { const title = p.type === 'Track A' ? p.projectName : p.vesselName; const subtitle = p.type === 'Track A' ? p.workTypes?.join(', ') : p.cargoType; return `<tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"><td class="p-4"><div class="font-mono text-xs text-gray-400 font-semibold mb-1">${p.id}</div>${Components.TrackBadge(p.type)}</td><td class="p-4"><div class="font-bold text-gray-800 truncate max-w-[250px]">${title}</div><div class="text-xs text-gray-500 truncate max-w-[250px] mt-1"><i class="fas fa-map-pin mr-1"></i> ${p.location} <span class="mx-1">•</span> ${subtitle}</div></td><td class="p-4 text-sm font-medium text-gray-600">${p.applicantName}</td><td class="p-4">${Components.Badge(p.status)}</td><td class="p-4 text-right"><button onclick="Modals.viewTimeline('${p.id}')" class="text-primary bg-blue-50 hover:bg-blue-100 w-8 h-8 rounded-lg transition-colors" title="Lihat Status"><i class="fas fa-eye text-sm"></i></button></td></tr>`; },
-            PermitTable: (arr, compact = false) => { if(!arr.length) return '<p class="text-sm text-gray-500 text-center py-4">Tiada rekod terkini.</p>'; return `<table class="w-full text-left text-sm"><tbody>${arr.map(p => `<tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors"><td class="py-3 px-2"><div class="font-semibold text-gray-800">${p.type === 'Track A' ? p.projectName : p.vesselName}</div><div class="text-xs text-gray-500 mt-0.5">${p.type} <span class="mx-1">•</span> ${p.location}</div></td><td class="py-3 px-2 text-right">${Components.Badge(p.status)}</td></tr>`).join('')}</tbody></table>`; },
+            RenderPermitRow: (p) => { const title = p.type === 'Track A' ? p.projectName : p.vesselName; const subtitle = p.type === 'Track A' ? p.workTypes?.join(', ') : p.cargoType; return `<tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"><td class="p-4 whitespace-nowrap"><div class="font-mono text-xs text-gray-400 font-semibold mb-1">${p.id}</div>${Components.TrackBadge(p.type)}</td><td class="p-4"><div class="font-bold text-gray-800 line-clamp-1 max-w-[250px]">${title}</div><div class="text-xs text-gray-500 line-clamp-1 max-w-[250px] mt-1"><i class="fas fa-map-pin mr-1"></i> ${p.location} <span class="mx-1">•</span> ${subtitle}</div></td><td class="p-4 text-sm font-medium text-gray-600 whitespace-nowrap">${p.applicantName}</td><td class="p-4 whitespace-nowrap">${Components.Badge(p.status)}</td><td class="p-4 text-right whitespace-nowrap"><button onclick="Modals.viewTimeline('${p.id}')" class="text-primary bg-blue-50 hover:bg-blue-100 w-8 h-8 rounded-lg transition-colors" title="Lihat Status"><i class="fas fa-eye text-sm"></i></button></td></tr>`; },
+            PermitTable: (arr, compact = false) => { if(!arr.length) return '<p class="text-sm text-gray-500 text-center py-4">Tiada rekod terkini.</p>'; return `<table class="w-full text-left text-sm min-w-[400px]"><tbody>${arr.map(p => `<tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 transition-colors"><td class="py-3 px-2"><div class="font-semibold text-gray-800">${p.type === 'Track A' ? p.projectName : p.vesselName}</div><div class="text-xs text-gray-500 mt-0.5">${p.type} <span class="mx-1">•</span> ${p.location}</div></td><td class="py-3 px-2 text-right whitespace-nowrap">${Components.Badge(p.status)}</td></tr>`).join('')}</tbody></table>`; },
             RedFlagList: () => { const flags = State.inspections.filter(i => i.hasRedFlag).sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0,4); if(!flags.length) return '<div class="p-4 bg-emerald-50 text-emerald-700 rounded-xl text-sm font-medium border border-emerald-100 flex items-center gap-2"><i class="fas fa-check-circle"></i> Tiada isu kritikal.</div>'; return `<div class="space-y-3">${flags.map(f => { const p = State.permits.find(x => x.id === f.permitId) || {id: f.permitId, type: 'N/A'}; return `<div class="p-4 bg-red-50 border border-red-100 rounded-xl"><div class="flex justify-between items-start mb-2"><span class="font-bold text-red-800 text-sm font-mono">${p.id}</span><span class="text-[10px] font-semibold text-red-500 bg-white px-2 py-0.5 rounded border border-red-100">${Utils.formatDate(f.timestamp)}</span></div><div class="text-gray-800 text-sm font-medium bg-white p-2 rounded border border-red-50 mb-1">${f.remarks}</div><div class="text-red-600 text-xs font-semibold"><i class="fas fa-user-shield mr-1"></i> ${f.inspectorName} (${f.type})</div></div>`}).join('')}</div>`; }
         };
 
         window.Filter = { table: (val, tableId) => { val = val.toLowerCase(); document.querySelectorAll(`#${tableId} tbody tr`).forEach(row => { row.style.display = row.innerText.toLowerCase().includes(val) ? '' : 'none'; }); } };
 
-        // ==========================================
-        // 8. DB ACTIONS
-        // ==========================================
         window.Actions = {
             updateUser: async (id, status) => { await DB.from('users').update({ status }).eq('id', id); await App.refreshData(); App.renderView('users'); Utils.showToast(`Status dikemaskini.`, "success"); },
             deleteLocation: async (id) => { if(confirm("Pasti memadam lokasi ini?")) { await DB.from('locations').delete().eq('id', id); await App.refreshData(); App.renderView('locations'); } },
@@ -597,14 +492,11 @@
             }
         };
 
-        // ==========================================
-        // 9. FORMS
-        // ==========================================
         window.Forms = {
             addLocation: async () => { const name = prompt("Nama Lokasi Baru (cth: Berth 5):"); if(name && name.trim()) { await DB.from('locations').insert({ id: Utils.generateId(), name: name.trim() }); await App.refreshData(); App.renderView('locations'); } },
             getLocOptions: () => State.locations.map(l => `<option value="${l.name}">${l.name}</option>`).join(''),
             newPermitTrackA: () => {
-                const html = `<form id="track-a-form" class="space-y-6" onsubmit="Forms.submitTrackA(event)"><div class="bg-indigo-50 p-4 rounded-xl text-sm text-indigo-800 border border-indigo-100 flex gap-3 items-start"><i class="fas fa-info-circle mt-0.5 text-lg"></i><div><strong>Track A:</strong> Kerja kontraktor. Perlu kelulusan HOD & HSE.</div></div><div><h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><div class="w-6 h-6 rounded bg-gray-100 text-center text-sm leading-6">1</div> Maklumat Asas</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="text-xs font-semibold text-gray-600 block mb-1">Nama Projek</label><input type="text" id="ta-project" required class="w-full border rounded-lg p-2.5 text-sm"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Lokasi</label><select id="ta-location" required class="w-full border rounded-lg p-2.5 text-sm bg-white"><option value="">Pilih...</option>${Forms.getLocOptions()}</select></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">PIC</label><input type="text" id="ta-pic" required class="w-full border rounded-lg p-2.5 text-sm"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Bil Pekerja</label><input type="number" id="ta-workers" required min="1" class="w-full border rounded-lg p-2.5 text-sm"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Tarikh Mula</label><input type="date" id="ta-start" required class="w-full border rounded-lg p-2.5 text-sm"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Tarikh Tamat</label><input type="date" id="ta-end" required class="w-full border rounded-lg p-2.5 text-sm"></div></div></div><div><h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><div class="w-6 h-6 rounded bg-gray-100 text-center text-sm leading-6">2</div> Aktiviti</h4><div class="grid grid-cols-2 gap-3 text-sm"><label class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50"><input type="checkbox" name="ta-type" value="Hot Work" class="w-4 h-4 text-primary"> <span class="text-danger font-bold">Hot Work ⚠</span></label><label class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50"><input type="checkbox" name="ta-type" value="Confined Space" class="w-4 h-4 text-primary"> <span class="text-danger font-bold">Confined Space ⚠</span></label><label class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50"><input type="checkbox" name="ta-type" value="Working at Height" class="w-4 h-4 text-primary"> <span class="text-danger font-bold">Working at Height ⚠</span></label><label class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50"><input type="checkbox" name="ta-type" value="Lifting" class="w-4 h-4 text-primary"> <span>Lifting Operation</span></label></div></div><div><h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><div class="w-6 h-6 rounded bg-gray-100 text-center text-sm leading-6">3</div> Penerangan</h4><textarea id="ta-desc" rows="3" required placeholder="Skop kerja..." class="w-full border rounded-lg p-3 text-sm"></textarea></div></form>`;
+                const html = `<form id="track-a-form" class="space-y-6" onsubmit="Forms.submitTrackA(event)"><div class="bg-indigo-50 p-4 rounded-xl text-sm text-indigo-800 border border-indigo-100 flex gap-3 items-start"><i class="fas fa-info-circle mt-0.5 text-lg"></i><div><strong>Track A:</strong> Kerja kontraktor. Perlu kelulusan HOD & HSE.</div></div><div><h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><div class="w-6 h-6 rounded bg-gray-100 text-center text-sm leading-6">1</div> Maklumat Asas</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="text-xs font-semibold text-gray-600 block mb-1">Nama Projek</label><input type="text" id="ta-project" required class="w-full border rounded-lg p-2.5 text-sm"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Lokasi</label><select id="ta-location" required class="w-full border rounded-lg p-2.5 text-sm bg-white"><option value="">Pilih...</option>${Forms.getLocOptions()}</select></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">PIC</label><input type="text" id="ta-pic" required class="w-full border rounded-lg p-2.5 text-sm"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Bil Pekerja</label><input type="number" id="ta-workers" required min="1" class="w-full border rounded-lg p-2.5 text-sm"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Tarikh Mula</label><input type="date" id="ta-start" required class="w-full border rounded-lg p-2.5 text-sm"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Tarikh Tamat</label><input type="date" id="ta-end" required class="w-full border rounded-lg p-2.5 text-sm"></div></div></div><div><h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><div class="w-6 h-6 rounded bg-gray-100 text-center text-sm leading-6">2</div> Aktiviti</h4><div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm"><label class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 cursor-pointer"><input type="checkbox" name="ta-type" value="Hot Work" class="w-4 h-4 text-primary"> <span class="text-danger font-bold">Hot Work ⚠</span></label><label class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 cursor-pointer"><input type="checkbox" name="ta-type" value="Confined Space" class="w-4 h-4 text-primary"> <span class="text-danger font-bold">Confined Space ⚠</span></label><label class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 cursor-pointer"><input type="checkbox" name="ta-type" value="Working at Height" class="w-4 h-4 text-primary"> <span class="text-danger font-bold">Working at Height ⚠</span></label><label class="flex items-center gap-3 p-3 border rounded-lg bg-gray-50 cursor-pointer"><input type="checkbox" name="ta-type" value="Lifting" class="w-4 h-4 text-primary"> <span>Lifting Operation</span></label></div></div><div><h4 class="font-bold text-gray-800 mb-3 flex items-center gap-2"><div class="w-6 h-6 rounded bg-gray-100 text-center text-sm leading-6">3</div> Penerangan</h4><textarea id="ta-desc" rows="3" required placeholder="Skop kerja..." class="w-full border rounded-lg p-3 text-sm"></textarea></div></form>`;
                 UI.openModal('Borang Permit (Track A)', html, `<button onclick="document.getElementById('track-a-form').requestSubmit()" class="bg-primary text-white px-6 py-2.5 rounded-xl font-semibold shadow-md w-full sm:w-auto">Hantar Permohonan</button>`);
             },
             submitTrackA: async (e) => {
@@ -614,7 +506,7 @@
                 await DB.from('permits').insert(permit); await App.refreshData(); UI.closeModal(); App.renderView('permits'); Utils.showLoader(false); Utils.showToast("Permit dihantar kepada HOD.", "success");
             },
             newActivityTrackB: () => {
-                const html = `<div class="flex gap-3 mb-6 bg-gray-100 p-1.5 rounded-xl"><button type="button" onclick="Forms.renderTrackBForm('Rutin')" id="btn-rutin" class="flex-1 py-2.5 bg-white shadow-sm text-primary font-bold rounded-lg text-sm">RUTIN</button><button type="button" onclick="Forms.renderTrackBForm('Non-Rutin')" id="btn-nonrutin" class="flex-1 py-2.5 text-gray-500 hover:text-gray-700 font-bold rounded-lg text-sm">NON-RUTIN</button><button type="button" onclick="Forms.renderTrackBForm('Kecemasan')" id="btn-kecemasan" class="flex-1 py-2.5 text-gray-500 hover:text-danger font-bold rounded-lg text-sm">KECEMASAN</button></div><form id="track-b-form" class="space-y-4" onsubmit="Forms.submitTrackB(event)"><input type="hidden" id="tb-type" value="Rutin"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="text-xs font-semibold text-gray-600 block mb-1">Nama Kapal</label><input type="text" id="tb-vessel" required class="w-full border rounded-lg p-2.5 text-sm"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Lokasi (Berth)</label><select id="tb-location" required class="w-full border rounded-lg p-2.5 text-sm bg-white"><option value="">Pilih...</option>${Forms.getLocOptions()}</select></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Jenis Kargo</label><select id="tb-cargo-type" required class="w-full border rounded-lg p-2.5 text-sm bg-white"><option value="">Pilih...</option><option>Breakbulk</option><option>Drybulk</option><option>Container</option></select></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Keterangan Kargo</label><input type="text" id="tb-cargo-desc" required class="w-full border rounded-lg p-2.5 text-sm"></div><div class="col-span-1 md:col-span-2 border rounded-xl p-4 bg-gray-50"><h5 class="text-sm font-bold text-gray-700 mb-3"><i class="fas fa-clock mr-1"></i> Penjadualan Shift</h5><div class="grid grid-cols-3 gap-3"><div><label class="text-xs font-semibold text-gray-600 block mb-1">Tarikh Mula</label><input type="date" id="tb-date" required class="w-full border rounded-lg p-2 text-sm bg-white"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Shift Pertama</label><select id="tb-first-shift" class="w-full border rounded-lg p-2 text-sm bg-white"><option value="1">S1 (07-16)</option><option value="2">S2 (16-00)</option><option value="3">S3 (00-07)</option></select></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Jum. Shift</label><input type="number" id="tb-shift-count" required min="1" value="1" class="w-full border rounded-lg p-2 text-sm bg-white"></div></div></div></div><div id="dynamic-tb-section" class="mt-4"></div></form>`;
+                const html = `<div class="flex flex-col sm:flex-row gap-3 mb-6 bg-gray-100 p-1.5 rounded-xl"><button type="button" onclick="Forms.renderTrackBForm('Rutin')" id="btn-rutin" class="flex-1 py-2.5 bg-white shadow-sm text-primary font-bold rounded-lg text-sm">RUTIN</button><button type="button" onclick="Forms.renderTrackBForm('Non-Rutin')" id="btn-nonrutin" class="flex-1 py-2.5 text-gray-500 hover:text-gray-700 font-bold rounded-lg text-sm">NON-RUTIN</button><button type="button" onclick="Forms.renderTrackBForm('Kecemasan')" id="btn-kecemasan" class="flex-1 py-2.5 text-gray-500 hover:text-danger font-bold rounded-lg text-sm">KECEMASAN</button></div><form id="track-b-form" class="space-y-4" onsubmit="Forms.submitTrackB(event)"><input type="hidden" id="tb-type" value="Rutin"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="text-xs font-semibold text-gray-600 block mb-1">Nama Kapal</label><input type="text" id="tb-vessel" required class="w-full border rounded-lg p-2.5 text-sm"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Lokasi (Berth)</label><select id="tb-location" required class="w-full border rounded-lg p-2.5 text-sm bg-white"><option value="">Pilih...</option>${Forms.getLocOptions()}</select></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Jenis Kargo</label><select id="tb-cargo-type" required class="w-full border rounded-lg p-2.5 text-sm bg-white"><option value="">Pilih...</option><option>Breakbulk</option><option>Drybulk</option><option>Container</option></select></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Keterangan Kargo</label><input type="text" id="tb-cargo-desc" required class="w-full border rounded-lg p-2.5 text-sm"></div><div class="col-span-1 md:col-span-2 border rounded-xl p-4 bg-gray-50"><h5 class="text-sm font-bold text-gray-700 mb-3"><i class="fas fa-clock mr-1"></i> Penjadualan Shift</h5><div class="grid grid-cols-1 sm:grid-cols-3 gap-3"><div><label class="text-xs font-semibold text-gray-600 block mb-1">Tarikh Mula</label><input type="date" id="tb-date" required class="w-full border rounded-lg p-2 text-sm bg-white"></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Shift Pertama</label><select id="tb-first-shift" class="w-full border rounded-lg p-2 text-sm bg-white"><option value="1">S1 (07-16)</option><option value="2">S2 (16-00)</option><option value="3">S3 (00-07)</option></select></div><div><label class="text-xs font-semibold text-gray-600 block mb-1">Jum. Shift</label><input type="number" id="tb-shift-count" required min="1" value="1" class="w-full border rounded-lg p-2 text-sm bg-white"></div></div></div></div><div id="dynamic-tb-section" class="mt-4"></div></form>`;
                 UI.openModal('Daftar Stevedoring (Track B)', html, `<button onclick="document.getElementById('track-b-form').requestSubmit()" class="bg-secondary text-white px-6 py-2.5 rounded-xl font-semibold shadow-md w-full">Hantar</button>`);
                 Forms.renderTrackBForm('Rutin');
             },
@@ -622,7 +514,7 @@
                 document.getElementById('tb-type').value = type; ['rutin', 'nonrutin', 'kecemasan'].forEach(btn => { document.getElementById(`btn-${btn}`).className = 'flex-1 py-2.5 text-gray-500 hover:text-gray-700 font-bold rounded-lg text-sm'; });
                 const activeBtn = document.getElementById(`btn-${type.replace('-','').toLowerCase()}`); activeBtn.className = 'flex-1 py-2.5 bg-white shadow-sm text-primary font-bold rounded-lg text-sm'; if(type==='Kecemasan') activeBtn.classList.add('text-danger');
                 const dyn = document.getElementById('dynamic-tb-section');
-                if (type === 'Rutin') { dyn.innerHTML = `<div class="p-4 border border-blue-200 bg-blue-50 rounded-xl"><h5 class="font-bold text-primary mb-3 text-sm">Self-Declaration</h5><div class="space-y-2.5 text-sm text-gray-700"><label class="flex items-center gap-3"><input type="checkbox" required class="w-4 h-4 rounded text-primary"> <span>HIRARC & EAI tersedia</span></label><label class="flex items-center gap-3"><input type="checkbox" required class="w-4 h-4 rounded text-primary"> <span>Pekerja terlatih & alatan selamat</span></label></div></div>`; } 
+                if (type === 'Rutin') { dyn.innerHTML = `<div class="p-4 border border-blue-200 bg-blue-50 rounded-xl"><h5 class="font-bold text-primary mb-3 text-sm">Self-Declaration</h5><div class="space-y-2.5 text-sm text-gray-700"><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" required class="w-4 h-4 rounded text-primary"> <span>HIRARC & EAI tersedia</span></label><label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" required class="w-4 h-4 rounded text-primary"> <span>Pekerja terlatih & alatan selamat</span></label></div></div>`; } 
                 else { dyn.innerHTML = `<div class="p-4 border ${type==='Kecemasan'?'border-red-200 bg-red-50':'border-amber-200 bg-amber-50'} rounded-xl"><h5 class="font-bold ${type==='Kecemasan'?'text-danger':'text-amber-800'} mb-3 text-sm">Dokumen Sokongan (Diperlukan)</h5><textarea id="tb-justification" required placeholder="Justifikasi kerja..." class="w-full border rounded-lg p-3 text-sm bg-white"></textarea></div>`; }
             },
             submitTrackB: async (e) => {
@@ -636,9 +528,6 @@
             genShifts: (startD, startS, count) => { let shifts = [], currD = new Date(startD), currS = startS; for(let i=0; i<count; i++) { shifts.push({ type: `Shift ${currS}`, date: currD.toISOString().split('T')[0], inspected: false }); if(currS === 3) { currS = 1; currD.setDate(currD.getDate() + 1); } else currS++; } return shifts; }
         };
 
-        // ==========================================
-        // 10. MODALS & INSPECTION
-        // ==========================================
         window.Modals = {
             viewTimeline: (id) => {
                 const p = State.permits.find(x => x.id === id);
@@ -647,18 +536,18 @@
             },
             viewApproval: (id) => {
                 let content = `<textarea id="approval-remarks" rows="3" class="w-full border rounded-xl p-3 text-sm focus:border-primary mb-2" placeholder="Catatan kelulusan (Wajib jika tolak/tangguh)..."></textarea>`;
-                let footer = `<button onclick="Actions.submitDecision('${id}', 'Rejected')" class="px-5 py-2 text-danger hover:bg-red-50 rounded-xl font-medium">Tolak</button><button onclick="Actions.submitDecision('${id}', 'Hold')" class="px-5 py-2 text-accent hover:bg-amber-50 rounded-xl font-medium">Tangguh</button><button onclick="Actions.submitDecision('${id}', 'Approved')" class="px-6 py-2 bg-success text-white rounded-xl font-semibold hover:bg-emerald-600">Luluskan</button>`;
+                let footer = `<button onclick="Actions.submitDecision('${id}', 'Rejected')" class="px-5 py-2 text-danger hover:bg-red-50 rounded-xl font-medium w-full sm:w-auto">Tolak</button><button onclick="Actions.submitDecision('${id}', 'Hold')" class="px-5 py-2 text-accent hover:bg-amber-50 rounded-xl font-medium w-full sm:w-auto mt-2 sm:mt-0">Tangguh</button><button onclick="Actions.submitDecision('${id}', 'Approved')" class="px-6 py-2 bg-success text-white rounded-xl font-semibold hover:bg-emerald-600 w-full sm:w-auto mt-2 sm:mt-0">Luluskan</button>`;
                 UI.openModal('Kelulusan Permit', content, footer);
             },
             startInspection: (id) => {
                 const permit = State.permits.find(p => p.id === id); let html = '';
                 if(permit.type === 'Track A') { html = `<div class="space-y-3">${['Pre-Work', 'During-Work', 'Post-Work'].map(stage => `<button onclick="Modals.renderChecklist('${id}', '${stage}')" class="w-full p-4 border rounded-xl text-left hover:border-primary flex justify-between items-center bg-white group"><div class="font-bold text-gray-800 group-hover:text-primary">${stage} Stage</div><i class="fas fa-arrow-right text-gray-300 group-hover:text-primary"></i></button>`).join('')}</div>`; } 
-                else { html = `<div class="grid grid-cols-2 gap-3">${permit.shifts.map((s, idx) => { const isDone = State.inspections.some(i => i.permitId === id && i.type === `Shift ${idx+1}`); return `<button onclick="Modals.renderChecklist('${id}', 'Shift ${idx+1}')" class="p-3 border rounded-xl text-left hover:border-primary ${isDone ? 'bg-emerald-50 border-emerald-200' : 'bg-white'} relative"><div class="font-bold text-sm text-gray-800">${s.type}</div><div class="text-[10px] text-gray-500">${s.date}</div>${isDone ? '<div class="absolute top-2 right-2 text-success"><i class="fas fa-check-circle"></i></div>' : ''}</button>`}).join('')}</div>`; }
-                UI.openModal('Pilih Pilih Peringkat Inspection', html);
+                else { html = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${permit.shifts.map((s, idx) => { const isDone = State.inspections.some(i => i.permitId === id && i.type === `Shift ${idx+1}`); return `<button onclick="Modals.renderChecklist('${id}', 'Shift ${idx+1}')" class="p-3 border rounded-xl text-left hover:border-primary ${isDone ? 'bg-emerald-50 border-emerald-200' : 'bg-white'} relative"><div class="font-bold text-sm text-gray-800">${s.type}</div><div class="text-[10px] text-gray-500">${s.date}</div>${isDone ? '<div class="absolute top-2 right-2 text-success"><i class="fas fa-check-circle"></i></div>' : ''}</button>`}).join('')}</div>`; }
+                UI.openModal('Pilih Peringkat Inspection', html);
             },
             renderChecklist: (permitId, stageType) => {
                 const items = ["PPE mematuhi SOP", "Peralatan selamat", "Kawasan bebas halangan", "Komunikasi jelas"];
-                let html = `<form id="checklist-form" onsubmit="event.preventDefault(); Modals.submitChecklist('${permitId}', '${stageType}')"><div class="space-y-4">${items.map((item, i) => `<div class="border p-3 rounded-xl bg-gray-50"><p class="text-sm font-semibold text-gray-800 mb-2">${item}</p><div class="flex gap-4"><label class="flex items-center gap-2"><input type="radio" name="chk_${i}" value="OK" required class="w-4 h-4 text-success focus:ring-success"> <span class="text-sm font-medium text-success">OK</span></label><label class="flex items-center gap-2"><input type="radio" name="chk_${i}" value="NC" class="w-4 h-4 text-danger focus:ring-danger"> <span class="text-sm font-medium text-danger">NC</span></label></div></div>`).join('')}<textarea id="chk-remarks" rows="2" class="w-full border rounded-xl p-3 text-sm" placeholder="Catatan (Wajib jika ada NC)..."></textarea></div></form>`;
+                let html = `<form id="checklist-form" onsubmit="event.preventDefault(); Modals.submitChecklist('${permitId}', '${stageType}')"><div class="space-y-4">${items.map((item, i) => `<div class="border p-3 rounded-xl bg-gray-50"><p class="text-sm font-semibold text-gray-800 mb-2">${item}</p><div class="flex gap-4"><label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="chk_${i}" value="OK" required class="w-4 h-4 text-success focus:ring-success"> <span class="text-sm font-medium text-success">OK</span></label><label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="chk_${i}" value="NC" class="w-4 h-4 text-danger focus:ring-danger"> <span class="text-sm font-medium text-danger">NC</span></label></div></div>`).join('')}<textarea id="chk-remarks" rows="2" class="w-full border rounded-xl p-3 text-sm" placeholder="Catatan (Wajib jika ada NC)..."></textarea></div></form>`;
                 UI.openModal(`${stageType} Inspection`, html, `<button onclick="document.getElementById('checklist-form').requestSubmit()" class="bg-primary text-white px-6 py-2.5 rounded-xl font-semibold w-full">Hantar Laporan</button>`);
             },
             submitChecklist: async (permitId, stageType) => {
