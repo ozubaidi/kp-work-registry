@@ -267,7 +267,7 @@
                     }
                 },
                 insert: async (payload) => {
-                    const withDate = { ...payload, createdAt: payload.createdAt || new Date().toISOString() };
+                    const withDate = table === 'permits' ? { ...payload, createdAt: payload.createdAt || new Date().toISOString() } : payload;
                     if (isSupabaseConfigured) {
                         const { data, error } = await supabaseClient.from(table).insert(withDate).select();
                         if(error) throw error;
