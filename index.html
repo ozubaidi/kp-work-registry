@@ -136,7 +136,7 @@
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-xs font-semibold text-gray-700 mb-1">Peranan SOP</label>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">Kategori</label>
                                 <select id="reg-role" required class="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-gray-50 focus:bg-white">
                                     <option value="">Pilih...</option>
                                     <option value="Kontraktor">Kontraktor (Contractor PTW)</option>
@@ -159,7 +159,11 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-700 mb-1">Syarikat/Jabatan</label>
-                                <input type="text" id="reg-company" required class="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-gray-50 focus:bg-white">
+                                <select id="reg-company-type" onchange="Auth.toggleCompanyOther(this.value)" class="w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm bg-white outline-none mb-2">
+                                    <option value="Kuantan Port">Kuantan Port</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                                <input type="text" id="reg-company-other" placeholder="Nama syarikat" class="hidden w-full px-3.5 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-gray-50 focus:bg-white">
                             </div>
                         </div>
                         <button type="submit" class="w-full bg-success hover:bg-emerald-600 text-white font-semibold py-3 rounded-xl transition-colors shadow-md mt-4">
@@ -404,6 +408,10 @@
                     links.push({ id: 'approvals', icon: 'clipboard-check', text: 'Kelulusan Kecemasan' });
                     links.push({ id: 'all-permits', icon: 'list-alt', text: 'Pemantauan' });
                 } else if (role === 'Pengurusan') { links.push({ id: 'all-permits', icon: 'list-alt', text: 'Pemantauan' }); } 
+                else if (Forms.deptList.includes(role)) {
+                    links.push({ id: 'approvals', icon: 'clipboard-check', text: 'Kelulusan Pending' });
+                    links.push({ id: 'all-permits', icon: 'list-alt', text: 'Rekod Permit' });
+                }
                 else if (role === 'Admin') {
                     links.push({ id: 'users', icon: 'users', text: 'Pengguna Sistem' });
                     links.push({ id: 'locations', icon: 'map-location-dot', text: 'Lokasi Pelabuhan' });
@@ -420,6 +428,8 @@
                         ? State.permits.filter(p => p.status === 'Pending HSE').length
                         : role === 'HOD / Exec Operasi'
                         ? State.permits.filter(p => p.type === 'Track B - Kecemasan' && p.status === 'Pending HOD').length
+                        : Forms.deptList.includes(role)
+                        ? State.permits.filter(p => p.status === 'Pending Dept' && p.processOwnerDept === role).length
                         : 0,
                     'all-permits': State.permits.filter(p => p.status.includes('Pending')).length
                 };
@@ -455,6 +465,11 @@
                 if (type === 'register') { login.classList.add('hidden'); reg.classList.remove('hidden'); } 
                 else { reg.classList.add('hidden'); login.classList.remove('hidden'); }
             },
+            toggleCompanyOther: (value) => {
+                const otherInput = document.getElementById('reg-company-other');
+                if (value === 'Other') { otherInput.classList.remove('hidden'); otherInput.required = true; } 
+                else { otherInput.classList.add('hidden'); otherInput.required = false; otherInput.value = ''; }
+            },
             handleRegister: async (e) => {
                 e.preventDefault();
                 Utils.showLoader(true, "Mendaftar Akaun...");
@@ -471,7 +486,7 @@
                         name: document.getElementById('reg-name').value,
                         phone: document.getElementById('reg-phone').value,
                         role: document.getElementById('reg-role').value,
-                        company: document.getElementById('reg-company').value,
+                        company: document.getElementById('reg-company-type').value === 'Kuantan Port' ? 'Kuantan Port' : document.getElementById('reg-company-other').value,
                         status: 'Pending'
                     };
                     await DB.from('users').insert(userData);
@@ -696,6 +711,7 @@
                 if (role === 'Supervisor Operasi') { pending = State.permits.filter(p => p.status === 'Pending HOD' || (p.type === 'Track B - Non-Rutin' && p.status === 'Pending Ops')); } 
                 else if (role === 'HSE Officer') { pending = State.permits.filter(p => p.status === 'Pending HSE'); } 
                 else if (role === 'HOD / Exec Operasi') { pending = State.permits.filter(p => p.type === 'Track B - Kecemasan' && p.status === 'Pending HOD'); }
+                else if (Forms.deptList.includes(role)) { pending = State.permits.filter(p => p.status === 'Pending Dept' && p.processOwnerDept === role); }
 
                 return `
                     <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden fade-in">
@@ -824,16 +840,38 @@
                 Utils.showLoader(true, "Menyimpan keputusan...");
                 try {
                     const permit = State.permits.find(p => p.id === permitId);
-                    let newStatus = decision === 'Approved' ? ((permit.status === 'Pending HOD' || permit.status === 'Pending Ops') ? 'Pending HSE' : 'Diluluskan') : (decision === 'Rejected' ? 'Ditolak' : 'Ditangguhkan');
+                    let newStatus = decision === 'Approved' ? ((permit.status === 'Pending HOD' || permit.status === 'Pending Ops' || permit.status === 'Pending Dept') ? 'Pending HSE' : 'Diluluskan') : (decision === 'Rejected' ? 'Ditolak' : 'Ditangguhkan');
                     let timeline = [...(permit.timeline || []), { date: new Date().toISOString(), actor: State.currentUser.name, role: State.currentUser.role, action: decision, remarks }];
                     await DB.from('permits').update({ status: newStatus, timeline }).eq('id', permitId);
                     await App.refreshData(); UI.closeModal(); App.renderView('approvals');
                     Utils.showLoader(false); Utils.showToast("Keputusan disimpan.", "success");
                 } catch(e) { Utils.showLoader(false); Utils.showToast("Ralat: " + e.message, "error"); }
+            },
+            submitDeptApproval: async (permitId) => {
+                if (State.currentUser.role === 'Civil & Infra') {
+                    const allChecked = ['dept-decl-1', 'dept-decl-2', 'dept-decl-3'].every(id => document.getElementById(id).checked);
+                    if (!allChecked) return Utils.showToast("Sila tandakan semua declaration sebelum luluskan.", "error");
+                }
+                await Actions.submitDecision(permitId, 'Approved');
+            },
+            submitReassign: async (permitId) => {
+                const newDept = document.getElementById('reassign-dept').value;
+                const remarks = document.getElementById('reassign-remarks').value;
+                if(!newDept) return Utils.showToast("Pilih jabatan yang betul.", "error");
+                if(!remarks.trim()) return Utils.showToast("Sila nyatakan sebab reassign.", "error");
+                Utils.showLoader(true, "Menghantar semula...");
+                try {
+                    const permit = State.permits.find(p => p.id === permitId);
+                    let timeline = [...(permit.timeline || []), { date: new Date().toISOString(), actor: State.currentUser.name, role: State.currentUser.role, action: 'Reassigned', remarks: `Dihantar semula ke ${newDept}: ${remarks}` }];
+                    await DB.from('permits').update({ processOwnerDept: newDept, timeline }).eq('id', permitId);
+                    await App.refreshData(); UI.closeModal(); App.renderView('approvals');
+                    Utils.showLoader(false); Utils.showToast(`Permit dihantar semula ke ${newDept}.`, "success");
+                } catch(e) { Utils.showLoader(false); Utils.showToast("Ralat: " + e.message, "error"); }
             }
         };
 
         window.Forms = {
+            deptList: ['Civil & Infra', 'Electrical', 'Port Equipment', 'Crane Unit', 'IT Dept', 'LCB', 'MCT KP1', 'BCT KP2', 'Port Fire', 'Port Police'],
             hazardList: ['Slip, Trip & Fall', 'Excavation Collapse', 'Dust', 'Manual Handling', 'Fire', 'Overhead Load', 'Heavy Loading', 'Radiation', 'Extremes Temperature', 'Noise', 'Danger of Falling', 'Open Flames or Arcs', 'Traffic Flow', 'Struck by Moving Objects', 'Electrical', 'Hit an Object', 'Under Water Work', 'Vibration (power tools)', 'Flying/Falling Objects', 'Biological', 'Poor Lighting', 'Combustible Materials', 'Flammable Materials', 'Explosive Materials', 'Heat Stress', 'Exposure of Hazardous Chemical', 'Stored Energy Release (high pressure/mechanical)', 'Other'],
             ppeList: ['Safety Helmet', 'Safety Harness', 'Safety Glass / Goggle', 'Protective Overall', 'Hand Gloves', 'Safety Shoes', 'Ear Muff / Plugs', 'Face Shield', 'Respirator Protection', 'Life Jacket'],
             safetyControlList: ['Has all workers attended KP safety induction?', 'HIRARC has been reviewed and approved? (as attached)', 'EAIA has been reviewed and approved? (as attached)', 'Job Method Statement required for permit documentation attached?', 'Warning signs / Barricade installed?', 'Lock Out Tag Out (LOTO)?', 'PMA/PMT attached?', 'Additional lighting?', 'Standby person available? (Confined space / Fire watcher / Loading / Unloading)', 'Are the power tools/equipment to be used at the work site in good and safe working condition?', 'Is it permissible to use: (a) Open flame / welding equipment?', '(b) Electrical equipment / power tools?'],
@@ -898,6 +936,13 @@
                                 `).join('')}
                             </div>
                         </div>
+                        <div>
+                            <label class="text-xs font-semibold text-gray-600 block mb-1">Jabatan Process Owner</label>
+                            <select id="ta-dept" required class="w-full border rounded-lg p-2.5 text-sm bg-white outline-none">
+                                <option value="">Pilih jabatan yang punya/bertanggungjawab ke atas kerja ini...</option>
+                                ${Forms.deptList.map(d => `<option value="${d}">${d}</option>`).join('')}
+                            </select>
+                        </div>
                         <div><label class="text-xs font-semibold text-gray-600 block mb-1">Penerangan</label><textarea id="ta-desc" rows="3" required class="w-full border rounded-lg p-3 text-sm outline-none"></textarea></div>
                     </form>`;
                 UI.openModal('Mohon Contractor PTW', html, `<button onclick="document.getElementById('track-a-form').requestSubmit()" class="bg-primary text-white px-6 py-2.5 rounded-xl font-semibold w-full sm:w-auto">Hantar</button>`);
@@ -913,15 +958,18 @@
                     const checked = document.querySelector(`input[name="sc-${i}"]:checked`);
                     safetyControl[q] = checked ? checked.value : null;
                 });
+                const processOwnerDept = document.getElementById('ta-dept').value;
+                if(!processOwnerDept) return Utils.showToast("Pilih jabatan process owner.", "error");
                 Utils.showLoader(true, "Menghantar...");
                 const permit = {
                     id: 'PTWA-' + Utils.generateId(), type: 'Track A', applicantUid: State.currentUser.id,
-                    applicantName: State.currentUser.name, applicantCompany: State.currentUser.company, status: 'Pending HOD',
+                    applicantName: State.currentUser.name, applicantCompany: State.currentUser.company, status: 'Pending Dept',
+                    processOwnerDept: processOwnerDept,
                     projectName: document.getElementById('ta-project').value, location: document.getElementById('ta-location').value,
                     pic: document.getElementById('ta-pic').value, workerCount: document.getElementById('ta-workers').value,
                     startDate: document.getElementById('ta-start').value, endDate: document.getElementById('ta-end').value,
                     workTypes: types, hazards, ppeRequired, safetyControl, description: document.getElementById('ta-desc').value,
-                    timeline: [{ date: new Date().toISOString(), actor: State.currentUser.name, action: 'Submitted', remarks: 'Dihantar kepada HOD.' }]
+                    timeline: [{ date: new Date().toISOString(), actor: State.currentUser.name, action: 'Submitted', remarks: `Dihantar untuk semakan ${processOwnerDept}.` }]
                 };
                 await DB.from('permits').insert(permit); await App.refreshData(); UI.closeModal(); App.renderView('permits');
                 Utils.showLoader(false); Utils.showToast("Permit berjaya dihantar.", "success");
@@ -1018,12 +1066,42 @@
                 UI.openModal('Timeline Status', content);
             },
             viewApproval: (id) => {
-                let content = `<textarea id="approval-remarks" rows="3" class="w-full border rounded-xl p-3 text-sm outline-none" placeholder="Catatan kelulusan..."></textarea>`;
-                let footer = `
-                    <button onclick="Actions.submitDecision('${id}', 'Rejected')" class="px-4 py-2 text-danger font-medium text-sm">Tolak</button>
-                    <button onclick="Actions.submitDecision('${id}', 'Hold')" class="px-4 py-2 text-accent font-medium text-sm">Tangguh</button>
-                    <button onclick="Actions.submitDecision('${id}', 'Approved')" class="px-5 py-2 bg-success text-white rounded-xl font-semibold text-sm">Luluskan</button>`;
-                UI.openModal('Kelulusan Permit', content, footer);
+                const permit = State.permits.find(p => p.id === id);
+                if (permit.status === 'Pending Dept') {
+                    let declarationHtml = '';
+                    if (State.currentUser.role === 'Civil & Infra') {
+                        declarationHtml = `
+                            <div class="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 mb-3">
+                                <span class="font-semibold block mb-2">Declaration Civil & Infra:</span>
+                                <label class="flex items-center gap-2 mb-1"><input type="checkbox" id="dept-decl-1"> HIRARC has been reviewed and approved</label>
+                                <label class="flex items-center gap-2 mb-1"><input type="checkbox" id="dept-decl-2"> EAIA has been submitted to HSE Dept</label>
+                                <label class="flex items-center gap-2"><input type="checkbox" id="dept-decl-3"> Job method statement has been reviewed</label>
+                            </div>`;
+                    }
+                    let content = `
+                        ${declarationHtml}
+                        <textarea id="approval-remarks" rows="3" class="w-full border rounded-xl p-3 text-sm outline-none" placeholder="Catatan..."></textarea>
+                        <div class="mt-4 pt-4 border-t border-gray-100">
+                            <p class="text-xs font-semibold text-gray-600 mb-2">Salah jabatan? Hantar semula ke jabatan yang betul:</p>
+                            <select id="reassign-dept" class="w-full border rounded-lg p-2 text-sm bg-white outline-none mb-2">
+                                <option value="">Pilih jabatan...</option>
+                                ${Forms.deptList.filter(d => d !== State.currentUser.role).map(d => `<option value="${d}">${d}</option>`).join('')}
+                            </select>
+                            <textarea id="reassign-remarks" rows="2" class="w-full border rounded-lg p-2 text-sm outline-none" placeholder="Sebab reassign..."></textarea>
+                            <button onclick="Actions.submitReassign('${id}')" class="mt-2 w-full px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-xl text-sm font-semibold">Reassign</button>
+                        </div>`;
+                    let footer = `
+                        <button onclick="Actions.submitDecision('${id}', 'Rejected')" class="px-4 py-2 text-danger font-medium text-sm">Tolak</button>
+                        <button onclick="Actions.submitDeptApproval('${id}')" class="px-5 py-2 bg-success text-white rounded-xl font-semibold text-sm">Luluskan</button>`;
+                    UI.openModal('Semakan Jabatan: ' + permit.processOwnerDept, content, footer);
+                } else {
+                    let content = `<textarea id="approval-remarks" rows="3" class="w-full border rounded-xl p-3 text-sm outline-none" placeholder="Catatan kelulusan..."></textarea>`;
+                    let footer = `
+                        <button onclick="Actions.submitDecision('${id}', 'Rejected')" class="px-4 py-2 text-danger font-medium text-sm">Tolak</button>
+                        <button onclick="Actions.submitDecision('${id}', 'Hold')" class="px-4 py-2 text-accent font-medium text-sm">Tangguh</button>
+                        <button onclick="Actions.submitDecision('${id}', 'Approved')" class="px-5 py-2 bg-success text-white rounded-xl font-semibold text-sm">Luluskan</button>`;
+                    UI.openModal('Kelulusan Permit', content, footer);
+                }
             },
             startInspection: (id) => {
                 const permit = State.permits.find(p => p.id === id);
