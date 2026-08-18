@@ -330,7 +330,7 @@
         // ==========================================
         // 2. GLOBAL STATE & UTILITIES
         // ==========================================
-        window.State = { currentUser: null, users: [], permits: [], locations: [], inspections: [], formOptions: [] };
+        window.State = { currentUser: null, users: [], permits: [], locations: [], inspections: [], formOptions: [], deletedLog: [] };
 
         window.Utils = {
             generateId: () => Math.random().toString(36).substr(2, 9).toUpperCase(),
@@ -417,6 +417,7 @@
                     links.push({ id: 'locations', icon: 'map-location-dot', text: 'Lokasi Pelabuhan' });
                     links.push({ id: 'form-settings', icon: 'sliders', text: 'Tetapan Borang' });
                     links.push({ id: 'all-permits', icon: 'list-alt', text: 'Semua Data Permit' });
+                    links.push({ id: 'deleted-log', icon: 'trash', text: 'Log Padam' });
                 }
 
                 // Kira jumlah notifikasi untuk setiap nav item
@@ -533,9 +534,11 @@
                 document.getElementById('user-avatar').innerText = State.currentUser.name.charAt(0).toUpperCase();
                 UI.updateNavigation();
                 App.navigate('dashboard', 'Dashboard');
+                App.startPolling();
                 Utils.showToast(`Selamat datang, ${State.currentUser.name}`, 'success');
             },
             logout: () => {
+                App.stopPolling();
                 State.currentUser = null;
                 document.getElementById('app-view').classList.add('hidden');
                 document.getElementById('auth-view').classList.remove('hidden');
@@ -548,16 +551,30 @@
         // ==========================================
         window.App = {
             currentView: 'dashboard',
+            pollInterval: null,
+            startPolling: () => {
+                if (App.pollInterval) clearInterval(App.pollInterval);
+                App.pollInterval = setInterval(async () => {
+                    if (!State.currentUser) return;
+                    await App.refreshData();
+                    UI.updateNavigation();
+                    App.renderView(App.currentView);
+                }, 30000);
+            },
+            stopPolling: () => {
+                if (App.pollInterval) { clearInterval(App.pollInterval); App.pollInterval = null; }
+            },
             refreshData: async () => {
                 try {
-                    const [uRes, pRes, lRes, iRes, fRes] = await Promise.all([
-                        DB.from('users').select(), DB.from('permits').select(), DB.from('locations').select(), DB.from('inspections').select(), DB.from('form_options').select()
+                    const [uRes, pRes, lRes, iRes, fRes, dRes] = await Promise.all([
+                        DB.from('users').select(), DB.from('permits').select(), DB.from('locations').select(), DB.from('inspections').select(), DB.from('form_options').select(), DB.from('deleted_permits_log').select()
                     ]);
                     State.users = uRes.data || [];
                     State.permits = pRes.data || [];
                     State.locations = lRes.data || [];
                     State.inspections = iRes.data || [];
                     State.formOptions = fRes.data || [];
+                    State.deletedLog = dRes.data || [];
                 } catch(e) { console.error(e); }
             },
             navigate: async (viewId, title) => {
@@ -579,6 +596,7 @@
                     case 'users': content.innerHTML = Views.Users(); break;
                     case 'locations': content.innerHTML = Views.Locations(); break;
                     case 'form-settings': content.innerHTML = Views.FormSettings(); break;
+                    case 'deleted-log': content.innerHTML = Views.DeletedLog(); break;
                     case 'permits': 
                     case 'stevedoring': 
                     case 'all-permits': content.innerHTML = Views.PermitList(viewId); break;
@@ -683,6 +701,26 @@
                         <div>${rows.length ? rows : '<div class="p-8 text-center text-gray-400 border-2 border-dashed rounded-xl">Tiada jenis aktiviti didaftarkan.</div>'}</div>
                     </div>`;
             },
+            DeletedLog: () => {
+                const sorted = [...State.deletedLog].sort((a,b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+                let rows = sorted.map(d => {
+                    const p = d.permitData || {};
+                    const title = p.type === 'Track A' ? p.projectName : p.vesselName;
+                    return `
+                    <tr class="border-b border-gray-50 hover:bg-gray-50/50">
+                        <td class="p-4"><div class="font-mono text-xs text-gray-400 mb-1">${d.originalId}</div><div class="font-bold text-gray-800">${title || '-'}</div></td>
+                        <td class="p-4 text-sm text-gray-600">${p.applicantName || '-'}</td>
+                        <td class="p-4 text-sm text-gray-600">${d.deletedBy} <span class="text-xs text-gray-400">(${d.deletedByRole})</span></td>
+                        <td class="p-4 text-xs text-gray-500">${Utils.formatDate(d.deletedAt)}</td>
+                        <td class="p-4 text-sm text-gray-700">${d.reason}</td>
+                    </tr>`;
+                }).join('');
+                return `
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden fade-in">
+                        <div class="p-5 border-b border-gray-100"><h3 class="font-bold text-gray-800 text-lg">Log Permit Dipadam</h3><p class="text-xs text-gray-400 mt-1">Rekod penuh permit yang dipadam Admin, untuk tujuan audit.</p></div>
+                        <div class="overflow-x-auto"><table class="w-full text-left min-w-[700px]"><thead class="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider"><tr><th class="p-4">ID / Tajuk</th><th class="p-4">Pemohon Asal</th><th class="p-4">Dipadam Oleh</th><th class="p-4">Tarikh</th><th class="p-4">Sebab</th></tr></thead><tbody>${rows || '<tr><td colspan="5" class="p-8 text-center text-gray-400">Tiada permit dipadam setakat ini.</td></tr>'}</tbody></table></div>
+                    </div>`;
+            },
             PermitList: (mode) => {
                 const role = State.currentUser.role;
                 let permitsToDisplay = [];
@@ -751,6 +789,22 @@
         // 7. COMPONENTS & HELPERS
         // ==========================================
         window.Components = {
+            PermitSummary: (p) => {
+                const submittedEntry = (p.timeline || []).find(t => t.action === 'Submitted');
+                const dateStr = submittedEntry ? Utils.formatDate(submittedEntry.date) : (p.createdAt ? Utils.formatDate(p.createdAt) : '-');
+                const rows = [['Pemohon', p.applicantName], ['Syarikat', p.applicantCompany || '-'], ['Tarikh Hantar', dateStr], ['Lokasi', p.location || '-']];
+                let extra = '';
+                if (p.workTypes && p.workTypes.length) extra += `<div class="mt-2"><span class="text-gray-400 block">Jenis Kerja</span><span class="text-gray-700">${p.workTypes.join(', ')}</span></div>`;
+                if (p.hazards && p.hazards.length) extra += `<div class="mt-2"><span class="text-gray-400 block">Hazard Dikenalpasti (${p.hazards.length})</span><span class="text-gray-700">${p.hazards.join(', ')}</span></div>`;
+                if (p.ppeRequired && p.ppeRequired.length) extra += `<div class="mt-2"><span class="text-gray-400 block">PPE Diperlukan</span><span class="text-gray-700">${p.ppeRequired.join(', ')}</span></div>`;
+                return `
+                    <div class="bg-gray-50 border border-gray-100 rounded-xl p-4 mb-3 text-xs">
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+                            ${rows.map(([label, val]) => `<div><span class="text-gray-400 block">${label}</span><span class="font-semibold text-gray-800">${val}</span></div>`).join('')}
+                        </div>
+                        ${extra}
+                    </div>`;
+            },
             StatCard: (title, count, icon, iconColor, bgColor) => `
                 <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 w-24 h-24 rounded-full ${bgColor} opacity-50"></div>
@@ -759,7 +813,7 @@
                 </div>
             `,
             Badge: (status) => {
-                const maps = { 'Diluluskan': 'bg-emerald-100 text-emerald-700', 'Active': 'bg-emerald-100 text-emerald-700', 'Ditutup': 'bg-gray-100 text-gray-600', 'Ditolak': 'bg-red-100 text-red-700', 'Suspended': 'bg-red-100 text-red-700', 'Pending': 'bg-amber-100 text-amber-700' };
+                const maps = { 'Diluluskan': 'bg-emerald-100 text-emerald-700', 'Active': 'bg-emerald-100 text-emerald-700', 'Ditutup': 'bg-gray-100 text-gray-600', 'Ditolak': 'bg-red-100 text-red-700', 'Suspended': 'bg-red-100 text-red-700', 'Pending': 'bg-amber-100 text-amber-700', 'Dibatalkan': 'bg-gray-100 text-gray-600' };
                 let color = maps[status] || (status.includes('Pending') ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700');
                 return `<span class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${color}">${status}</span>`;
             },
@@ -771,13 +825,19 @@
             RenderPermitRow: (p) => {
                 const title = p.type === 'Track A' ? p.projectName : p.vesselName;
                 const subtitle = p.type === 'Track A' ? p.workTypes?.join(', ') : p.cargoType;
+                const canCancel = p.applicantUid === State.currentUser.id && p.status.includes('Pending');
+                const isAdmin = State.currentUser.role === 'Admin';
                 return `
                     <tr class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                         <td class="p-4"><div class="font-mono text-xs text-gray-400 font-semibold mb-1">${p.id}</div>${Components.TrackBadge(p.type)}</td>
                         <td class="p-4"><div class="font-bold text-gray-800">${title}</div><div class="text-xs text-gray-500 mt-1">${p.location} • ${subtitle}</div></td>
                         <td class="p-4 text-sm font-medium text-gray-600">${p.applicantName}</td>
                         <td class="p-4">${Components.Badge(p.status)}</td>
-                        <td class="p-4 text-right"><button onclick="Modals.viewTimeline('${p.id}')" class="text-primary bg-blue-50 hover:bg-blue-100 w-8 h-8 rounded-lg transition-colors"><i class="fas fa-eye text-sm"></i></button></td>
+                        <td class="p-4 text-right flex justify-end gap-2">
+                            ${canCancel ? `<button onclick="Actions.cancelPermit('${p.id}')" class="text-danger bg-red-50 hover:bg-red-100 w-8 h-8 rounded-lg transition-colors" title="Batalkan"><i class="fas fa-ban text-sm"></i></button>` : ''}
+                            ${isAdmin ? `<button onclick="Actions.deletePermitAsAdmin('${p.id}')" class="text-danger bg-red-50 hover:bg-red-100 w-8 h-8 rounded-lg transition-colors" title="Padam (Admin)"><i class="fas fa-trash text-sm"></i></button>` : ''}
+                            <button onclick="Modals.viewTimeline('${p.id}')" class="text-primary bg-blue-50 hover:bg-blue-100 w-8 h-8 rounded-lg transition-colors"><i class="fas fa-eye text-sm"></i></button>
+                        </td>
                     </tr>`;
             },
             PermitTable: (arr) => {
@@ -847,6 +907,35 @@
                     Utils.showLoader(false); Utils.showToast("Keputusan disimpan.", "success");
                 } catch(e) { Utils.showLoader(false); Utils.showToast("Ralat: " + e.message, "error"); }
             },
+            deletePermitAsAdmin: async (id) => {
+                if(State.currentUser.role !== 'Admin') return;
+                const reason = prompt("Sebab padam permit ini (contoh: salah isi, data ujian, ralat):");
+                if(!reason || !reason.trim()) return;
+                if(!confirm("Padam kekal permit ini? Rekod penuh akan disimpan dalam Log Padam untuk audit.")) return;
+                Utils.showLoader(true, "Memadam...");
+                try {
+                    const permit = State.permits.find(p => p.id === id);
+                    await DB.from('deleted_permits_log').insert({
+                        id: Utils.generateId(), originalId: permit.id, permitData: permit,
+                        deletedBy: State.currentUser.name, deletedByRole: State.currentUser.role, reason: reason.trim()
+                    });
+                    await DB.from('permits').delete().eq('id', id);
+                    await App.refreshData(); App.renderView(App.currentView);
+                    Utils.showLoader(false); Utils.showToast("Permit dipadam dan direkod dalam log.", "success");
+                } catch(e) { Utils.showLoader(false); Utils.showToast("Ralat: " + e.message, "error"); }
+            },
+            cancelPermit: async (id) => {
+                const reason = prompt("Sebab batalkan permohonan ini:");
+                if(!reason || !reason.trim()) return;
+                Utils.showLoader(true, "Membatalkan...");
+                try {
+                    const permit = State.permits.find(p => p.id === id);
+                    let timeline = [...(permit.timeline || []), { date: new Date().toISOString(), actor: State.currentUser.name, role: State.currentUser.role, action: 'Cancelled', remarks: reason.trim() }];
+                    await DB.from('permits').update({ status: 'Dibatalkan', timeline }).eq('id', id);
+                    await App.refreshData(); App.renderView(App.currentView);
+                    Utils.showLoader(false); Utils.showToast("Permohonan dibatalkan.", "success");
+                } catch(e) { Utils.showLoader(false); Utils.showToast("Ralat: " + e.message, "error"); }
+            },
             submitDeptApproval: async (permitId) => {
                 if (State.currentUser.role === 'Civil & Infra') {
                     const allChecked = ['dept-decl-1', 'dept-decl-2', 'dept-decl-3'].every(id => document.getElementById(id).checked);
@@ -856,9 +945,9 @@
             },
             submitReassign: async (permitId) => {
                 const newDept = document.getElementById('reassign-dept').value;
-                const remarks = document.getElementById('reassign-remarks').value;
-                if(!newDept) return Utils.showToast("Pilih jabatan yang betul.", "error");
-                if(!remarks.trim()) return Utils.showToast("Sila nyatakan sebab reassign.", "error");
+                const remarks = document.getElementById('approval-remarks').value;
+                if(!newDept) return Utils.showToast("Pilih jabatan untuk reassign.", "error");
+                if(!remarks.trim()) return Utils.showToast("Sila nyatakan sebab reassign dalam catatan.", "error");
                 Utils.showLoader(true, "Menghantar semula...");
                 try {
                     const permit = State.permits.find(p => p.id === permitId);
@@ -1079,23 +1168,22 @@
                             </div>`;
                     }
                     let content = `
+                        ${Components.PermitSummary(permit)}
                         ${declarationHtml}
-                        <textarea id="approval-remarks" rows="3" class="w-full border rounded-xl p-3 text-sm outline-none" placeholder="Catatan..."></textarea>
-                        <div class="mt-4 pt-4 border-t border-gray-100">
-                            <p class="text-xs font-semibold text-gray-600 mb-2">Salah jabatan? Hantar semula ke jabatan yang betul:</p>
-                            <select id="reassign-dept" class="w-full border rounded-lg p-2 text-sm bg-white outline-none mb-2">
-                                <option value="">Pilih jabatan...</option>
-                                ${Forms.deptList.filter(d => d !== State.currentUser.role).map(d => `<option value="${d}">${d}</option>`).join('')}
-                            </select>
-                            <textarea id="reassign-remarks" rows="2" class="w-full border rounded-lg p-2 text-sm outline-none" placeholder="Sebab reassign..."></textarea>
-                            <button onclick="Actions.submitReassign('${id}')" class="mt-2 w-full px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded-xl text-sm font-semibold">Reassign</button>
-                        </div>`;
+                        <textarea id="approval-remarks" rows="3" class="w-full border rounded-xl p-3 text-sm outline-none" placeholder="Catatan / sebab (untuk tolak atau reassign)..."></textarea>
+                        <select id="reassign-dept" class="w-full border rounded-lg p-2 text-sm bg-white outline-none mt-2">
+                            <option value="">(Reassign) Pilih jabatan lain jika perlu...</option>
+                            ${Forms.deptList.filter(d => d !== State.currentUser.role).map(d => `<option value="${d}">${d}</option>`).join('')}
+                        </select>`;
                     let footer = `
                         <button onclick="Actions.submitDecision('${id}', 'Rejected')" class="px-4 py-2 text-danger font-medium text-sm">Tolak</button>
+                        <button onclick="Actions.submitReassign('${id}')" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-medium text-sm">Reassign</button>
                         <button onclick="Actions.submitDeptApproval('${id}')" class="px-5 py-2 bg-success text-white rounded-xl font-semibold text-sm">Luluskan</button>`;
                     UI.openModal('Semakan Jabatan: ' + permit.processOwnerDept, content, footer);
                 } else {
-                    let content = `<textarea id="approval-remarks" rows="3" class="w-full border rounded-xl p-3 text-sm outline-none" placeholder="Catatan kelulusan..."></textarea>`;
+                    let content = `
+                        ${Components.PermitSummary(permit)}
+                        <textarea id="approval-remarks" rows="3" class="w-full border rounded-xl p-3 text-sm outline-none" placeholder="Catatan kelulusan..."></textarea>`;
                     let footer = `
                         <button onclick="Actions.submitDecision('${id}', 'Rejected')" class="px-4 py-2 text-danger font-medium text-sm">Tolak</button>
                         <button onclick="Actions.submitDecision('${id}', 'Hold')" class="px-4 py-2 text-accent font-medium text-sm">Tangguh</button>
